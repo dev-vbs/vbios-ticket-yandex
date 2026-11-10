@@ -219,6 +219,15 @@ sub telegram_sync {
     my $body = eval { $response->decoded_content } || '';
     my $result = eval { decode_json($body) } || {};
     die 'Telegram notification failed (chat_id=' . $chat . ', profile=' . ($cfg->{telegram_profile} || 'telegram_bot') . '): ' . ($result->{description} || 'no response') unless $result->{ok};
+    require Core::TicketTelegramMedia;
+    my $media=$self->dbh->selectall_arrayref('SELECT media_id FROM ticket_message_media WHERE message_id=? ORDER BY media_id',{Slice=>{}},$m->{message_id});
+    for my $attachment (@$media) {
+        my ($sent)=$self->dbh->selectrow_array('SELECT 1 FROM ticket_telegram_media_sent WHERE profile=? AND chat_id=? AND message_id=? AND media_id=?',undef,$tg->profile_name,$chat,$m->{message_id},$attachment->{media_id});
+        next if $sent;
+        my $photo=Core::TicketTelegramMedia->outgoing($tg,$self,$attachment->{media_id},$chat,$thread,'Изображение к тикету #'.$id,undef);
+        $self->dbh->do('INSERT IGNORE INTO ticket_telegram_media_sent(profile,chat_id,message_id,media_id,telegram_message_id) VALUES(?,?,?,?,?)',undef,$tg->profile_name,$chat,$m->{message_id},$attachment->{media_id},$photo->{message_id});
+        $self->dbh->commit;
+    }
     $self->dbh->do('UPDATE tickets SET telegram_error=NULL WHERE ticket_id=?', undef, $id);
 }
 sub telegram_close {

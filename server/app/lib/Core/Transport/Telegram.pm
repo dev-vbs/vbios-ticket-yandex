@@ -1332,10 +1332,30 @@ sub ticket_group_update {
         eval { $self->http('deleteForumTopic',data=>{chat_id=>$admin_chat,message_thread_id=>$thread}) };
         return {};
     }
-    return {} unless length $text;
+    require Core::TicketTelegramMedia;
+    my $media;
+    my ($seen)=$self->dbh->selectrow_array('SELECT 1 FROM ticket_telegram_received WHERE profile=? AND chat_id=? AND telegram_message_id=?',undef,$self->profile_name,$admin_chat,$msg->{message_id});
+    return {} if $seen;
+    my $owner=$self->user($row->{user_id});
+    my $ticket=$owner->srv('Ticket');
+    my $imported=eval {$media=Core::TicketTelegramMedia->incoming($self,$ticket,$msg);1};
+    unless ($imported) {
+        eval {$self->dbh->rollback};
+        $self->http('sendMessage',data=>{chat_id=>$admin_chat,message_thread_id=>$thread,text=>'Изображение не сохранено. Поддерживаются JPEG, PNG, WebP, GIF до 5 МБ. Проверьте S3 и доступ к файлам Telegram.'});
+        return {};
+    }
+    return {} unless length($text) || $media;
+    $text='Изображение от поддержки' unless length $text;
+    # Recheck closure and serialize duplicate updates after the file network call.
+    $row=$self->dbh->selectrow_hashref('SELECT * FROM tickets WHERE ticket_id=? AND status<>"closed" FOR UPDATE',undef,$row->{ticket_id});
+    unless ($row) {$self->dbh->rollback;return {};}
+    my $write_db=$self->dbh;
+    local $write_db->{RaiseError}=1;
     my $received=$self->dbh->do('INSERT IGNORE INTO ticket_telegram_received(profile,chat_id,telegram_message_id,ticket_id) VALUES(?,?,?,?)',undef,$self->profile_name,$admin_chat,$msg->{message_id},$row->{ticket_id});
-    return {} unless $received && $received ne '0E0';
+    unless ($received && $received ne '0E0') {$self->dbh->commit;return {};}
     $self->dbh->do('INSERT INTO ticket_messages(ticket_id,user_id,is_admin,message) VALUES(?,?,1,?)',undef,$row->{ticket_id},0,substr($text,0,10000));
+    my $support_mid=$self->dbh->{mysql_insertid};
+    $self->dbh->do('INSERT INTO ticket_message_media(message_id,media_id) VALUES(?,?)',undef,$support_mid,$media->{id}) if $media;
     $self->dbh->do("UPDATE tickets SET status='waiting',updated=NOW() WHERE ticket_id=?",undef,$row->{ticket_id});
     my $u = $self->user($row->{user_id});
     my $tg_data = $u ? ($u->settings->{telegram} || {}) : {};
@@ -1350,6 +1370,16 @@ sub ticket_group_update {
         my $sent=eval {decode_json($response->decoded_content)} || {};
         if ($sent->{ok}) {
             $self->ticket_link_reply($user_chat,$sent->{result}{message_id},$row->{ticket_id},$row->{user_id});
+            if ($media) {
+                eval {
+                    my $photo=Core::TicketTelegramMedia->outgoing($self,$ticket,$media->{id},$user_chat,undef,'Изображение поддержки по тикету #'.$row->{ticket_id},{inline_keyboard=>[[{text=>'↩️ Ответить',callback_data=>'ticket_reply '.$row->{ticket_id}}]]});
+                    $self->ticket_link_reply($user_chat,$photo->{message_id},$row->{ticket_id},$row->{user_id});
+                    1;
+                } or do {
+                    $self->dbh->do('UPDATE tickets SET telegram_error=? WHERE ticket_id=?',undef,'Support image delivery failed; image saved in cabinet',$row->{ticket_id});
+                    $self->dbh->commit;
+                };
+            }
         } else {
             $self->dbh->do('UPDATE tickets SET telegram_error=? WHERE ticket_id=?',undef,'Support reply delivery failed',$row->{ticket_id});
             $self->dbh->commit;
@@ -1382,7 +1412,7 @@ sub ticket_private_reply {
             $self->http('sendMessage',data=>{chat_id=>$chat,text=>'Обращение закрыто или недоступно. Создайте новое в кабинете.'});
             return 1;
         }
-        my $response=$self->http('sendMessage',data=>{chat_id=>$chat,text=>'✍️ Ответ на тикет #'.$tid."\n\nНапишите текст ответом на это сообщение. Для отмены отправьте /start. Картинки прикладывайте в личном кабинете.",reply_markup=>q({"force_reply":true})});
+        my $response=$self->http('sendMessage',data=>{chat_id=>$chat,text=>'✍️ Ответ на тикет #'.$tid."\n\nНапишите текст ответом на это сообщение. Для отмены отправьте /start. Можно приложить JPEG, PNG, WebP или GIF до 5 МБ.",reply_markup=>q({"force_reply":true})});
         my $sent=eval {decode_json($response->decoded_content)} || {};
         if ($sent->{ok}) {
             $self->ticket_link_reply($chat,$sent->{result}{message_id},$tid,$uid);
@@ -1398,10 +1428,23 @@ sub ticket_private_reply {
     my $link=$self->dbh->selectrow_hashref('SELECT ticket_id FROM ticket_telegram_links WHERE profile=? AND chat_id=? AND telegram_message_id=? AND user_id=?',undef,$self->profile_name,$chat,$quoted,$uid);
     return 0 unless $link;
     my $text=$msg->{text} || $msg->{caption} || '';
-    unless ($text =~ /\S/ && !$msg->{photo} && !$msg->{document} && !$msg->{video}) {
-        $self->http('sendMessage',data=>{chat_id=>$chat,text=>'Здесь поддерживается текстовый ответ. Картинки приложите к тикету в личном кабинете.'});
+    require Core::TicketTelegramMedia;
+    my $ticket=$user->srv('Ticket');
+    my $media;
+    # Ticket API checks ownership before importing an attachment.
+    my $imported=eval {
+        my $open=$ticket->api_get(ticket_id=>$link->{ticket_id});
+        die 'closed' if $open->{status} eq 'closed';
+        my ($seen)=$self->dbh->selectrow_array('SELECT 1 FROM ticket_telegram_received WHERE profile=? AND chat_id=? AND telegram_message_id=?',undef,$self->profile_name,$chat,$msg->{message_id});
+        return 1 if $seen;
+        $media=Core::TicketTelegramMedia->incoming($self,$ticket,$msg);
+        1;
+    };
+    unless ($imported && ($text =~ /\S/ || $media)) {
+        $self->http('sendMessage',data=>{chat_id=>$chat,text=>'Не удалось сохранить ответ. Проверьте, что тикет открыт. Допустимы текст и JPEG, PNG, WebP, GIF до 5 МБ.'});
         return 1;
     }
+    $text='Прикреплено изображение' unless $text =~ /\S/;
     my $db=$self->dbh;
     local $db->{RaiseError}=1;
     local $db->{PrintError}=0;
@@ -1411,6 +1454,8 @@ sub ticket_private_reply {
         my $claim=$db->do('INSERT IGNORE INTO ticket_telegram_received(profile,chat_id,telegram_message_id,ticket_id) VALUES(?,?,?,?)',undef,$self->profile_name,$chat,$msg->{message_id},$link->{ticket_id});
         if (!$claim || $claim eq '0E0') { $db->commit; return 1; }
         $db->do('INSERT INTO ticket_messages(ticket_id,user_id,is_admin,message) VALUES(?,?,0,?)',undef,$link->{ticket_id},$uid,substr($text,0,10000));
+        my $reply_mid=$db->{mysql_insertid};
+        $db->do('INSERT INTO ticket_message_media(message_id,media_id) VALUES(?,?)',undef,$reply_mid,$media->{id}) if $media;
         $db->do("UPDATE tickets SET status='open',updated=NOW() WHERE ticket_id=?",undef,$link->{ticket_id});
         $db->commit or die 'commit';
         1;
@@ -1421,7 +1466,6 @@ sub ticket_private_reply {
         return 1;
     }
     # The authenticated user context remains the current ticket owner.
-    my $ticket=$user->srv('Ticket');
     $ticket->_notify_safe($link->{ticket_id});
     # A human has already responded: do not invoke AI on this reply.
     $self->http('sendMessage',data=>{chat_id=>$chat,text=>'✅ Ответ сохранён в тикете #'.$link->{ticket_id}.'. История доступна в личном кабинете.',reply_markup=>q({"remove_keyboard":true})});
