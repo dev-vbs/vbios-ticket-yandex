@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import i18n from '../i18n';
 
-const STORAGE_KEY = 'isInsideTelegramWebApp';
 const SUPPORTED_LANGUAGES = ['ru', 'en'];
 const DEFAULT_LANGUAGE = 'ru';
 
@@ -46,24 +45,6 @@ function checkIsInsideTelegramWebApp(): boolean {
   ));
 }
 
-function getStoredValue(): boolean | null {
-  try {
-    const stored = sessionStorage.getItem(STORAGE_KEY);
-    if (stored !== null) {
-      return stored === 'true';
-    }
-  } catch {
-  }
-  return null;
-}
-
-function setStoredValue(value: boolean): void {
-  try {
-    sessionStorage.setItem(STORAGE_KEY, String(value));
-  } catch {
-  }
-}
-
 function setLanguageFromTelegram(): void {
   const tgWebApp = window.Telegram?.WebApp;
   const languageCode = tgWebApp?.initDataUnsafe?.user?.language_code;
@@ -78,19 +59,12 @@ function setLanguageFromTelegram(): void {
 }
 
 export function useTelegramWebApp() {
-  const [isInsideTelegramWebApp, setIsInsideTelegramWebApp] = useState<boolean>(() => {
-    const cached = getStoredValue();
-    if (cached !== null) {
-      return cached;
-    }
-    return checkIsInsideTelegramWebApp();
-  });
+  const [isInsideTelegramWebApp, setIsInsideTelegramWebApp] = useState(checkIsInsideTelegramWebApp);
 
   useEffect(() => {
     const checkAndStore = () => {
       const isInside = checkIsInsideTelegramWebApp();
       setIsInsideTelegramWebApp(isInside);
-      setStoredValue(isInside);
 
       if (isInside) {
         setLanguageFromTelegram();
@@ -108,9 +82,5 @@ export function useTelegramWebApp() {
 }
 
 export function isInsideTelegramWebApp(): boolean {
-  const cached = getStoredValue();
-  if (cached !== null) {
-    return cached;
-  }
   return checkIsInsideTelegramWebApp();
 }

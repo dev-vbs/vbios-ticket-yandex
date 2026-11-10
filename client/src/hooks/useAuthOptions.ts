@@ -26,8 +26,12 @@ export function useAuthOptions() {
     loginEnabled: options?.auth?.enabled !== false,
     registerEnabled: options?.register?.enabled !== false,
     captchaEnabled: options?.captcha?.enabled ?? (config.CAPTCHA_ENABLED === 'true'),
-    telegramEnabled: !isTelegramWebApp && (options?.telegram?.enabled ?? hasTelegramOidcAuth),
-    telegramProfile: options?.telegram?.profile || config.TELEGRAM_BOT_AUTH_PROFILE,
+    // Older SHM discovery may report false even when this cabinet explicitly
+    // enables OIDC. Do not remove its configured button after discovery loads.
+    telegramEnabled: !isTelegramWebApp && (hasTelegramOidcAuth || options?.telegram?.enabled === true),
+    telegramProfile: hasTelegramOidcAuth
+      ? config.TELEGRAM_BOT_AUTH_PROFILE
+      : options?.telegram?.profile || config.TELEGRAM_BOT_AUTH_PROFILE,
     providers: Object.entries(options?.oauth2?.providers ?? {})
       .filter(([name, value]) => ['google', 'yandex', 'github'].includes(name) && value.enabled === true)
       .map(([name]) => name),
