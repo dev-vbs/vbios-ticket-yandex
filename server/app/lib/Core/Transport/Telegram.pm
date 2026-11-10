@@ -1373,7 +1373,9 @@ sub ticket_group_update {
             $self->ticket_link_reply($user_chat,$sent->{result}{message_id},$row->{ticket_id},$row->{user_id});
             if ($media) {
                 eval {
-                    my $photo=Core::TicketTelegramMedia->outgoing($self,$ticket,$media->{id},$user_chat,undef,'Изображение поддержки по тикету #'.$row->{ticket_id},{inline_keyboard=>[[{text=>'↩️ Ответить',callback_data=>'ticket_reply '.$row->{ticket_id}}]]});
+                    # Source is the support topic; destination is ONLY the owner's private chat.
+                    die 'Invalid private destination' unless $user_chat =~ /^[1-9][0-9]*$/;
+                    my $photo=$self->ticket_copy_support_image($admin_chat,$msg->{message_id},$user_chat,$row->{ticket_id});
                     $self->ticket_link_reply($user_chat,$photo->{message_id},$row->{ticket_id},$row->{user_id});
                     1;
                 } or do {
@@ -1390,6 +1392,21 @@ sub ticket_group_update {
     return {};
 }
 
+
+sub ticket_copy_support_image {
+    my ($self,$source_chat,$source_message,$private_chat,$ticket_id)=@_;
+    die 'Invalid private destination' unless $private_chat && $private_chat =~ /^[1-9][0-9]*$/;
+    die 'Invalid support source' unless $source_chat && $source_chat ne $private_chat && $source_message;
+    require Core::TicketTelegramMedia;
+    my $response=$self->http('copyMessage',chat_id=>$private_chat,data=>{
+        chat_id=>$private_chat,
+        from_chat_id=>$source_chat,
+        message_id=>$source_message,
+        caption=>'Изображение поддержки по тикету #'.$ticket_id,
+        reply_markup=>{inline_keyboard=>[[{text=>'↩️ Ответить',callback_data=>'ticket_reply '.$ticket_id}]]},
+    });
+    return Core::TicketTelegramMedia->result($response);
+}
 
 # Message-to-ticket binding is server-side: never trust quoted text or ticket ID alone.
 sub ticket_link_reply {
