@@ -50,7 +50,7 @@ function ThemeToggle() {
       onClick={() => setColorScheme(computedColorScheme === 'light' ? 'dark' : 'light')}
       variant="default"
       size="lg"
-      aria-label="Toggle color scheme"
+      aria-label={computedColorScheme === 'light' ? 'Включить тёмную тему' : 'Включить светлую тему'}
     >
       {computedColorScheme === 'light' ? <IconMoon size={18} /> : <IconSun size={18} />}
     </ActionIcon>
@@ -59,14 +59,14 @@ function ThemeToggle() {
 
 export default function Login() {
   const { loginEnabled, registerEnabled, captchaEnabled, telegramEnabled, telegramProfile, providers } = useAuthOptions();
-  useEffect(() => { if (!registerEnabled) setMode('login'); }, [registerEnabled]);
   const [mode, setMode] = useState<'login' | 'register'>('login');
+  useEffect(() => { if (!registerEnabled) setMode('login'); }, [registerEnabled]);
   useEffect(() => {
     const params = new URLSearchParams(location.search);
-    if (params.has('register')) {
+    if (params.has('register') && registerEnabled) {
       setMode('register');
     }
-  }, [location.search]);
+  }, [registerEnabled]);
   const [loading, setLoading] = useState(false);
   const [passkeyLoading, setPasskeyLoading] = useState(false);
   const [loginOrEmail, setLoginOrEmail] = useState('');
@@ -506,39 +506,34 @@ export default function Login() {
 
   const handleSupportLink = () => {
     if (config.SUPPORT_LINK) {
-      window.open(config.SUPPORT_LINK, '_blank');
+      window.open(config.SUPPORT_LINK, '_blank', 'noopener,noreferrer');
     }
   };
 
   return (
-    <Center className="auth-screen" style={{ minHeight: '100svh', paddingTop: 16, paddingBottom: isMobile ? 72 : 16, position: 'relative' }}>
+    <Center className="auth-screen" style={{ minHeight: '100svh', paddingTop: 24, paddingBottom: isMobile ? 88 : 24, position: 'relative' }}>
       <Card className="auth-card" withBorder radius="md" p="xl" w={400}>
         <Stack gap="lg">
-          <Group justify="space-between" align="center">
-            <div style={{ flex: 1, display: 'flex', justifyContent: 'flex-start' }}>
+          <Group className="auth-toolbar" justify="space-between" align="center">
               <ThemeToggle />
-            </div>
-            <Group gap="xs" align="center" style={{ flex: 'auto', justifyContent: 'center' }}>
+              <LanguageSwitcher />
+          </Group>
+            <Group className="auth-brand" gap="sm" align="center" justify="center">
               {config.LOGO_URL && (
                 <img
                   src={config.LOGO_URL}
                   alt=""
-                  style={{ height: 28, width: 28, objectFit: 'contain', flexShrink: 0 }}
+                  style={{ height: 40, width: 40, objectFit: 'contain', flexShrink: 0 }}
                 />
               )}
               <Title order={2} ta="center">{config.APP_NAME}</Title>
             </Group>
-            <div style={{ flex: 1, display: 'flex', justifyContent: 'flex-end' }}>
-              <LanguageSwitcher />
-            </div>
-
-          </Group>
           {config.APP_DESCRIPTION && (
             <Text size="sm" c="dimmed" ta="center" style={{ flex: 'auto' }}>{config.APP_DESCRIPTION}</Text>
           )}
-          <Text size="sm" c="dimmed" ta="center">
+          <Title order={3} className="auth-heading" ta="center">
               {mode === 'login' ? t('auth.loginTitle') : t('auth.registerTitle')}
-          </Text>
+          </Title>
 
           {!loginEnabled && <Text ta="center" c="dimmed">Вход временно отключён администратором.</Text>}
 
@@ -606,7 +601,8 @@ export default function Login() {
 
           {loginEnabled && (!hasTelegramWebAppAuth || showLoginForm) && (
             <>
-              <form onSubmit={handleSubmit}>
+              <form onSubmit={handleSubmit} aria-busy={loading}>
+                <fieldset className="auth-fieldset" disabled={loading}>
                 <Stack gap="sm">
                   {mode === 'register' && requireEmailRegister ? (
                     <TextInput
@@ -744,20 +740,21 @@ export default function Login() {
                     </Button>
                   )}
                 </Stack>
+                </fieldset>
               </form>
 
               {registerEnabled && <Text size="sm" ta="center">
                 {mode === 'login' ? (
                   <>
                     {t('auth.noAccount')}{' '}
-                    <Text component="span" c="blue" style={{ cursor: 'pointer' }} onClick={() => { setMode('register'); form.clearErrors(); }}>
+                    <Text component="button" type="button" className="auth-text-button" c="blue" disabled={loading} onClick={() => { setMode('register'); form.clearErrors(); }}>
                       {t('auth.register')}
                     </Text>
                   </>
                 ) : (
                   <>
                     {t('auth.hasAccount')}{' '}
-                    <Text component="span" c="blue" style={{ cursor: 'pointer' }} onClick={() => { setMode('login'); form.clearErrors(); }}>
+                    <Text component="button" type="button" className="auth-text-button" c="blue" disabled={loading} onClick={() => { setMode('login'); form.clearErrors(); }}>
                       {t('auth.login')}
                     </Text>
                   </>
@@ -766,7 +763,7 @@ export default function Login() {
 
               {mode === 'login' && (
                 <Text size="sm" ta="center">
-                  <Text component="span" c="blue" style={{ cursor: 'pointer' }} onClick={() => setShowResetPassword(true)}>
+                  <Text component="button" type="button" className="auth-text-button" c="blue" disabled={loading} onClick={() => setShowResetPassword(true)}>
                     {t('auth.forgotPassword')}
                   </Text>
                 </Text>

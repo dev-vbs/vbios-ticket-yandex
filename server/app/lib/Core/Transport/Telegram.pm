@@ -5,6 +5,7 @@ use parent 'Core::Base';
 use v5.14;
 use utf8;
 use Core::Base;
+use Core::Auth::Base ();
 use Core::Const;
 use SHM qw( validate_session );
 use Core::System::ServiceManager qw( get_service logger );
@@ -773,45 +774,14 @@ sub is_safe_return_url {
     my $self = shift;
     my $url  = shift;
 
-    return 0 unless defined $url && $url ne '';
-
-    # Reject dangerous schemes regardless of host
-    return 0 if $url =~ m{^(javascript|data|vbscript):}i;
-
-    # Relative URLs are always safe
-    return 1 if $url =~ m{^/[^/]};
-
-    # Only allow http/https absolute URLs
-    return 0 unless $url =~ m{^https?://}i;
-
-    my $host = $ENV{HTTP_X_FORWARDED_HOST} || $ENV{HTTP_HOST};
-
-    # If no server host is known (e.g. CLI/test), accept any http/https URL
-    return 1 unless $host;
-
-    # Enforce same-host in production
-    if ( $url =~ m{^https?://([^/?#]+)}i ) {
-        my $url_host = $1;
-        $url_host =~ s/:\d+$//;  # strip port
-        $host     =~ s/:\d+$//;
-        return lc($url_host) eq lc($host);
-    }
-
-    return 0;
+    return Core::Utils::safe_return_url($url);
 }
 
 sub telegram_web_callback_url {
     my $self = shift;
 
-    my $scheme = $ENV{HTTP_X_FORWARDED_PROTO}
-        || $ENV{REQUEST_SCHEME}
-        || ( ($ENV{HTTPS} || '') =~ /^(1|on)$/i ? 'https' : 'http' );
-
-    my $host = $ENV{HTTP_X_FORWARDED_HOST}
-        || $ENV{HTTP_HOST}
-        || 'localhost';
-
-    return sprintf('%s://%s/shm/v1/telegram/web/callback', $scheme, $host);
+    my $origin = Core::Utils::public_origin() || return undef;
+    return $origin . '/shm/v1/telegram/web/callback';
 }
 
 sub telegram_oidc_state_cache_key {
@@ -848,7 +818,13 @@ sub telegram_oidc_init {
         $args{session_id} ||= Core::Utils::get_cookies('session_id');
     }
 
-    my $redirect_uri = $args{redirect_uri} || $self->telegram_web_callback_url;
+    my $redirect_uri = $self->telegram_web_callback_url;
+    if ((defined $args{redirect_uri} && $args{redirect_uri} ne $redirect_uri)
+        || ($args{return_url} && !Core::Utils::safe_return_url($args{return_url}))) {
+        report->status(400);
+        report->error('Invalid redirect URL');
+        return undef;
+    }
     my $client_id = $self->telegram_oidc_client_id( profile => $args{profile} );
 
     unless ( $client_id ) {
@@ -874,7 +850,7 @@ sub telegram_oidc_init {
         ( defined $args{session_id} ? ( session_id => $args{session_id} ) : () ),
     };
 
-    cache->set_json( $self->telegram_oidc_state_cache_key($state), $ctx, $args{ttl} );
+    Core::Auth::Base::save_browser_state($self, $ctx, 'tg_oidc_state', $args{ttl});
 
     use URI::Escape qw( uri_escape );
     my $auth_url = sprintf(
@@ -1991,6 +1967,24 @@ sub web_auth {
         @_,
     );
 
+    # Widget linking must present a bearer session explicitly; never bind using
+    # an ambient browser cookie on a request carrying somebody else's identity.
+    if ($args{bind_to_profile} && !$args{code} && !$args{id_token}
+        && !$args{session_id} && !Core::Auth::Base::callback_verified(\%args)) {
+        report->status(401);
+        report->error('An explicit session is required for Widget account binding');
+        return undef;
+    }
+    if (($args{code} || $args{id_token})
+        && !Core::Auth::Base::callback_verified(\%args)) {
+        my $ctx = Core::Auth::Base::resolve_callback_state($self, \%args, 'tg_oidc_state');
+        unless ($ctx) {
+            report->status(400);
+            report->error('Invalid or expired authentication state');
+            return undef;
+        }
+        %args = %$ctx;
+    }
     my $uid;
     if ( $args{bind_to_profile} ) {
         my $session = validate_session( session_id => $args{session_id} );
@@ -2106,7 +2100,7 @@ sub web_auth {
     if ( $uid && $self->user->id($uid) ) {
         switch_user( $uid );
         if ( $args{bind_to_profile} ) {
-            if ( $args{bind_only_if_new} ) {
+            {
                 my $existing_user = $self->find_user_by_tg( \%in );
                 if ( $existing_user && $existing_user->{user_id} ne $uid ) {
                     return { error => 'Telegram account already exists' };
@@ -2203,23 +2197,13 @@ sub web_auth_callback {
         @_,
     );
 
-    if ( $args{state} ) {
-        my $ctx = cache->get_json( $self->telegram_oidc_state_cache_key( $args{state} ) );
-        if ( ref $ctx eq 'HASH' ) {
-            $args{expected_state} //= $ctx->{state};
-            $args{code_verifier} //= $ctx->{code_verifier};
-            $args{nonce} //= $ctx->{nonce};
-            $args{profile} = $ctx->{profile} if !defined $args{profile} || $args{profile} eq '' || $args{profile} eq 'telegram_bot';
-            $args{redirect_uri} //= $ctx->{redirect_uri};
-            $args{return_url} //= $ctx->{return_url} if defined $ctx->{return_url};
-            $args{register_if_not_exists} = $ctx->{register_if_not_exists} if !$args{register_if_not_exists} && defined $ctx->{register_if_not_exists};
-            $args{bind_to_profile} = $ctx->{bind_to_profile} if !$args{bind_to_profile} && defined $ctx->{bind_to_profile};
-            $args{bind_only_if_new} = $ctx->{bind_only_if_new} if !$args{bind_only_if_new} && defined $ctx->{bind_only_if_new};
-            $args{session_id} //= $ctx->{session_id} if defined $ctx->{session_id};
-
-            cache->delete( $self->telegram_oidc_state_cache_key( $args{state} ) );
-        }
+    my $ctx = Core::Auth::Base::resolve_callback_state($self, \%args, 'tg_oidc_state');
+    unless ($ctx) {
+        report->status(400);
+        report->error('Invalid or expired authentication state');
+        return undef;
     }
+    %args = %$ctx;
 
     # If redirect_uri was not explicitly provided, use current callback URL.
     # This allows setting Telegram redirect_uri directly to /shm/v1/telegram/web/callback.

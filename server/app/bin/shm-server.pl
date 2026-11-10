@@ -157,14 +157,15 @@ while ($request_count < $max_requests && $request->Accept() >= 0) {
             unless ($skip_log) {
                 my $method = $ENV{REQUEST_METHOD} // 'UNKNOWN';
                 my $ms = int((time - $req_start) * 1000);
-                log_msg("$method $request_uri - script: $script_filename ${ms}ms");
+                my ($log_path) = split /\?/, $request_uri, 2;
+                log_msg("$method $log_path - script: $script_filename ${ms}ms");
             }
         } else {
             print "Status: 404 Not Found\r\n";
             print "Content-Type: text/plain\r\n\r\n";
-            print "Not Found: " . ($script_filename || $request_uri) . "\n";
+            print "Not Found\n";
             unless ($skip_log) {
-                log_msg("404 - file not found, not a regular executable file, or empty mapping: " . ($script_filename || $request_uri));
+                log_msg("404 - no executable CGI mapping");
             }
         }
     };
@@ -191,6 +192,8 @@ sub determine_script {
     # Remove query string
     my $path = $request_uri;
     $path =~ s{\?.*}{};
+    return unless $path =~ m{\A/} && $path !~ /[%\\\x00-\x20\x7f]/;
+    return if $path =~ m{(?:^|/)\.{1,2}(?:/|$)};
 
     # Normalize: collapse multiple slashes into one
     $path =~ s{/+}{/}g;
@@ -215,18 +218,26 @@ sub determine_script {
 
             # If rest is empty or just /, use index
             if (!$rest || $rest eq '/') {
-                return ("$target/index.cgi", '') if -e "$target/index.cgi";
-                return ($target, '') if -f $target;
+                return (contained_cgi($target, "$target/index.cgi"), '');
                 return ('', '');
             }
 
-            return ($target . $rest, '');
+            return (contained_cgi($target, $target . $rest), '');
         }
     }
 
     # Fallback - ensure path starts with /
     $path = "/$path" if $path !~ m{^/};
-    return ('/app/public_html' . $path, '');
+    return (contained_cgi('/app/public_html', '/app/public_html' . $path), '');
+}
+
+sub contained_cgi {
+    my ($root, $file) = @_;
+    return unless $file =~ /\.cgi\z/;
+    my $base = realpath($root) // return;
+    my $resolved = realpath($file) // return;
+    return unless index($resolved, "$base/") == 0;
+    return $resolved;
 }
 
 sub execute_cgi {
@@ -257,6 +268,7 @@ sub execute_do {
     # Reset global state from Core::Utils that persists between requests
     no warnings 'once';
     $Core::Utils::is_header = 0;
+    @Core::Utils::response_cookies = ();
     %Core::Utils::in = ();
 
     # Reset CGI.pm global cache - without this, CGI->new returns stale params

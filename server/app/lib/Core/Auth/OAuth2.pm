@@ -81,7 +81,18 @@ sub oauth2_init {
         return undef;
     }
 
-    my $redirect_uri = $args{redirect_uri} || $self->oauth2_callback_url( $provider );
+    my $redirect_uri = $self->oauth2_callback_url( $provider );
+    if ((defined $args{redirect_uri} && $args{redirect_uri} ne $redirect_uri)
+        || ($args{return_url} && !Core::Utils::safe_return_url($args{return_url}))) {
+        report->status(400);
+        report->error('Invalid redirect URL');
+        return undef;
+    }
+    if ($args{bind_to_profile}) {
+        my %headers = Core::Utils::parse_headers();
+        $args{session_id} ||= $headers{HTTP_SESSION_ID} || Core::Utils::get_cookies('session_id');
+        return undef unless validate_session(session_id => $args{session_id});
+    }
 
     my $state = random_base64url(32);
     my $nonce = random_base64url(32);
@@ -102,7 +113,7 @@ sub oauth2_init {
         ( defined $args{session_id} ? ( session_id => $args{session_id} ) : () ),
     };
 
-    cache->set_json( $self->oauth2_state_cache_key($state), $ctx, $args{ttl} );
+    $self->save_browser_state($ctx, 'oauth2_state', $args{ttl});
 
     my $scope = $self->provider_scope( $provider );
     my $auth_url = sprintf(
@@ -435,6 +446,7 @@ sub oauth2_callback {
         @_,
     );
 
+    return undef unless Core::Auth::Base::callback_verified(\%args);
     my $provider = $args{provider};
     my $pcfg = $self->provider_config( $provider );
     unless ( $pcfg ) {
@@ -498,7 +510,7 @@ sub oauth2_callback {
 
     my $claims = $self->normalize_claims( $provider, $claims_raw );
     my $email = $claims->{email}{address};
-    unless ( $email ) {
+    unless ( $email && defined $claims->{subject} && length $claims->{subject} ) {
         report->error("OAuth2 claims have no email ($provider)");
         return undef;
     }
@@ -511,6 +523,8 @@ sub oauth2_callback {
             return { error => 'Email already linked to another user' };
         }
         my $existing_provider = $self->user->logins->id( $email, [$self->oauth2_login_type($provider)] );
+        return {error => 'Provider account already linked to another user'}
+            if $existing_provider && $existing_provider->get_user_id ne $uid;
         my $already_bound = $existing_provider && $self->oauth2_account_is_linked( $existing_provider->get_settings || {} );
 
         $self->save_oauth2_account( $self->user, $provider, $claims );
@@ -524,7 +538,9 @@ sub oauth2_callback {
     my $user;
     if ( $login_obj ) {
         my $settings = $provider_login_obj ? ( $provider_login_obj->get_settings || {} ) : {};
-        unless ( $self->oauth2_account_is_linked( $settings ) ) {
+        unless ( $self->oauth2_account_is_linked( $settings )
+            && defined $settings->{subject} && $settings->{subject} eq $claims->{subject}
+            && $provider_login_obj->get_user_id == $login_obj->get_user_id ) {
             return { error => "Account with this email exists but is not linked to $provider yet. Log in and link your $provider account from your profile first." };
         }
         $user = $self->user->id( $login_obj->get_user_id );
@@ -600,7 +616,13 @@ sub oauth2_callback_redirect {
         @_,
     );
 
-    %args = %{ $self->resolve_callback_state( \%args, 'oauth2_state' ) };
+    my $ctx = $self->resolve_callback_state( \%args, 'oauth2_state' );
+    unless ($ctx) {
+        report->status(400);
+        report->error('Invalid or expired authentication state');
+        return undef;
+    }
+    %args = %$ctx;
     $args{redirect_uri} ||= $self->oauth2_callback_url( $args{provider} );
 
     my $result = $self->oauth2_callback( %args );

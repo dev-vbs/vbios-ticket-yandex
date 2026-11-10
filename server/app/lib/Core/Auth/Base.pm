@@ -5,6 +5,29 @@ use parent 'Core::Base';
 use Core::Base;
 use Core::System::ServiceManager qw( get_service );
 use URI::Escape qw( uri_escape );
+use Core::Utils ();
+use CGI::Cookie;
+use Digest::SHA qw(sha256_hex);
+
+my $CALLBACK_GUARD = {};
+sub callback_verified {
+    my $args = shift;
+    return ref($args->{_callback_guard}) eq 'HASH' && $args->{_callback_guard} == $CALLBACK_GUARD;
+}
+
+sub save_browser_state {
+    my ($self, $ctx, $prefix, $ttl) = @_;
+    $ttl = 600 unless defined $ttl && $ttl =~ /^\d+$/ && $ttl > 0 && $ttl <= 600;
+    my $secret = Core::Utils::random_base64url(32);
+    $ctx->{browser_hash} = sha256_hex($secret);
+    cache->set_json($prefix . '_' . $ctx->{state}, $ctx, $ttl);
+    Core::Utils::queue_response_cookie(CGI::Cookie->new(
+        -name => 'auth_state_' . $ctx->{state}, -value => $secret,
+        -path => '/shm/v1', -httponly => 1, -samesite => 'Lax',
+        -secure => Core::Utils::public_origin() =~ /^https:/ ? 1 : 0,
+        -expires => '+10m',
+    ));
+}
 
 sub provider_names {
     my $self = shift;
@@ -62,11 +85,8 @@ sub callback_url {
     my $provider = shift;
     my $prefix = shift || 'oauth2';
 
-    my $scheme = $ENV{HTTP_X_FORWARDED_PROTO}
-        || ( ($ENV{HTTPS} || '') =~ /^(1|on)$/i ? 'https' : 'http' );
-    my $host = $ENV{HTTP_X_FORWARDED_HOST} || $ENV{HTTP_HOST} || 'localhost';
-
-    return sprintf('%s://%s/shm/v1/%s/callback/%s', $scheme, $host, $prefix, $provider);
+    my $origin = Core::Utils::public_origin() || return undef;
+    return sprintf('%s/shm/v1/%s/callback/%s', $origin, $prefix, $provider);
 }
 
 sub auth_state_cache_key {
@@ -81,29 +101,24 @@ sub resolve_callback_state {
     my $args = shift || {};
     my $prefix = shift || 'auth_state';
 
-    my $state = $args->{state};
-    return $args unless $state;
-
-    my $ctx = cache->get_json( $self->auth_state_cache_key( $state, $prefix ) );
-    return $args unless ref $ctx eq 'HASH';
-
-    $args->{expected_state} //= $ctx->{state};
-    $args->{code_verifier} //= $ctx->{code_verifier};
-    $args->{nonce} //= $ctx->{nonce};
-    $args->{provider} //= $ctx->{provider};
-    $args->{redirect_uri} //= $ctx->{redirect_uri};
-    $args->{return_url} //= $ctx->{return_url} if defined $ctx->{return_url};
-    $args->{register_if_not_exists} = $ctx->{register_if_not_exists}
-        if !$args->{register_if_not_exists} && defined $ctx->{register_if_not_exists};
-    $args->{bind_to_profile} = $ctx->{bind_to_profile}
-        if !$args->{bind_to_profile} && defined $ctx->{bind_to_profile};
-    $args->{bind_only_if_new} = $ctx->{bind_only_if_new}
-        if !$args->{bind_only_if_new} && defined $ctx->{bind_only_if_new};
-    $args->{session_id} //= $ctx->{session_id} if defined $ctx->{session_id};
-    $args->{device_id} //= $ctx->{device_id} if defined $ctx->{device_id};
-
-    cache->delete( $self->auth_state_cache_key( $state, $prefix ) );
-    return $args;
+    my $state = $args->{state} || '';
+    return undef unless $state =~ /\A[A-Za-z0-9_-]{32,128}\z/;
+    my $key = $prefix . '_' . $state;
+    my $ctx = cache->get_json($key);
+    return undef unless ref $ctx eq 'HASH' && ($ctx->{state} || '') eq $state;
+    my $secret = Core::Utils::get_cookies('auth_state_' . $state) || '';
+    return undef unless $secret && ($ctx->{browser_hash} || '') eq sha256_hex($secret);
+    return undef if $args->{provider} && $ctx->{provider} && $args->{provider} ne $ctx->{provider};
+    cache->delete($key);
+    Core::Utils::queue_response_cookie(CGI::Cookie->new(
+        -name => 'auth_state_' . $state, -value => '', -path => '/shm/v1',
+        -httponly => 1, -samesite => 'Lax', -expires => '-1d',
+        -secure => Core::Utils::public_origin() =~ /^https:/ ? 1 : 0,
+    ));
+    return {
+        %$ctx, code => $args->{code}, id_token => $args->{id_token},
+        expected_state => $ctx->{state}, _callback_guard => $CALLBACK_GUARD,
+    };
 }
 
 sub build_callback_redirect_url {
@@ -113,7 +128,7 @@ sub build_callback_redirect_url {
     my $default_error = shift || 'Authentication failed';
     my $status_key = shift || 'oidc_status';
 
-    return undef unless $return_url;
+    return undef unless Core::Utils::safe_return_url($return_url);
 
     my %query;
     if ( ref $result eq 'HASH' && $result->{session_id} ) {

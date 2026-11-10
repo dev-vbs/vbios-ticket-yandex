@@ -718,10 +718,8 @@ sub get_cookies {
 
 # Builds a `session_id` cookie for redirect-based auth flows (OAuth2/Telegram
 # callbacks), where the response body cannot be read by client JS. HttpOnly
-# prevents JS/XSS access; SameSite=None+Secure allows it to be sent on
-# subsequent cross-site XHR/fetch requests (over HTTPS only — plain HTTP
-# falls back to SameSite=Lax since browsers reject `SameSite=None` without
-# `Secure`).
+# prevents script access; Lax permits the top-level provider callback while
+# excluding ambient cookies from cross-site API requests.
 sub session_id_cookie {
     my $session_id = shift || return undef;
 
@@ -734,7 +732,7 @@ sub session_id_cookie {
         -path     => '/',
         -httponly => 1,
         -secure   => $is_https ? 1 : 0,
-        -samesite => $is_https ? 'None' : 'Lax',
+        -samesite => 'Lax',
         -expires  => '+3d',
     );
 }
@@ -862,20 +860,68 @@ sub uuid_gen {
     return $uuid;
 }
 
+our @response_cookies;
+
+sub queue_response_cookie { push @response_cookies, $_[0] if $_[0] }
+
+sub public_origin {
+    my $host = $ENV{HTTP_HOST} || return '';
+    return '' if $host =~ /[^A-Za-z0-9.:[\]-]/;
+    my $https = ($ENV{HTTP_X_FORWARDED_PROTO} || '') eq 'https'
+        || ($ENV{HTTPS} || '') =~ /^(1|on)$/i;
+    return ($https ? 'https://' : 'http://') . lc($host);
+}
+
+sub allowed_request_origin {
+    my $origin = shift // $ENV{HTTP_ORIGIN};
+    return 1 unless defined $origin && length $origin;
+    return 0 if $origin eq 'null' || $origin =~ /[\s\\]/;
+    my %allowed = map { $_ => 1 } grep { length } split /\s*,\s*/, ($ENV{CORS_ALLOWED_ORIGINS} || '');
+    $allowed{public_origin()} = 1 if public_origin();
+    return $allowed{$origin} ? 1 : 0;
+}
+
+sub safe_return_url {
+    my $url = shift;
+    return 0 unless defined $url && length $url;
+    return 0 if $url =~ /[\\\x00-\x20\x7f]/;
+    return 1 if $url =~ m{\A/(?!/)};
+    require URI;
+    my $uri = URI->new($url);
+    return 0 unless ($uri->scheme || '') =~ /\Ahttps?\z/ && !$uri->userinfo;
+    my $origin = public_origin() || return 0;
+    my $base = URI->new($origin);
+    return lc($uri->scheme) eq lc($base->scheme)
+        && lc($uri->host || '') eq lc($base->host || '')
+        && $uri->port == $base->port;
+}
+
 sub print_header {
     my %args = (
         status => 200,
         type => 'application/json',
         charset => 'utf-8',
-        'Access-Control-Allow-Origin' => "$ENV{HTTP_ORIGIN}",
-        'Access-Control-Allow-Credentials' => 'true',
         @_,
     );
+
+    # Never let individual controllers re-enable reflected credentialed CORS.
+    delete @args{'Access-Control-Allow-Origin', 'Access-Control-Allow-Credentials'};
+    if ($ENV{HTTP_ORIGIN} && allowed_request_origin()) {
+        $args{'Access-Control-Allow-Origin'} = $ENV{HTTP_ORIGIN};
+        $args{'Access-Control-Allow-Credentials'} = 'true';
+        $args{'Vary'} = 'Origin';
+    }
 
     return undef if $is_header;
 
     # Не печатаем заголовки, если скрипт запущен не из под HTTP
     return undef unless $ENV{REQUEST_METHOD};
+
+    if (@response_cookies) {
+        my @cookies = exists $args{cookie} ? (ref $args{cookie} eq 'ARRAY' ? @{$args{cookie}} : $args{cookie}) : ();
+        $args{cookie} = [@cookies, @response_cookies];
+        @response_cookies = ();
+    }
 
     print $cgi->header( map +( "-$_" => $args{$_} ), keys %args );
     $is_header = 1;
@@ -896,7 +942,7 @@ sub print_json {
 }
 
 sub get_user_ip {
-    return $ENV{HTTP_X_REAL_IP} || $ENV{REMOTE_ADDR};
+    return $ENV{REMOTE_ADDR};
 }
 
 sub get_user_agent {

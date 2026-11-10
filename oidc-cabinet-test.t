@@ -18,6 +18,11 @@ sub source_method {
     package Core::Utils;
     our $cookie='cookie-session';
     sub get_cookies {$cookie}
+    package Core::Auth::Base;
+    sub save_browser_state {
+        my ($self,$ctx)=@_;
+        FakeTG::cache()->set_json('state_'.$ctx->{state},$ctx);
+    }
     package FakeSession;
     sub user_id {2}
     sub delete {$_[0]{deleted}++;1}

@@ -61,6 +61,11 @@ sub new {
     # Redirect logs to PIPE
     open STDERR, ">>/tmp/shm_log" if -p "/tmp/shm_log";
 
+    unless (Core::Utils::allowed_request_origin()) {
+        print_header(status => 403);
+        print_json({status => 403, error => 'Origin is not allowed'});
+        exit 0;
+    }
     if ( $ENV{REQUEST_METHOD} eq 'OPTIONS' ) {
         print_header(
             'Access-Control-Allow-Origin' => "$ENV{HTTP_ORIGIN}",
@@ -76,10 +81,6 @@ sub new {
     my $user_id;
     my $login_obj; # accounts-логин, которым выполнен вход в этом запросе (если известен)
     my %headers = parse_headers;
-
-    if ( $headers{HTTP_TEST} ) {
-        $ENV{SHM_TEST} = 1;
-    }
 
     db_connect;
 
@@ -128,6 +129,14 @@ sub new {
         exit 0;
     }
 
+    if ($ENV{SCRIPT_NAME} =~ m{/shm/admin/([^/]+\.cgi)\z}
+        && !$user->can_access(uri => '/admin/legacy/' . $1,
+            method => ($1 =~ /^(?:ssh|mail)_test\.cgi$/ ? 'PUT' : ($ENV{REQUEST_METHOD} || 'GET')))) {
+        print_header(status => 403);
+        print_json({status => 403, error => 'Forbidden'});
+        exit 0;
+    }
+
     return $user;
 }
 
@@ -159,6 +168,16 @@ sub ext_user_auth {
 
     unless ( $user ) {
         print_json( { status => 401, error => 'Incorrect login or password' } );
+        exit 0;
+    }
+
+    # Basic/header credentials cannot satisfy an interactive second factor.
+    my %settings = $user->settings;
+    if ($user->is_password_auth_disabled
+        || get_service('User::OTP')->get_enabled($user)
+        || ($settings{strict_ip_mode} && $settings{ip} && $settings{ip} ne Core::Utils::get_user_ip())) {
+        print_header(status => 403);
+        print_json({status => 403, error => 'Use the interactive authentication flow'});
         exit 0;
     }
 
