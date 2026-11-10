@@ -1,0 +1,50 @@
+.ticket-lightbox__content { margin: 0 !important; border-radius: 0 !important; background: #080c14 !important; height: 100dvh; overflow: hidden; }
+.ticket-lightbox__body { padding: 0 !important; height: 100%; }
+.ticket-lightbox__sr-header { position: absolute !important; width: 1px; height: 1px; padding: 0 !important; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.ticket-lightbox { height: 100%; display: grid; grid-template-rows: auto minmax(0, 1fr) auto; color: #f1f5fc; background: radial-gradient(ellipse at 25% 28%, #1b2b424f, transparent 50%), radial-gradient(ellipse at 88% 82%, #29335740, transparent 45%), #080c14; }
+.ticket-lightbox__toolbar { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: max(18px, env(safe-area-inset-top)) max(24px, env(safe-area-inset-right)) 18px max(24px, env(safe-area-inset-left)); border-bottom: 1px solid #ffffff0c; background: #0d1420b8; backdrop-filter: blur(18px); z-index: 2; }
+.ticket-lightbox__file { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.ticket-lightbox__file > div { min-width: 0; }
+.ticket-lightbox__file-icon { flex: none; display: grid; place-items: center; width: 42px; height: 42px; color: #9fbae4; background: #ffffff07; border: 1px solid #ffffff0f; border-radius: 12px; }
+.ticket-lightbox__file h2 { margin: 0 0 4px; font-size: 14px; font-weight: 600; line-height: 1.4; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ticket-lightbox__file p { margin: 0; color: #8997ac; font-size: 12px; }
+.ticket-lightbox__actions, .ticket-lightbox__zoom { display: flex; align-items: center; flex-shrink: 0; gap: 8px; }
+.ticket-lightbox button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-width: 40px; min-height: 40px; padding: 0 10px; border: 1px solid transparent; border-radius: 9px; color: #dee7f5; background: transparent; cursor: pointer; font: inherit; font-size: 13px; transition: background .15s, border-color .15s; touch-action: manipulation; }
+.ticket-lightbox button:hover:not(:disabled) { background: #ffffff0f; border-color: #ffffff12; }
+.ticket-lightbox button:focus-visible { outline: 2px solid #94b9f3; outline-offset: 3px; }
+.ticket-lightbox button:disabled { opacity: .3; cursor: default; }
+.ticket-lightbox__zoom { gap: 2px; border: 1px solid #ffffff0d; border-radius: 12px; padding: 3px; background: #ffffff03; }
+.ticket-lightbox__zoom output { min-width: 46px; color: #c2ccdc; font-size: 12px; font-variant-numeric: tabular-nums; text-align: center; }
+.ticket-lightbox__fit { border-left: 1px solid #ffffff0e !important; border-radius: 0 8px 8px 0 !important; }
+.ticket-lightbox__download { margin-left: 6px; }
+.ticket-lightbox__close { margin-left: 8px; background: #ffffff08 !important; border: 1px solid #ffffff0c !important; }
+.ticket-lightbox__stage { position: relative; display: grid; place-items: center; min-height: 0; min-width: 0; overflow: hidden; margin: 24px 36px; touch-action: none; user-select: none; }
+.ticket-lightbox__image { display: block; grid-area: 1 / 1; max-width: none; max-height: none; border-radius: 4px; object-fit: contain; box-shadow: 0 28px 100px #0008; cursor: zoom-in; transform-origin: center; transition: transform .12s ease-out, opacity .15s; -webkit-user-drag: none; }
+.ticket-lightbox__stage.is-zoomed { cursor: grab; }
+.ticket-lightbox__stage.is-zoomed .ticket-lightbox__image { cursor: grab; }
+.ticket-lightbox__stage.is-interacting .ticket-lightbox__image { transition: none; }
+.ticket-lightbox__stage.is-zoomed.is-interacting, .ticket-lightbox__stage.is-zoomed.is-interacting .ticket-lightbox__image { cursor: grabbing; }
+.ticket-lightbox__status { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; color: #91a0b6; text-align: center; padding: 24px; font-size: 13px; z-index: 1; }
+.ticket-lightbox__status strong { color: #e1e8f4; font-size: 16px; }
+.ticket-lightbox__status button { margin-top: 6px; background: #ffffff0b; border-color: #ffffff1a; padding-inline: 18px; }
+.ticket-lightbox__video { max-width: 100%; max-height: 100%; touch-action: auto; }
+.ticket-lightbox__footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 4px 30px max(20px, env(safe-area-inset-bottom)); color: #7e8ba1; font-size: 12px; line-height: 1.5; }
+.ticket-lightbox__original { display: flex; align-items: center; gap: 7px; flex-shrink: 0; color: #a0aec4; }
+.ticket-lightbox__original::before { content: ''; width: 5px; height: 5px; background: #83a997; border-radius: 50%; }
+.ticket-lightbox__mobile-hint { display: none; }
+@media (max-width: 600px) {
+  .ticket-lightbox__toolbar { flex-wrap: wrap; gap: 14px; padding: max(14px, env(safe-area-inset-top)) 16px 12px; }
+  .ticket-lightbox__file { width: calc(100% - 56px); }
+  .ticket-lightbox__file h2 { font-size: 13px; }
+  .ticket-lightbox__file-icon { width: 36px; height: 36px; border-radius: 10px; }
+  .ticket-lightbox__actions { width: 100%; justify-content: center; }
+  .ticket-lightbox__close { position: absolute; top: max(14px, env(safe-area-inset-top)); right: 16px; margin: 0; }
+  .ticket-lightbox__zoom { flex: 1; justify-content: center; }
+  .ticket-lightbox__download { min-width: 44px !important; min-height: 44px !important; }
+  .ticket-lightbox__download span { display: none; }
+  .ticket-lightbox__stage { margin: 16px 10px; }
+  .ticket-lightbox__footer { justify-content: center; padding: 4px 18px max(18px, env(safe-area-inset-bottom)); font-size: 11px; text-align: center; }
+  .ticket-lightbox__desktop-hint, .ticket-lightbox__original { display: none; }
+  .ticket-lightbox__mobile-hint { display: block; }
+}
+@media (prefers-reduced-motion: reduce) { .ticket-lightbox *, .ticket-lightbox__image { transition: none !important; } }

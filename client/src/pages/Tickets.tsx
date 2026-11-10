@@ -36,6 +36,7 @@ import {
 } from '@tabler/icons-react';
 import { ticketApi, userApi, type TicketItem, type TicketMedia } from '../api/client';
 import { useStore } from '../store/useStore';
+import TicketImageViewer from '../components/TicketImageViewer';
 
 function MediaPreview({ media, onPreview, onDownload }: { media: TicketMedia; onPreview: (m: TicketMedia, url: string) => void; onDownload: (m: TicketMedia) => void }) {
   const [objectUrl, setObjectUrl] = useState<string | null>(null);
@@ -111,6 +112,7 @@ function MediaPreview({ media, onPreview, onDownload }: { media: TicketMedia; on
 
   if (isImage) {
     return (
+      <button type="button" className="ticket-media-thumb" onClick={() => onPreview(media, objectUrl)} aria-label={`Открыть изображение ${media.name}`}>
       <img
         src={objectUrl}
         alt={media.name}
@@ -119,8 +121,9 @@ function MediaPreview({ media, onPreview, onDownload }: { media: TicketMedia; on
         onError={onMediaError}
         onLoad={() => clearTimeout(imageTimer.current)}
         style={{ maxWidth: '100%', maxHeight: 320, borderRadius: 8, display: 'block', cursor: 'pointer' }}
-        onClick={() => onPreview(media, objectUrl)}
       />
+      <span className="ticket-media-thumb__hint">Увеличить ↗</span>
+      </button>
     );
   }
 
@@ -1160,6 +1163,8 @@ export default function Tickets() {
       {isMobile && (
         <Modal
           opened={ticketOpen}
+          closeOnEscape={!mediaPreview}
+          trapFocus={!mediaPreview}
           onClose={() => setTicketOpen(false)}
           title={selectedTicket ? `${getTicketIdText(selectedTicket)} ${getTicketSubject(selectedTicket)}` : t('tickets.title')}
           fullScreen
@@ -1169,30 +1174,12 @@ export default function Tickets() {
         </Modal>
       )}
 
-      <Modal
-        opened={!!mediaPreview}
+      {mediaPreview && <TicketImageViewer
+        key={mediaPreview.media.id}
+        media={mediaPreview.media}
         onClose={() => setMediaPreview(null)}
-        title={mediaPreview?.media.name || ''}
-        size="xl"
-        centered
-      >
-        {mediaPreview && (
-          mediaPreview.media.mime_type?.startsWith('video/') ? (
-            <video
-              src={mediaPreview.url}
-              controls
-              autoPlay
-              style={{ width: '100%', maxHeight: '80vh', borderRadius: 8 }}
-            />
-          ) : (
-            <img
-              src={mediaPreview.url}
-              alt={mediaPreview.media.name}
-              style={{ width: '100%', maxHeight: '80vh', objectFit: 'contain', borderRadius: 8 }}
-            />
-          )
-        )}
-      </Modal>
+        onDownload={downloadMedia}
+      />}
     </Stack>
   );
 }

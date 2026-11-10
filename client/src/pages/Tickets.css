@@ -41,6 +41,11 @@
 .ticket-message--user { background: var(--mantine-primary-color-light) !important; border-bottom-right-radius: 4px !important; }
 .ticket-message--admin { background: var(--mantine-color-body) !important; border-bottom-left-radius: 4px !important; }
 .ticket-message img, .ticket-message video { max-width: 100%; border-radius: 10px; }
+.ticket-media-thumb { display: block; position: relative; max-width: 100%; padding: 0; border: 0; border-radius: 10px; background: transparent; cursor: zoom-in; overflow: hidden; text-align: left; }
+.ticket-media-thumb:focus-visible { outline: 2px solid var(--mantine-primary-color-filled); outline-offset: 4px; }
+.ticket-media-thumb__hint { position: absolute; right: 10px; bottom: 10px; padding: 5px 9px; border: 1px solid #ffffff26; border-radius: 7px; background: #0b142bd6; color: #f1f5fc; backdrop-filter: blur(8px); font-size: 11px; opacity: 0; transition: opacity .15s; pointer-events: none; }
+.ticket-media-thumb:hover .ticket-media-thumb__hint, .ticket-media-thumb:focus-visible .ticket-media-thumb__hint { opacity: 1; }
+@media (hover: none) { .ticket-media-thumb__hint { opacity: 1; } }
 .ticket-reply-box { padding-top: 8px; }
 .ticket-reply-box .mantine-Textarea-input {
   min-height: 80px;
