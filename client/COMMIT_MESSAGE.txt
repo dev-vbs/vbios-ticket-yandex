@@ -1,0 +1,11 @@
+feat: simplify profile and polish mobile VPN cabinet
+
+- Remove profile readiness and experimental account settings/session panel
+- Remove dependency on extra account profile API from profile page
+- Improve mobile layout for profile, services, payments and tickets
+- Make mobile navigation accessible with semantic buttons
+- Polish login, payment history and tariff selection dialogs
+- Show payment loading errors separately from an empty history
+
+Validation: TypeScript/Vite/PWA build and eight mobile routes with mocked API.
+Live payment processing, Telegram OAuth and ticket delivery require server checks.

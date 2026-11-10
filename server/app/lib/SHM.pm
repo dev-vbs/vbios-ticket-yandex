@@ -1,0 +1,288 @@
+package SHM;
+
+# Secure Hosting Manager - Library (HTTP version)
+# Written by DaNuk (DNk) 22/07/2016
+# mail@danuk.ru
+use v5.14;
+use utf8;
+use Carp qw(confess);
+use CGI::Carp qw(fatalsToBrowser);
+
+use CGI;
+use MIME::Base64;
+
+use Core::System::ServiceManager qw( get_service );
+use Core::Sql::Data;
+use Scalar::Util qw(blessed);
+use Core::Utils qw(
+    switch_user
+    parse_headers
+    get_cookies
+    encode_json
+    print_header
+    print_json
+    sha256_hex
+);
+
+use base qw(Exporter);
+
+our @EXPORT_OK = qw[
+    validate_session
+    print_json
+    trim
+    print_header
+    parse_args
+    get_service
+    blessed
+];
+
+our %EXPORT_TAGS = (
+    all => \@EXPORT_OK,
+);
+
+my $dbh;
+my $dbh_main;
+my $bhm;
+my $is_header = 0;
+my $admin = 0;
+my $user_id;
+my $real_user_id;
+my $cgi = CGI->new;
+my %in;
+
+sub new {
+    my $class = shift;
+    my $args = {
+        user_id => $ENV{USER_ID},
+        skip_check_auth => undef,
+        @_,
+    };
+
+    # Redirect logs to PIPE
+    open STDERR, ">>/tmp/shm_log" if -p "/tmp/shm_log";
+
+    if ( $ENV{REQUEST_METHOD} eq 'OPTIONS' ) {
+        print_header(
+            'Access-Control-Allow-Origin' => "$ENV{HTTP_ORIGIN}",
+            'Access-Control-Allow-Credentials' => 'true',
+            'Access-Control-Allow-Headers' => 'Origin, X-Requested-With, Content-Type, Accept, Authorization',
+            'Access-Control-Allow-Methods' => 'GET, POST, PUT, DELETE, OPTIONS, HEAD',
+            'Vary' => 'Origin',
+            'status' => 204,
+        );
+        exit 0;
+    }
+
+    my $user_id;
+    my $login_obj; # accounts-логин, которым выполнен вход в этом запросе (если известен)
+    my %headers = parse_headers;
+
+    if ( $headers{HTTP_TEST} ) {
+        $ENV{SHM_TEST} = 1;
+    }
+
+    db_connect;
+
+    if ( $args->{skip_check_auth} ) {
+        return get_service('user')
+    } elsif ( $args->{user_id} ) {
+        $user_id = $args->{user_id};
+    } elsif ( $ENV{HTTP_AUTHORIZATION} ) {
+        my $auth = $ENV{HTTP_AUTHORIZATION};
+        if ( $auth =~ s/^Bearer\s+//i ) {
+            ( $user_id, $login_obj ) = ext_token_auth( trim( $auth ) );
+        } else {
+            $auth =~s/^Basic\s+//;
+            $auth = decode_base64( $auth );
+            my ( $user, $password ) = split(/\:/, $auth);
+            ( $user_id, $login_obj ) = ext_user_auth( $user, $password );
+        }
+    } elsif ( $headers{HTTP_LOGIN} && $headers{HTTP_PASSWORD} ) {
+        ( $user_id, $login_obj ) = ext_user_auth($headers{HTTP_LOGIN}, $headers{HTTP_PASSWORD});
+    } elsif ( !$args->{skip_check_auth} ) {
+        my %in = parse_args();
+        my $session = validate_session( session_id => $headers{HTTP_SESSION_ID} || $in{session_id} );
+        print_not_authorized() unless $session;
+        $user_id = $session->user_id;
+        $login_obj = login_from_session( $session );
+    }
+
+    my $user = get_service('user', _id => $user_id);
+    unless ( $user ) {
+        print_header( status => 400 );
+        print_json( { status => 400, msg => 'User not found' } );
+        exit 0;
+    }
+
+    # Store current user_id to local config
+    switch_user( $user_id );
+
+    # Аккаунт (accounts), которым выполнен вход - используется для
+    # дополнительного (только сужающего) ограничения прав по группам
+    # (Core::User::account_group / can_access).
+    $user->{login} = $login_obj if $login_obj;
+
+    if ($ENV{SCRIPT_NAME}=~/\/admin\// && !$user->is_admin ) {
+        print_header( status => 403 );
+        print_json( { status => 403, msg => 'Forbidden' } );
+        exit 0;
+    }
+
+    return $user;
+}
+
+sub ext_user_auth {
+    my ($login, $password) = @_;
+
+    db_connect();
+
+    my $user_srv = get_service('user');
+    if ( $user_srv->get_user_fail_attempt('ext_user_auth') >= 5 ) { # 5 attempts/3 min
+        $user_srv->set_user_fail_attempt( 'ext_user_auth', 180 );
+        print_json( { status => 401, error => 'Too many failed attempts, try again later' } );
+        exit 0;
+    }
+
+    my $user = $user_srv->auth(
+        login => $login,
+        password => $password,
+    );
+
+    $user_srv->set_user_fail_attempt( 'ext_user_auth', 180 ) unless $user; # 5 attempts/3 min
+
+    my $report = get_service('report');
+    unless ( $report->is_success ) {
+        my ( $err_msg ) = $report->errors;
+        print_json( { status => 401, error => $err_msg } );
+        exit 0;
+    }
+
+    unless ( $user ) {
+        print_json( { status => 401, error => 'Incorrect login or password' } );
+        exit 0;
+    }
+
+    return ( $user->id, $user->{login} );
+}
+
+sub ext_token_auth {
+    my $token = shift;
+
+    db_connect();
+
+    unless ( $token ) {
+        print_json( { status => 401, error => 'Token is empty' } );
+        exit 0;
+    }
+
+    my $user = get_service('user');
+    if ( $user->get_user_fail_attempt('ext_token_auth') >= 5 ) { # 5 attempts/3 min
+        $user->set_user_fail_attempt( 'ext_token_auth', 180 );
+        print_json( { status => 401, error => 'Too many failed attempts, try again later' } );
+        exit 0;
+    }
+
+    my $login_obj = get_service('User::Logins')->id( sha256_hex( $token ), ['token'] );
+
+    if ( !$login_obj ) {
+        $user->set_user_fail_attempt( 'ext_token_auth', 180 );
+        print_json( { status => 401, error => 'Incorrect token' } );
+        exit 0;
+    } elsif ( $login_obj->is_expired ) {
+        print_json( { status => 401, error => 'Token expired' } );
+        exit 0;
+    } elsif ( $login_obj->is_ip_restricted ) {
+        print_json( { status => 401, error => 'Token restricted' } );
+        exit 0;
+    }
+
+    return ( $login_obj->get_user_id, $login_obj );
+}
+
+# Восстанавливаем accounts-логин, которым была создана сессия (см.
+# Core::User::gen_session), чтобы применить сужение прав по
+# accounts.settings.gid и для запросов по session_id (cookie).
+sub login_from_session {
+    my $session = shift || return undef;
+
+    my $account = $session->get_settings->{account} || return undef;
+    return undef unless $account->{login} && $account->{type};
+
+    return get_service('User::Logins')->id( $account->{login}, [ $account->{type} ] );
+}
+
+sub db_connect {
+    my $config = get_service('config');
+
+    # Reuse existing connection if still alive
+    if (my $local = $config->local) {
+        if (my $existing = $local->{dbh}) {
+            if ($existing->ping) {
+                Core::Sql::Data::configure( $existing );
+                return;
+            }
+            $existing->disconnect;
+            if ( my $dbh_auto_commit = delete $local->{dbh_auto_commit} ) {
+                $dbh_auto_commit->disconnect;
+            }
+        }
+    }
+
+    # Connect to db
+    my $dbh = Core::Sql::Data::db_connect( %{ $config->file->{config}{database} } );
+
+    unless ( $dbh ) {
+        print_header( status => 503 );
+        print_json( { status => 503, msg => "Can't connect to DB" } );
+        exit 0;
+    }
+
+    $config->local('dbh', $dbh );
+}
+
+sub validate_session {
+    my %args = (
+        session_id => undef,
+        @_,
+    );
+
+    my $session_id = $args{session_id};
+
+    unless ( $session_id ) {
+        $session_id = get_cookies('session_id');
+        return undef unless $session_id;
+    }
+
+    my $session = get_service('sessions')->validate(
+        session_id => $session_id,
+    );
+    return undef unless $session;
+
+    return $session;
+}
+
+sub print_not_authorized {
+    print_header( status => 401 );
+    print_json( { status => 401, msg=> "Not authorized" } );
+    exit 0;
+}
+
+sub parse_args {
+    use Core::Utils;
+    return Core::Utils::parse_args();
+}
+
+sub trim { my $str = shift; $str=~s/^\s+|\s+$//g; $str };
+
+sub DESTROY {
+    my $dbh = get_service('config')->local->{dbh};
+    $dbh->disconnect if $dbh;
+
+    my $dbh_auto_commit = get_service('config')->local->{dbh_auto_commit};
+    $dbh_auto_commit->disconnect if $dbh_auto_commit;
+}
+
+1;
+
+
+

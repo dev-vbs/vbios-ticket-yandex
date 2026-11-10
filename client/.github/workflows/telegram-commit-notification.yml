@@ -1,0 +1,161 @@
+name: Telegram Commit Notification
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  notify-telegram:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Send notification to Telegram
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          TELEGRAM_THREAD_ID: ${{ secrets.TELEGRAM_THREAD_ID }}
+          REPOSITORY: ${{ github.repository }}
+          REF_NAME: ${{ github.ref_name }}
+          COMMIT_SHA: ${{ github.sha }}
+          COMMIT_MESSAGE: ${{ github.event.head_commit.message || 'Ручной запуск уведомления' }}
+          COMMIT_AUTHOR: ${{ github.event.head_commit.author.name || github.actor }}
+          COMMIT_URL: ${{ github.event.head_commit.url || format('https://github.com/{0}/commit/{1}', github.repository, github.sha) }}
+          ACTIONS_URL: https://github.com/${{ github.repository }}/actions
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ -z "$TELEGRAM_BOT_TOKEN" || -z "$TELEGRAM_CHAT_ID" ]]; then
+            echo "Не заданы TELEGRAM_BOT_TOKEN или TELEGRAM_CHAT_ID в GitHub Secrets."
+            exit 1
+          fi
+
+          if [[ -n "$TELEGRAM_THREAD_ID" && ! "$TELEGRAM_THREAD_ID" =~ ^[1-9][0-9]*$ ]]; then
+            echo "TELEGRAM_THREAD_ID должен быть положительным числом."
+            exit 1
+          fi
+
+          html_escape() {
+            jq -nr --arg value "$1" '$value | @html'
+          }
+
+          SHORT_SHA="${COMMIT_SHA:0:7}"
+          REPO_HTML="$(html_escape "$REPOSITORY")"
+          REF_HTML="$(html_escape "$REF_NAME")"
+          AUTHOR_HTML="$(html_escape "$COMMIT_AUTHOR")"
+
+          # Ограничиваем длину описания, чтобы уложиться в лимит Telegram.
+          MESSAGE_PREVIEW="$(jq -nr --arg value "$COMMIT_MESSAGE" \
+            '$value | if length > 700 then .[0:700] + "…" else . end')"
+          COMMIT_HTML="$(html_escape "$MESSAGE_PREVIEW")"
+
+          MESSAGE=$(cat <<EOF
+          🔔 <b>Обновление личного кабинета</b>
+
+          📦 <b>Репозиторий:</b> ${REPO_HTML}
+          🌿 <b>Ветка:</b> ${REF_HTML}
+          🔖 <b>Коммит:</b> <code>${SHORT_SHA}</code>
+          👤 <b>Автор:</b> ${AUTHOR_HTML}
+
+          📝 <b>Что изменилось:</b>
+          ${COMMIT_HTML}
+
+          🚀 <b>Как обновить кабинет на сервере</b>
+
+          Сначала дождитесь успешной сборки и публикации Docker-образа в GitHub Actions.
+
+          Затем в папке с docker-compose.yml выполните:
+
+          <pre>docker compose pull client
+          docker compose up -d --no-deps --force-recreate client</pre>
+
+          🔎 <b>Проверить состояние:</b>
+          <pre>docker compose ps client
+          docker compose logs --tail=50 client</pre>
+
+          В docker-compose.yml сервис client должен использовать образ и тег, которые публикует ваша сборка.
+          EOF
+          )
+
+          build_payload() {
+            jq -n \
+              --arg chat_id "$TELEGRAM_CHAT_ID" \
+              --arg thread_id "$1" \
+              --arg text "$MESSAGE" \
+              --arg commit_url "$COMMIT_URL" \
+              --arg actions_url "$ACTIONS_URL" \
+              '{
+                chat_id: $chat_id,
+                text: $text,
+                parse_mode: "HTML",
+                link_preview_options: {
+                  is_disabled: true
+                },
+                reply_markup: {
+                  inline_keyboard: [
+                    [
+                      {
+                        text: "📝 Изменения",
+                        url: $commit_url
+                      },
+                      {
+                        text: "🔧 Проверить сборку",
+                        url: $actions_url
+                      }
+                    ]
+                  ]
+                }
+              } + (
+                if $thread_id != ""
+                then {message_thread_id: ($thread_id | tonumber)}
+                else {}
+                end
+              )'
+          }
+
+          RESPONSE_FILE="$(mktemp)"
+          PAYLOAD_FILE="$(mktemp)"
+          trap 'rm -f "$RESPONSE_FILE" "$PAYLOAD_FILE"' EXIT
+
+          send_message() {
+            build_payload "$1" > "$PAYLOAD_FILE"
+
+            curl --silent --show-error \
+              --connect-timeout 10 \
+              --max-time 30 \
+              --output "$RESPONSE_FILE" \
+              --write-out '%{http_code}' \
+              --request POST \
+              "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+              --header 'Content-Type: application/json' \
+              --data-binary "@$PAYLOAD_FILE"
+          }
+
+          HTTP_CODE="$(send_message "$TELEGRAM_THREAD_ID")"
+
+          if [[ "$HTTP_CODE" == "400" && -n "$TELEGRAM_THREAD_ID" ]] &&
+             jq -e '(.description // "") | contains("TOPIC_CLOSED")' \
+               "$RESPONSE_FILE" >/dev/null; then
+            echo "Тема Telegram закрыта; отправляем сообщение в основную группу."
+            HTTP_CODE="$(send_message '')"
+          fi
+
+          if [[ "$HTTP_CODE" != "200" ]] ||
+             ! jq -e '.ok == true' "$RESPONSE_FILE" >/dev/null; then
+            echo "Telegram API вернул HTTP ${HTTP_CODE}."
+            jq -r '.description // "Неизвестная ошибка Telegram"' \
+              "$RESPONSE_FILE" || echo "Некорректный ответ Telegram."
+
+            if [[ "$HTTP_CODE" == "401" ]]; then
+              echo "Проверьте действующий токен бота в GitHub Secret TELEGRAM_BOT_TOKEN."
+            fi
+
+            exit 1
+          fi
+
+          echo "Уведомление успешно отправлено в Telegram."

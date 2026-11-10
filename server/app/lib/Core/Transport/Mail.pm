@@ -1,0 +1,327 @@
+package Core::Transport::Mail;
+
+use parent 'Core::Base';
+
+use v5.14;
+use utf8;
+use Core::Base;
+use Core::Const;
+
+use threads; # to prevent the message on aarch64 (ARM): Can't locate object method "tid" via package "threads"
+use Email::Sender::Simple qw(sendmail);
+use Email::Sender::Transport::SMTP qw();
+use Try::Tiny;
+use MIME::Base64 qw(encode_base64);
+use MIME::Words qw(encode_mimewords);
+use Core::Utils qw(
+    is_email
+    encode_utf8
+);
+
+# Message-ID по RFC 5322: <время.pid.случайное@домен>
+sub message_id {
+    my $from = shift // '';
+    my ( $domain ) = $from =~ /\@([^\s<>@]+)>?\s*$/;
+    $domain ||= eval {
+        my ( $host ) = map { m{^\w+://([^/:?#]+)} ? $1 : () } grep { $_ } ( cfg('api')->{url}, cfg('cli')->{url} );
+        $host;
+    };
+    $domain ||= 'localhost';
+    my $rand = join '', map { sprintf '%02x', int rand 256 } 1 .. 8;
+    return sprintf( '<%d.%d.%s@%s>', time, $$, $rand, $domain );
+}
+
+sub init {
+    my $self = shift;
+    my %args = @_;
+
+    $self->{$_} = $args{$_} for keys %args;
+    $self->{server_gid} //= 6; #Mail Group
+
+    return $self;
+}
+
+sub setup { shift->init( get_smart_args @_ ) };
+
+sub send {
+    my $self = shift;
+    my $message = shift;
+    my %args = (
+        get_smart_args( @_ ),
+    );
+
+    my $server_group = get_service('ServerGroups', _id => $self->{server_gid} );
+    unless ( $server_group ) {
+        $self->logger->error("Server group not exists:", $self->{server_gid});
+        return undef;
+    }
+
+    my ( $server ) = $server_group->get_servers();
+    unless ( $server ) {
+        $self->logger->error("Server not found in server group:", $self->{server_gid});
+        return undef;
+    }
+
+    my $settings = delete $server->{settings} || {};
+
+    my %data = (
+        %{ $server },
+        %{ $settings },
+        %args,
+    );
+
+    my ( $status, $response ) = $self->send_mail(
+        host => $self->{host},
+        from => $self->{from},
+        to => $self->{to} || $self->user->email,
+        subject => $self->{subject} || 'SHM',
+        from_name => $self->{from_name} || 'SHM',
+        content_type => $self->{content_type},
+        message => $message,
+        %data,
+    );
+
+    if ( ref $response eq 'HASH' ) {
+        if ( $response->{error} ) {
+            $self->logger->error( $response->{error} );
+        } else {
+            $self->logger->debug( $response );
+        }
+    }
+
+    return $status, $response;
+}
+
+sub task_send {
+    my $self = shift;
+    my $task = shift;
+
+    # First trying to determine server_id by group.
+    my %server;
+    if ( my $server_gid = $task->event->{server_gid} ) {
+
+        my $sg = get_service('ServerGroups', _id => $server_gid );
+        unless ( $sg ) {
+            return undef, {
+                error => sprintf( "Can't find server group", $server_gid ),
+            };
+        }
+
+        my ( $server ) = $sg->get_servers;
+        unless ( $server ) {
+            return undef, {
+                error => sprintf( "Can't find server for server group", $server_gid ),
+            };
+        }
+
+        %server = %{ $server };
+    } elsif ( my $server = $task->server ) {
+        %server = $server->get;
+    } else {
+        return undef, {
+            error => sprintf( "Can't find server for server group", $server_gid ),
+        }
+    }
+
+    my %settings = (
+        %{ $server{settings} || {} },
+        %{ $task->event_settings },
+        %{ $task->settings },
+    );
+
+    my $config = get_service("config", _id => 'mail');
+    $config = $config ? $config->get_data : {};
+
+    $settings{from} ||= $config->{from};
+    unless ( $settings{from} ) {
+        return undef, {
+            error => "From undefined",
+        }
+    }
+
+    $settings{from_name} ||= $config->{from_name};
+    $settings{subject} ||= $config->{subject};
+    $settings{to} ||= $self->user->email || delete $settings{bcc};
+
+    unless ( $settings{to} ) {
+        return SKIP, {
+            error => "User email undefined. For test email set `bcc` in server",
+        }
+    }
+
+    return $self->send_mail(
+        host => $server{host},
+        task => $task,
+        %settings,
+    );
+}
+
+sub send_mail {
+    my $self = shift;
+    my %args = (
+        host => undef,
+        from => undef,
+        to => undef,
+        subject => 'SHM',
+        from_name => 'SHM',
+        message => undef,
+        template_id => undef,
+        template_name => undef,
+        task => undef,
+        content_type => undef,
+        @_,
+    );
+
+    my $task = delete $args{task};
+
+    if ( !$args{message} && ( $args{template_id} || $args{template_name} ) ) {
+        my $template;
+        if ( $args{template_id} ) {
+            $template = get_service('template', _id => $args{template_id} );
+            unless ( $template ) {
+                return undef, {
+                    error => "template with id `$args{template_id}` not found",
+                };
+            }
+        } elsif ( $args{template_name} ) {
+            $template = get_service('template')->id( $args{template_name} );
+            unless ( $template ) {
+                return undef, {
+                    error => "template with name `$args{template_name}` not found",
+                };
+            }
+        }
+
+        $args{message} = $template->parse(
+            $task && $task->settings->{user_service_id} ? ( usi => $task->settings->{user_service_id} ) : (),
+            $task ? ( task => $task ) : (),
+        );
+
+        %args = (
+            %args,
+            %{ $template->settings || {} },
+        );
+    }
+
+    return SKIP, { msg => "The message is empty, skip it." } unless $args{message};
+
+    $args{content_type} ||= 'text/plain';
+
+    return undef, {
+        error => "Incorrect FROM address: $args{from}",
+    } unless is_email( $args{from} );
+
+    return SKIP, {
+        error => "Incorrect email address: $args{to}",
+    } unless is_email( $args{to} );
+
+    if ( my $email = $args{cc} ) {
+        return SKIP, {
+            error => "Incorrect CC address: $email",
+        } unless is_email( $email );
+    }
+
+    if ( my $email = $args{bcc} ) {
+        return SKIP, {
+            error => "Incorrect BCc address: $email",
+        } unless is_email( $email );
+    }
+
+    %args = %{ encode_utf8( \%args ) };
+
+    my $encoded_from_name = encode_mimewords(
+        $args{from_name} // '',
+        Charset  => 'UTF-8',
+        Encoding => 'B',
+    );
+
+    my $encoded_subject = encode_mimewords(
+        $args{subject} // '',
+        Charset  => 'UTF-8',
+        Encoding => 'B',
+    );
+
+    my $email = Email::Simple->create(
+        header => [
+            From    => sprintf("%s <%s>", $encoded_from_name, $args{from} ),
+            # 550 5.7.1, RFC 5322
+            'Message-ID' => $args{message_id} || message_id( $args{from} ),
+            'MIME-Version' => '1.0',
+            To      => $args{to},
+            $args{cc} ? ( Cc => $args{cc} ) : (),
+            $args{bcc} ? ( BCc => $args{bcc} ) : (),
+            Subject => $encoded_subject,
+            'Content-Type' => "$args{content_type}; charset=UTF-8",
+            'Content-Transfer-Encoding' => 'base64',
+        ],
+        body => MIME::Base64::encode_base64($args{message}, "\n"),
+    );
+
+    my $err;
+    my $status = SUCCESS;
+
+    unless ( $ENV{SHM_TEST} ) {
+        my ( $host, $port ) = split(/:/, $args{host} );
+
+        # Empty string means "not set" (common for UI forms); let port defaults decide.
+        my $ssl = defined $args{ssl} && $args{ssl} ne '' ? $args{ssl} : undef;
+        my $starttls = defined $args{starttls} && $args{starttls} ne '' ? $args{starttls} : undef;
+
+        # Email::Sender::Transport::SMTP expects TLS mode via `ssl`:
+        #   ssl => 'ssl'      for direct TLS
+        #   ssl => 'starttls' for STARTTLS upgrade
+        my $tls_mode;
+        if ( defined $ssl ) {
+            $tls_mode = $ssl ? 'ssl' : '';
+        } elsif ( defined $starttls ) {
+            $tls_mode = $starttls ? 'starttls' : '';
+        }
+
+        # Auto-select TLS mode by port only when no explicit flags were provided.
+        unless ( defined $ssl || defined $starttls ) {
+            if ( $port == 465 ) {
+                $tls_mode = 'ssl';
+            } elsif ( $port == 587 || $port == 25 ) {
+                $tls_mode = 'starttls';
+            }
+        }
+
+        my %smtp_params = (
+            host    => $host,
+            port    => $port || 25,
+            timeout => $args{timeout} || 5,
+            $tls_mode ? ( ssl => $tls_mode ) : (),
+        );
+
+        # Добавляем авторизацию, если есть
+        $smtp_params{sasl_username} = $args{user}     if $args{user};
+        $smtp_params{sasl_password} = $args{password} if $args{password};
+
+        my $transport = Email::Sender::Transport::SMTP->new( \%smtp_params );
+
+        try {
+            sendmail( $email, { transport => $transport });
+        } catch {
+            my @err = split(/\r?\n/, $_ );
+            my @ret;
+            while ( my $s = shift @err ) {
+                push @ret, $s;
+            };
+            $err = join(' ', @ret );
+            $status = FAIL;
+        };
+    }
+
+    return $status, {
+        server => {
+            host => $args{host},
+            # Never return id (it shouldn't be saved into user_services setting)
+        },
+        mail => {
+            %args,
+        },
+        $err ? ( error => $err ) : (),
+    };
+}
+
+1;

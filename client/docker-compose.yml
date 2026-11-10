@@ -1,0 +1,12 @@
+services:
+  client:
+    image: ghcr.io/dev-vbs/vbios-client:latest
+    ports:
+      - '127.0.0.1:3001:80'
+    environment:
+      SHM_URL: ${SHM_URL:?Set SHM_URL in .env}
+      APP_NAME: ${APP_NAME:-vBios}
+      APP_DESCRIPTION: ${APP_DESCRIPTION:-Личный кабинет VPN}
+    volumes:
+      - ./docs:/app/docs:ro
+    restart: unless-stopped

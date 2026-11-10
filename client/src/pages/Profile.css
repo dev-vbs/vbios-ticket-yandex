@@ -1,0 +1,22 @@
+.profile-page{max-width:1144px}.profile-page .profile-card{position:relative;overflow:hidden;min-height:100%;border:1px solid #2a3235!important;background:linear-gradient(145deg,#191c1d,#151718)!important}.profile-page .profile-card--account:before{content:"";position:absolute;inset:0 0 auto;height:3px;background:linear-gradient(90deg,#65cbe8,#326d7e,transparent)}.profile-page .profile-card--details:before{content:"";position:absolute;inset:0 0 auto;height:3px;background:linear-gradient(90deg,#4eafcb,#284c58,transparent)}.profile-page .mantine-Avatar-root{border:2px solid #376774;box-shadow:0 0 0 5px rgba(83,192,223,.08)}.profile-page .mantine-Divider-root{border-color:#2b3032}.profile-page .profile-form .mantine-Input-input:disabled{opacity:1;color:#b6c0c2;background:#141718;border-color:#292f31}.profile-page .profile-form .mantine-Input-input:focus{border-color:#64cbe8;box-shadow:0 0 0 2px rgba(100,203,232,.12)}.profile-page .mantine-Button-root[data-variant="light"]{background:#1d353d;color:#c5f2ff}.profile-page .mantine-Button-root[data-variant="light"]:hover{background:#254955}.profile-page .mantine-Card-root{border-radius:14px}@media(max-width:768px){.profile-page{padding-bottom:110px}.profile-page .profile-card{border-radius:13px}.profile-page .mantine-Grid-root{margin-left:0;margin-right:0}.profile-page .mantine-Grid-col{padding-left:0;padding-right:0}}
+
+.profile-completeness .mantine-Stack-root>.mantine-Group-root{padding:10px 0;border-top:1px solid #292d2f}.profile-completeness .mantine-Stack-root>.mantine-Group-root:first-child{border-top:0}@media(max-width:768px){.profile-completeness{margin-inline:0}}
+
+/* Profile: same account-card hierarchy as the dashboard. */
+.profile-page .page-header { margin-bottom: 4px; }
+.profile-page .profile-card { border-radius: 18px !important; }
+.profile-page .profile-completeness { background: linear-gradient(135deg, var(--ui-accent-soft), var(--ui-surface) 64%) !important; }
+.profile-page .profile-completeness > .mantine-Group-root:first-child { gap: 18px; }
+.profile-page .profile-completeness .mantine-Badge-root { background: color-mix(in srgb, var(--ui-accent) 14%, var(--ui-surface)); color: var(--ui-accent-strong); }
+.profile-page .profile-completeness .mantine-Button-root { border-radius: 8px; }
+.profile-page .profile-card--account .mantine-Text-root[data-variant="dimmed"],
+.profile-page .profile-card--details .mantine-Text-root[data-variant="dimmed"] { color: var(--ui-muted); }
+.profile-page .profile-form { margin-top: 4px; }
+.profile-page .profile-form .mantine-Input-input { min-height: 46px; }
+.profile-page .profile-form .mantine-Button-root { min-height: 42px; }
+.profile-page .mantine-Alert-root { border-color: color-mix(in srgb, var(--ui-accent) 28%, var(--ui-border)); background: var(--ui-accent-soft); }
+@media (max-width: 768px) {
+  .profile-page .profile-card { border-radius: 15px !important; }
+  .profile-page .profile-completeness > .mantine-Group-root:first-child { display: grid; }
+  .profile-page .profile-completeness .mantine-Badge-root { justify-self: start; }
+}

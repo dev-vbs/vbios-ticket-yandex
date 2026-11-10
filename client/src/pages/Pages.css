@@ -1,0 +1,76 @@
+/* Shared page design: uses Mantine theme tokens in both color schemes. */
+:root {
+  --ui-page: var(--mantine-color-body);
+  --ui-surface: var(--mantine-color-body);
+  --ui-surface-soft: var(--mantine-color-default-hover);
+  --ui-surface-hover: var(--mantine-color-default-hover);
+  --ui-text: var(--mantine-color-text);
+  --ui-muted: var(--mantine-color-dimmed);
+  --ui-border: var(--mantine-color-default-border);
+  --ui-border-strong: var(--mantine-color-default-border);
+  --ui-accent: var(--mantine-primary-color-filled);
+  --ui-accent-strong: var(--mantine-primary-color-light-color);
+  --ui-accent-soft: var(--mantine-primary-color-light);
+  --ui-shadow: 0 6px 24px rgba(0,0,0,.035);
+}
+:is(.profile-page,.services-overview,.service-detail-page,.tickets-page,.cabinet-main) { min-width:0; }
+:is(.profile-page,.services-overview,.service-detail-page,.tickets-page) .page-header { gap:20px; flex-wrap:wrap; }
+.page-header__title { font-size:clamp(1.5rem,3vw,2rem); line-height:1.2; letter-spacing:-.035em; }
+.page-header__description { color:var(--ui-muted); font-size:14px; line-height:1.65; margin:8px 0 0; }
+.cabinet-breadcrumb { color:var(--ui-muted); }
+:is(.profile-page,.services-overview,.service-detail-page,.tickets-page) .mantine-Button-root { border-radius:10px; min-height:40px; }
+:is(.profile-page,.services-overview,.service-detail-page,.tickets-page) .mantine-Input-input { border-radius:10px; }
+:is(.profile-page,.services-overview,.service-detail-page,.tickets-page) .mantine-Input-input:focus { border-color:var(--ui-accent); }
+.profile-page .profile-card,.services-overview .mantine-Accordion-item,.services-overview .mantine-Paper-root,.service-detail-page__summary,.service-connection-card,.service-overview-card {
+  background:var(--ui-surface) !important;
+  color:var(--ui-text) !important;
+  border-color:var(--ui-border) !important;
+  box-shadow:var(--ui-shadow);
+}
+.profile-page .profile-card { border-radius:18px !important; }
+.profile-page .profile-form .mantine-Input-input:disabled { color:var(--ui-muted); background:var(--ui-surface-soft); border-color:var(--ui-border); }
+.profile-page .mantine-Divider-root { border-color:var(--ui-border); }
+.profile-page .mantine-Button-root[data-variant="light"] { color:var(--ui-accent-strong); background:var(--ui-accent-soft); }
+.services-overview .mantine-Accordion-control { color:var(--ui-text); }
+.services-overview .mantine-Accordion-control:hover,.service-overview-card:hover { background:var(--ui-surface-hover) !important; color:var(--ui-text); }
+.service-overview-card:hover { border-color:var(--ui-accent) !important; transform:none; }
+.service-connection-card .mantine-Code-root { background:var(--ui-surface-soft); color:var(--ui-text); border-color:var(--ui-border); overflow-wrap:anywhere; }
+.service-connection-card .mantine-Timeline-itemTitle { color:var(--ui-text); }
+.expiry-indicator--success { color:var(--mantine-color-green-6); }
+.expiry-indicator--warning { color:var(--mantine-color-orange-6); }
+.expiry-indicator--danger { color:var(--mantine-color-red-6); }
+.cabinet-shell { background:var(--ui-page); color:var(--ui-text); }
+.cabinet-sidebar { background:var(--ui-surface); border-color:var(--ui-border); }
+.cabinet-brand { color:var(--ui-text); }
+.cabinet-brand span,.summary-label svg { color:var(--ui-accent); }
+.cabinet-caption,.cabinet-nav-item,.cabinet-sidebar-footer a,.summary-label,.summary-card p,.panel-title p,.connection-name span,.payment-row span,.start-steps p,.empty-state p { color:var(--ui-muted); }
+.cabinet-nav-item:hover { background:var(--ui-surface-hover); color:var(--ui-text); }
+.cabinet-nav-item.is-active { background:var(--ui-accent-soft); color:var(--ui-accent-strong); box-shadow:none; }
+.summary-card,.cabinet-panel,.refresh-button { background:var(--ui-surface); color:var(--ui-text); border-color:var(--ui-border); border-radius:16px; }
+.summary-card { min-height:180px; box-shadow:var(--ui-shadow); }
+.balance-summary,.cabinet-hero { background:var(--ui-accent-soft); border-color:var(--ui-border); }
+.hero-copy p { color:var(--ui-muted); }
+.hero-action { background:var(--ui-accent); color:var(--mantine-color-white); }
+.summary-card a,.summary-card button,.panel-title>a,.help-link,.empty-state a { color:var(--ui-accent-strong); }
+.connection-row,.payment-row,.help-link,.profile-completeness .mantine-Stack-root>.mantine-Group-root { border-color:var(--ui-border); }
+.notification-list strong { color:var(--ui-text); }
+.notification-list small { color:var(--ui-muted); }
+.not-found-card { width:min(100%,480px); padding:40px 24px; border:1px solid var(--ui-border); border-radius:24px; background:var(--ui-surface); }
+.not-found-card>p:first-child { color:var(--ui-accent); letter-spacing:-.06em; }
+.pwa-content { color:var(--ui-text); }
+:is(.profile-page,.services-overview,.service-detail-page,.tickets-page) :is(button,a,input,textarea,select):focus-visible { outline:2px solid var(--ui-accent); outline-offset:3px; }
+@media(max-width:768px) {
+  .services-overview,.service-detail-page { padding:20px 16px 32px; }
+  .profile-page,.tickets-page { padding-bottom:32px; }
+  .cabinet-main { padding:24px 16px 36px; }
+  .cabinet-header { align-items:flex-start; flex-wrap:wrap; }
+  .cabinet-header h1 { font-size:28px; }
+  .cabinet-hero { padding:20px; flex-wrap:wrap; }
+  .services-overview__header>div:last-child { flex-wrap:wrap; }
+  .service-detail-page__summary .mantine-Group-root { display:flex; flex-wrap:wrap; }
+  .service-detail-page__summary .mantine-Stack-root { margin-top:0; }
+  .profile-page .mantine-Grid-col { min-width:0; }
+}
+@media(prefers-reduced-motion:reduce) {
+  :is(.profile-page,.services-overview,.service-detail-page,.tickets-page,.cabinet-main) *, :is(.profile-page,.services-overview,.service-detail-page,.tickets-page,.cabinet-main) *::before { animation:none !important; transition:none !important; }
+}
