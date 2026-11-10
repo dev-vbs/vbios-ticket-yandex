@@ -1337,9 +1337,10 @@ sub ticket_group_update {
     my ($seen)=$self->dbh->selectrow_array('SELECT 1 FROM ticket_telegram_received WHERE profile=? AND chat_id=? AND telegram_message_id=?',undef,$self->profile_name,$admin_chat,$msg->{message_id});
     return {} if $seen;
     my $owner=$self->user($row->{user_id});
-    my $ticket=$owner->srv('Ticket');
+    my $ticket=get_service('Ticket',user_id=>$row->{user_id});
     my $imported=eval {$media=Core::TicketTelegramMedia->incoming($self,$ticket,$msg);1};
     unless ($imported) {
+        logger->error('Ticket image import failed: '.substr("$@",0,180));
         eval {$self->dbh->rollback};
         $self->http('sendMessage',data=>{chat_id=>$admin_chat,message_thread_id=>$thread,text=>'Изображение не сохранено. Поддерживаются JPEG, PNG, WebP, GIF до 5 МБ. Проверьте S3 и доступ к файлам Telegram.'});
         return {};
@@ -1376,6 +1377,7 @@ sub ticket_group_update {
                     $self->ticket_link_reply($user_chat,$photo->{message_id},$row->{ticket_id},$row->{user_id});
                     1;
                 } or do {
+                    logger->error('Ticket support image delivery failed: '.substr("$@",0,180));
                     $self->dbh->do('UPDATE tickets SET telegram_error=? WHERE ticket_id=?',undef,'Support image delivery failed; image saved in cabinet',$row->{ticket_id});
                     $self->dbh->commit;
                 };
@@ -1441,6 +1443,7 @@ sub ticket_private_reply {
         1;
     };
     unless ($imported && ($text =~ /\S/ || $media)) {
+        logger->error('Ticket private image import failed: '.substr("$@",0,180)) unless $imported;
         $self->http('sendMessage',data=>{chat_id=>$chat,text=>'Не удалось сохранить ответ. Проверьте, что тикет открыт. Допустимы текст и JPEG, PNG, WebP, GIF до 5 МБ.'});
         return 1;
     }

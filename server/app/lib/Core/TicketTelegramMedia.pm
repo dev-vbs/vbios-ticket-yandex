@@ -4,12 +4,16 @@ use warnings;
 use JSON::PP ();
 use MIME::Base64 qw(encode_base64 decode_base64);
 use HTTP::Request;
+use HTTP::Request::Common qw(POST);
 use LWP::UserAgent;
 
 sub result {
     my ($class,$response)=@_;
     my $r=eval {JSON::PP->new->utf8->decode($response->content)} || {};
-    die 'Telegram image API request failed' unless $r->{ok};
+    unless ($r->{ok}) {
+        my $code=$r->{error_code} || eval {$response->code} || 0;
+        die 'Telegram media request failed code='.$code;
+    }
     return $r->{result};
 }
 sub file_info {
@@ -46,12 +50,25 @@ sub outgoing {
     my ($class,$tg,$ticket,$media_id,$chat,$thread,$caption,$keyboard)=@_;
     my $file=$ticket->api_media_download(id=>$media_id); # owner check remains mandatory
     die 'Only image attachments can be sent' unless ($file->{mime_type}||'') =~ m{\Aimage/(jpeg|png|webp|gif)\z};
-    # Document preserves GIF/WebP and original image bytes; Telegram displays image previews.
-    my $method=$file->{mime_type} =~ m{\Aimage/(jpeg|png)\z} ? 'uploadPhoto' : 'uploadDocument';
-    my $response=$tg->$method(decode_base64($file->{data}),chat_id=>$chat,
-        filename=>$file->{name},caption=>$caption,
-        ($thread ? (message_thread_id=>$thread) : ()),
-        ($keyboard ? (reply_markup=>$keyboard) : ()));
+    # Build multipart directly: no generic transport UTF8 conversion or 10s timeout.
+    my $photo=$file->{mime_type} =~ m{\Aimage/(jpeg|png)\z};
+    my $method=$photo?'sendPhoto':'sendDocument';
+    my $field=$photo?'photo':'document';
+    my $base=$tg->telegram_server; $base =~ s{/$}{};
+    die 'Telegram endpoint must be HTTPS' unless $base =~ m{\Ahttps://[^\s?#]+\z};
+    my $bytes=decode_base64($file->{data});
+    die 'Image exceeds 5 MiB' if length($bytes)>5*1024*1024;
+    my $safe_name=$file->{name} || 'image';
+    $safe_name =~ s{[\r\n\x00"/\\]}{_}g;
+    require Encode;
+    my @fields=(chat_id=>$chat,caption=>Encode::encode('UTF-8',$caption||''),
+        $field=>[undef,Encode::encode('UTF-8',$safe_name),Content=>$bytes,Content_Type=>$file->{mime_type}]);
+    push @fields,(message_thread_id=>$thread) if $thread;
+    push @fields,(reply_markup=>JSON::PP->new->utf8->encode($keyboard)) if $keyboard;
+    my $request=POST($base.'/bot'.$tg->token.'/'.$method,Content_Type=>'form-data',Content=>\@fields);
+    my $ua=LWP::UserAgent->new(timeout=>90,max_redirect=>0,ssl_opts=>{verify_hostname=>1});
+    my $response=$ua->request($request); # deliberately no token/body logging
+
     return $class->result($response);
 }
 1;
