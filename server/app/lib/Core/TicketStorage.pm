@@ -2,10 +2,11 @@ package Core::TicketStorage;
 use strict;
 use warnings;
 use MIME::Base64 qw(decode_base64);
-use Digest::SHA qw(sha256_hex);
+use Digest::SHA qw(sha256_hex hmac_sha256 hmac_sha256_hex);
+use POSIX qw(strftime);
 use HTTP::Request;
 use LWP::UserAgent;
-use Core::S3;
+
 
 sub new {
     my ($class,$cfg)=@_;
@@ -46,25 +47,52 @@ sub key {
     return 'tickets/'.$uid.'/'.unpack('H*',$nonce).'.'.$ext;
 }
 
+sub signed_headers {
+    my ($self,$method,$host,$path,$body,$mime,$timestamp)=@_;
+    $timestamp ||= strftime('%Y%m%dT%H%M%SZ',gmtime(time));
+    my $date=substr($timestamp,0,8);
+    my $cfg=$self->{config};
+    my $hash=sha256_hex($body);
+    my %headers=(host=>$host,'x-amz-date'=>$timestamp,'x-amz-content-sha256'=>$hash);
+    $headers{'content-type'}=$mime if defined $mime && length $mime;
+    my @names=sort keys %headers;
+    my $signed=join(';',@names);
+    my $canonical_headers=join('',map {$_ . ':' . $headers{$_} . "\n"} @names);
+    my $canonical=join("\n",$method,$path,'',$canonical_headers,$signed,$hash);
+    my $scope="$date/ru-central1/s3/aws4_request";
+    my $to_sign=join("\n",'AWS4-HMAC-SHA256',$timestamp,$scope,sha256_hex($canonical));
+    my $k_date=hmac_sha256($date,'AWS4'.$cfg->{secret_key});
+    my $k_region=hmac_sha256('ru-central1',$k_date);
+    my $k_service=hmac_sha256('s3',$k_region);
+    my $k_signing=hmac_sha256('aws4_request',$k_service);
+    $headers{Authorization}='AWS4-HMAC-SHA256 Credential='.$cfg->{access_key}.'/'.$scope.
+        ', SignedHeaders='.$signed.', Signature='.hmac_sha256_hex($to_sign,$k_signing);
+    return \%headers;
+}
+
 sub request {
     my ($self,$method,$bucket,$key,$body,$mime)=@_;
     die 'Invalid object key' unless $key =~ /\Atickets\/[1-9][0-9]*\/[a-f0-9]{48}\.(?:jpg|png|webp|gif)\z/;
     die 'Invalid bucket' unless $bucket =~ /\A[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]\z/;
     my $c=$self->{config};
-    my $s3=bless {},'Core::S3';
-    $s3->init(%$c);
-    my $path="/$bucket/$key";
+    # Match AWS CLI virtual-host addressing for DNS-compatible bucket names.
+    # Dotted buckets use path addressing to retain strict TLS hostname checks.
+    my $host=$bucket =~ /\./ ? 'storage.yandexcloud.net' : $bucket.'.storage.yandexcloud.net';
+    my $path=$bucket =~ /\./ ? "/$bucket/$key" : "/$key";
     $body='' unless defined $body;
-    my $headers=$s3->_auth_header(method=>$method,canonical_uri=>$path,host=>'storage.yandexcloud.net',payload_hash=>sha256_hex($body));
-    my $req=HTTP::Request->new($method=>$c->{endpoint}.$path);
+    my $headers=$self->signed_headers($method,$host,$path,$body,$mime);
+    my $req=HTTP::Request->new($method=>'https://'.$host.$path);
     $req->header(%$headers);
-    $req->header('X-Amz-Content-Sha256'=>sha256_hex($body));
-    $req->header('Content-Type'=>$mime) if $mime;
     $req->content($body);
     # Never follow redirects with signed credentials; no request body/token logging.
     my $ua=LWP::UserAgent->new(timeout=>30,max_redirect=>0,ssl_opts=>{verify_hostname=>1});
     my $res=$ua->request($req);
-    die 'Ticket object storage HTTP '.$res->code unless $res->is_success;
+    unless ($res->is_success) {
+        # S3 XML Code is safe to log; never print raw XML, keys or request headers.
+        my $body=$res->content || '';
+        my ($code)=$body =~ m{<Code>([A-Za-z][A-Za-z0-9_.-]{0,79})</Code>};
+        die 'Ticket object storage HTTP '.$res->code.' code='.($code || 'UnknownStorageError');
+    }
     return $res->content;
 }
 1;
