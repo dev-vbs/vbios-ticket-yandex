@@ -2100,20 +2100,30 @@ sub web_auth {
     if ( $uid && $self->user->id($uid) ) {
         switch_user( $uid );
         if ( $args{bind_to_profile} ) {
+            my $target_user = $self->user;
+            my $settings = $target_user->settings->{telegram} || {};
+            if ( $settings->{user_id} && "$settings->{user_id}" ne "$in{id}" ) {
+                return { error => 'Profile already bound to another Telegram account' };
+            }
+            my $existing_user;
             {
-                my $existing_user = $self->find_user_by_tg( \%in );
-                if ( $existing_user && $existing_user->{user_id} ne $uid ) {
+                $existing_user = $self->find_user_by_tg( \%in );
+                if ( $existing_user && $existing_user->get_user_id ne $uid ) {
                     return { error => 'Telegram account already exists' };
                 }
             }
 
             my $login = $in{id};
-            unless ( $self->user->logins->id( $login, ['telegram'] ) ) {
-                $self->user->logins->add( login => $login, type => 'telegram' );
+            # Global login lookup may change the cached user resource. Restore
+            # the authenticated target before writing account metadata.
+            $target_user->id($uid);
+            unless ( $existing_user ) {
+                unless ( $target_user->logins->add( login => $login, type => 'telegram' ) ) {
+                    return { error => 'Telegram binding could not be saved' };
+                }
             }
-            my $settings = $self->user->settings->{telegram} || {};
             if ( !$settings->{user_id} ) {
-                $self->user->set_json(
+                $target_user->set_json(
                     'settings', {
                         telegram => {
                             user_id    => $in{id},
@@ -2131,7 +2141,7 @@ sub web_auth {
                 );
                 return { msg => 'Successfully bound to Telegram' };
             } else {
-                return { error => 'Already bound to Telegram' };
+                return { msg => 'Successfully bound to Telegram' };
             }
         }
     }
