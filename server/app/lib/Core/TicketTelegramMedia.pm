@@ -1,6 +1,7 @@
 package Core::TicketTelegramMedia;
 use strict;
 use warnings;
+use utf8;
 use JSON::PP ();
 use MIME::Base64 qw(encode_base64 decode_base64);
 use HTTP::Request;
@@ -45,6 +46,38 @@ sub incoming {
     require Core::TicketStorage;
     my ($bytes,$mime,$ext)=Core::TicketStorage->decode_image(encode_base64($res->content,''));
     return $ticket->api_media(name=>'telegram-'.$msg->{message_id}.'.'.$ext,mime_type=>$mime,data=>encode_base64($bytes,''));
+}
+
+# Reuse the file_id received by this bot. A support caption and its image must
+# arrive as one private message, without depending on a preceding text send.
+sub support_reply {
+    my ($class,$tg,$msg,$private_chat,$ticket_id)=@_;
+    die 'Invalid private destination' unless defined($private_chat) && $private_chat =~ /\A[1-9][0-9]*\z/;
+    die 'Invalid ticket' unless defined($ticket_id) && $ticket_id =~ /\A[1-9][0-9]*\z/;
+    my $keyboard={inline_keyboard=>[[{text=>'↩️ Ответить · #'.$ticket_id,callback_data=>'ticket_reply '.$ticket_id}]]};
+    my %data=(chat_id=>$private_chat,reply_markup=>$keyboard);
+    my $file=$class->file_info($msg);
+    my $method;
+    if ($file) {
+        die 'Telegram image file_id is missing' unless $file->{file_id};
+        my $photo=ref($msg->{photo}) eq 'ARRAY' && @{$msg->{photo}};
+        $method=$photo?'sendPhoto':'sendDocument';
+        $data{$photo?'photo':'document'}=$file->{file_id};
+        # Do not prepend text: that can overflow Telegram's caption limit and
+        # shift UTF-16 entity offsets. The button carries the ticket reference.
+        my $caption=$msg->{caption};
+        if (defined($caption) && length($caption)) {
+            $data{caption}=$caption;
+            $data{caption_entities}=$msg->{caption_entities} if ref($msg->{caption_entities}) eq 'ARRAY';
+        } else {
+            $data{caption}='💬 Ответ поддержки по тикету #'.$ticket_id;
+        }
+    } else {
+        $method='sendMessage';
+        $data{text}='💬 Ответ поддержки по тикету #'.$ticket_id."\n\n".substr(($msg->{text}||''),0,3200).
+            "\n\nНажмите «↩️ Ответить», чтобы отправить текст или изображение с подписью. Также можно ответить обычным Telegram Reply.";
+    }
+    return $class->result($tg->http($method,chat_id=>$private_chat,data=>\%data));
 }
 sub outgoing {
     my ($class,$tg,$ticket,$media_id,$chat,$thread,$caption,$keyboard)=@_;

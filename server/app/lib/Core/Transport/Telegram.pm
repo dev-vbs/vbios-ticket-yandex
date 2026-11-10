@@ -1365,30 +1365,30 @@ sub ticket_group_update {
     my $user_chat = $profile_data->{chat_id} || $profile_data->{user_id};
     # Commit support reply before the network call. Telegram cannot roll back SHM.
     $self->dbh->commit;
-    if ($user_chat) {
-        my $response=$self->http('sendMessage',data=>{chat_id=>$user_chat,
-            text=>'💬 Ответ поддержки по тикету #'.$row->{ticket_id}."\n\n".substr($text,0,3200)."\n\nЧтобы продолжить, нажмите «↩️ Ответить» и отправьте текст ответом на сообщение бота. Также можно использовать обычный Telegram Reply на этом уведомлении.",
-            reply_markup=>{inline_keyboard=>[[{text=>'↩️ Ответить',callback_data=>'ticket_reply '.$row->{ticket_id}}]]}});
-        my $sent=eval {decode_json($response->decoded_content)} || {};
-        if ($sent->{ok}) {
-            $self->ticket_link_reply($user_chat,$sent->{result}{message_id},$row->{ticket_id},$row->{user_id});
-            if ($media) {
-                eval {
-                    # Source is the support topic; destination is ONLY the owner's private chat.
-                    die 'Invalid private destination' unless $user_chat =~ /^[1-9][0-9]*$/;
-                    my $photo=$self->ticket_copy_support_image($admin_chat,$msg->{message_id},$user_chat,$row->{ticket_id},$msg->{caption});
-                    $self->ticket_link_reply($user_chat,$photo->{message_id},$row->{ticket_id},$row->{user_id});
-                    1;
-                } or do {
-                    logger->error('Ticket support image delivery failed: '.substr("$@",0,180));
-                    $self->dbh->do('UPDATE tickets SET telegram_error=? WHERE ticket_id=?',undef,'Support image delivery failed; image saved in cabinet',$row->{ticket_id});
-                    $self->dbh->commit;
-                };
-            }
-        } else {
-            $self->dbh->do('UPDATE tickets SET telegram_error=? WHERE ticket_id=?',undef,'Support reply delivery failed',$row->{ticket_id});
+    my $delivery_error;
+    if ($user_chat && $user_chat =~ /^[1-9][0-9]*$/) {
+        eval {
+            # Photo/document + caption + Reply button is a single private send.
+            # No copyMessage from the support group and no preceding text gate.
+            my $sent=Core::TicketTelegramMedia->support_reply($self,$msg,$user_chat,$row->{ticket_id});
+            $self->ticket_link_reply($user_chat,$sent->{message_id},$row->{ticket_id},$row->{user_id});
+            $self->dbh->do('UPDATE tickets SET telegram_error=NULL WHERE ticket_id=?',undef,$row->{ticket_id});
             $self->dbh->commit;
-        }
+            1;
+        } or do {
+            $delivery_error='Support reply delivery failed; reply saved in cabinet';
+            logger->error('Ticket support reply delivery failed for ticket #'.$row->{ticket_id});
+        };
+    } else {
+        $delivery_error='Private Telegram chat is not linked; reply saved in cabinet';
+    }
+    if ($delivery_error) {
+        $self->dbh->do('UPDATE tickets SET telegram_error=? WHERE ticket_id=?',undef,$delivery_error,$row->{ticket_id});
+        $self->dbh->commit;
+        eval { $self->http('sendMessage',chat_id=>$admin_chat,data=>{
+            chat_id=>$admin_chat,message_thread_id=>$thread,
+            text=>'Ответ сохранён в тикете #'.$row->{ticket_id}.', но не доставлен в личный бот. Проверьте, что пользователь запустил и связал этого бота с аккаунтом и не заблокировал его. После исправления отправьте ответ повторно.',
+        }) };
     }
     return {};
 }
