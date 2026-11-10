@@ -53,7 +53,7 @@ environment:
   TELEGRAM_BOT_AUTH_ENABLE: "false"
 ```
 
-`/system/auth` имеет приоритет перед этими флагами. Для OIDC необходим доступ **из core** к `https://oauth.telegram.org` для обмена кода и получения ключей проверки подписи. Прокси для `api.telegram.org` сам по себе эту задачу не решает. Браузер также должен открывать `oauth.telegram.org`.
+Актуальный кабинет использует `/system/auth` для обнаружения входа; явное `TELEGRAM_OIDC_AUTH_ENABLE: "true"` также сохраняет кнопку и выбранный `TELEGRAM_BOT_AUTH_PROFILE`, даже если обнаружение сообщает `enabled: false`. Видимость кнопки не заменяет настройку OIDC в backend. Для OIDC необходим доступ **из core** к `https://oauth.telegram.org` для обмена кода и получения ключей проверки подписи. Прокси для `api.telegram.org` сам по себе эту задачу не решает. Браузер также должен открывать `oauth.telegram.org`.
 
 Redis должен быть доступен core: там сохраняются state, nonce, PKCE и контекст привязки. Не перезапускайте Redis между началом входа и callback.
 
@@ -61,16 +61,16 @@ Redis должен быть доступен core: там сохраняются
 
 ```nginx
 location / {
-    proxy_pass http://127.0.0.1:8082;
+    proxy_pass http://127.0.0.1:9082;
     proxy_set_header Host $host;
     proxy_set_header X-Real-IP $remote_addr;
-    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-For $remote_addr;
     proxy_set_header X-Forwarded-Host $host;
     proxy_set_header X-Forwarded-Proto $scheme;
 }
 ```
 
-Замените `8082` на порт вашего `client`. Эта секция должна находиться в HTTPS-сервере с действующим сертификатом. HTTP-сервер может перенаправлять запросы на HTTPS. Не удаляйте `Set-Cookie` и не включайте общий кэш для `/shm/`.
+Замените `9082` на порт вашего `client`. Эта секция должна находиться в HTTPS-сервере с действующим сертификатом. HTTP-сервер может перенаправлять запросы на HTTPS. Не удаляйте `Set-Cookie` и не включайте общий кэш для `/shm/`.
 
 ## 4. Обновление и проверка
 

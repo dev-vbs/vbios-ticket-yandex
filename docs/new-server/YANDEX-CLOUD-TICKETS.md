@@ -1,6 +1,6 @@
 # Yandex Cloud: приватные картинки тикетов vBios
 
-Инструкция для подготовленного модуля ticket-yandex-update. Нужен Yandex Object Storage (S3), не Яндекс Диск. Названия пунктов консоли могут немного отличаться. Реальное облако и ваши ключи здесь не проверялись.
+Инструкция для текущего репозитория dev-vbs/vbios-ticket-yandex; установка SHM описана в [главном README](../../README.md). Нужен Yandex Object Storage (S3), не Яндекс Диск. Названия пунктов консоли могут немного отличаться. Реальное облако и ваши ключи здесь не проверялись.
 
 ## 1. Подготовьте облако
 
@@ -60,11 +60,9 @@ nano .env
 ```dotenv
 TICKET_S3_ACCESS_KEY=ВАШ_ACCESS_KEY_ID
 TICKET_S3_SECRET_KEY=ВАШ_SECRET_ACCESS_KEY
-VBIOS_SOURCE_DIR=/opt/vbios-ticket-yandex/server
-VBIOS_CLIENT_SOURCE_DIR=/opt/vbios-ticket-yandex/client
 ```
 
-Последние два пути нужны при сборке с предоставленным override. В каталоге server должны быть Dockerfile и app/, в client — Dockerfile и package.json. Если распаковали в другое место, задайте настоящие пути.
+Для готовых GHCR-образов пути исходников не нужны. Оба ключа должны передаваться в core и spool через основной Compose.
 
 ```bash
 chmod 600 /opt/shm/.env
@@ -78,43 +76,40 @@ environment:
   TICKET_S3_SECRET_KEY: "${TICKET_S3_SECRET_KEY:-}"
 ```
 
-В предоставленном `compose.ticket-storage.yml` эти поля уже есть. Не создавайте второй core/spool в одном YAML-файле.
+В [основном docker-compose.yml](../../docker-compose.yml) эти поля уже есть. Не создавайте второй core/spool в одном YAML-файле.
 
 ## 6. Подготовьте БД и код
 
-Если ещё не установлены подготовленные изменения, распакуйте новые серверные и клиентские исходники. Скопируйте SQL `ticket-object-storage.sql` из комплекта в `/opt/shm/` и примените:
+Для новой установки сначала выполните разделы базы данных и запуска в [главном README](../../README.md). Дополнительная миграция S3 находится в `server/app/sql/ticket-object-storage.sql`; она требует уже созданной `ticket_media`. В полном порядке установки README она применяется вместе с остальными файлами. Для действующей базы сначала сделайте копию и используйте [инструкцию обновления](../UPGRADE-TICKETS.md).
+
+Не подключайте отсутствующие override-файлы из старых комплектов. Для опубликованных образов используется основной Compose:
 
 ```bash
 cd /opt/shm
-docker compose exec -T mysql sh -c \
-  'MYSQL_PWD="$MYSQL_PASSWORD" exec mysql -u"$MYSQL_USER" "$MYSQL_DATABASE"' \
-  < ticket-object-storage.sql
+docker compose config --quiet
+docker compose pull core spool api client
+docker compose up -d core spool api client
 ```
 
-Требуется установленная схема тикетов, включая ticket_media. Если нет права CREATE, выполните SQL под администратором БД. Таблица ticket_media_objects дополнительная; старые картинки не удаляются. Эта SQL не создаёт ticket_ai_jobs: таблица ИИ относится к другому модулю.
-
-Скопируйте compose.ticket-storage.yml в /opt/shm и соберите:
+Если изменили только ключи `.env`, сборка не нужна, но пересоздание необходимо:
 
 ```bash
 cd /opt/shm
-docker compose -f docker-compose.yml -f compose.ticket-storage.yml config --quiet
-docker compose -f docker-compose.yml -f compose.ticket-storage.yml build core api client
-docker compose -f docker-compose.yml -f compose.ticket-storage.yml \
-  up -d --no-deps --force-recreate core spool api client
+docker compose up -d --force-recreate core spool
 ```
 
-Выполняйте последующие команды управления этими локальными образами с обоими -f. Основной Compose без override может вернуть старые образы. При обновлении переменных окружения нужен `up --force-recreate`, простого `restart` недостаточно.
-
-Если код уже установлен и менялись только ключи, повторно собирать не нужно, но core/spool пересоздайте с теми же Compose-файлами.
+`restart` не обновляет окружение существующих контейнеров. Не выполняйте повторную инициализацию и не удаляйте тома рабочей базы.
 
 ## 7. Настройте config.ticket
 
 В административном интерфейсе SHM откройте конфигурацию с ключом ticket. Добавьте или исправьте только вложенный объект storage:
 
 ```json
-"storage": {
-  "provider": "yandex",
-  "bucket": "vbios-ticket-images-2026-48291"
+{
+  "storage": {
+    "provider": "yandex",
+    "bucket": "vbios-ticket-images-2026-48291"
+  }
 }
 ```
 
@@ -122,20 +117,7 @@ docker compose -f docker-compose.yml -f compose.ticket-storage.yml \
 
 Для созданного модуля endpoint фиксирован: https://storage.yandexcloud.net, регион ru-central1. Поля endpoint/region в клиенте не нужны. Не указывайте в bucket URL, каталог tickets/ или заглушку «ИМЯ_ВАШЕГО_ПРИВАТНОГО_БАКЕТА» — только имя бакета.
 
-Если вы используете временный шаблон для настройки, после создания ticket можно обновить storage так:
-
-```tt
-{{ IF config.ticket }}
-  {{ r = user.srv('config').id('ticket').set_json('value', {
-    storage = {
-      provider = 'yandex'
-      bucket = 'ВАШЕ_РЕАЛЬНОЕ_ИМЯ_БАКЕТА'
-    }
-  }) }}
-{{ END }}
-```
-
-Выполнять под администратором. Предварительно сохраните текущую конфигурацию. Затем проверьте значение через админку.
+Сохраняйте JSON через административный интерфейс SHM. Полный пример записи: [ticket.example.json](ticket.example.json). Не заменяйте всю существующую запись ради одного поля storage.
 
 ## 8. Лимит загрузки Nginx
 
@@ -157,7 +139,7 @@ sudo nginx -t && sudo systemctl reload nginx
 
 ```bash
 cd /opt/shm
-docker compose -f docker-compose.yml -f compose.ticket-storage.yml exec core sh -lc '
+docker compose exec core sh -lc '
   test -n "$TICKET_S3_ACCESS_KEY" && echo "Access key передан" || echo "Access key отсутствует"
   test -n "$TICKET_S3_SECRET_KEY" && echo "Secret key передан" || echo "Secret key отсутствует"
   test -f /app/lib/Core/TicketStorage.pm && echo "Модуль установлен"
@@ -197,15 +179,15 @@ ORDER BY m.id DESC LIMIT 10;
 | HTTP 413 от Nginx | Увеличить client_max_body_size на всех прокси |
 | ticket_media_objects отсутствует | Применить SQL до использования нового модуля |
 | Новая картинка не открывается, старые работают | Проверить ключи, bucket/object_key и новый серверный модуль |
-| Картинка не видна только в кабинете | Обновить клиент вместе с сервером: скачивание использует новый JSON/base64-контракт |
-| Картинка не приходит в тему Telegram | В этом обновлении Telegram отправляет текст тикета, не вложения |
+| Картинка не видна только в кабинете | Обновить клиент вместе с сервером: текущий клиент использует временный приватный URL и резервную загрузку через API |
+| Картинка не приходит в тему Telegram | Проверьте профиль, права бота, доступ к Bot API и `/file/botTOKEN`, журналы core; текущий модуль поддерживает вложения |
 
 Для проверки времени: `timedatectl status`. Для проверки сети: `curl -I --connect-timeout 10 https://storage.yandexcloud.net`. Ответ 403/404 на корень endpoint сам по себе нормален: проверяется соединение, не доступ к вашему объекту.
 
 Логи:
 
 ```bash
-docker compose -f docker-compose.yml -f compose.ticket-storage.yml logs --tail=100 core spool
+docker compose logs --tail=100 core spool
 ```
 
 ## 11. Расходы, хранение и резервные копии
