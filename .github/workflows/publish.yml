@@ -32,7 +32,7 @@ jobs:
           - image: vbios-api
             context: ./server
             target: api
-          - image: vbios-client
+          - image: vbios-clients
             context: ./client
             target: client
     steps:
