@@ -1,0 +1,15 @@
+use v5.14;
+use SHM;
+use Core::System::ServiceManager qw(get_service);
+use Core::Utils qw(switch_user);
+my $password = <STDIN>;
+die "Empty password\n" unless defined $password;
+chomp $password;
+die "Use at least 16 characters\n" unless length($password) >= 16;
+switch_user(1);
+my $user = get_service('user', _id => 1);
+die "Expected initial admin account\n" unless ($user->get->{login} || '') eq 'admin';
+my $result = $user->passwd(password => $password, admin => 1);
+die "Password update failed\n" unless $result;
+$user->dbh->commit or die "Commit failed\n";
+say 'Admin password updated';

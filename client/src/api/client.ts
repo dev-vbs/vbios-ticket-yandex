@@ -219,9 +219,14 @@ export interface TicketItem {
   closed_at?: string;
   archived_at?: string;
   messages?: TicketMessage[];
+  responder?: 'ai' | 'human' | null;
+  telegram_error?: string | null;
 }
 
 export const ticketApi = {
+  options: () => api.get<{ data: { ai_available: number }[] | { ai_available: number } }>('/user/ticket/options'),
+  setResponder: (ticketId: number, responder: 'ai' | 'human') =>
+    api.post(`/user/ticket/responder/${ticketId}`, { responder }),
   list: (params?: { status?: string; limit?: number; offset?: number }) =>
     api.get<{ data: TicketItem[] }>('/user/ticket', { params }),
   get: (ticketId: number | string) =>
@@ -233,6 +238,7 @@ export const ticketApi = {
     ticket_type?: 'service' | 'payment' | 'other';
     user_service_id?: number;
     media_ids?: number[];
+    responder?: 'ai' | 'human';
   }) => api.put<{ data: TicketItem }>('/user/ticket', data),
   sendMessage: (ticketId: number | string, data: { message: string; media_ids?: number[] }) =>
     api.post<{ data: TicketMessage }>(`/user/ticket/${ticketId}`, data),
@@ -240,8 +246,24 @@ export const ticketApi = {
     api.delete<{ data: TicketItem }>(`/user/ticket/${ticketId}`),
   uploadMedia: (data: { name: string; data: string; mime_type?: string }) =>
     api.put<{ data: TicketMedia }>('/user/ticket/media', data),
+  mediaSource: async (id: number, fallback = false): Promise<{ url: string; temporary: boolean }> => {
+    if (fallback) {
+      const response = await ticketApi.downloadMedia(id);
+      return { url: URL.createObjectURL(response.data), temporary: true };
+    }
+    const response = await api.get(`/user/ticket/media/${id}`, { params: { delivery: 'url' }, timeout: 15_000 });
+    const payload = response.data?.data;
+    const media = Array.isArray(payload) ? payload[0] : payload;
+    if (typeof media?.url === 'string' && media.url.startsWith('https://')) {
+      return { url: media.url, temporary: false };
+    }
+    if (typeof media?.data !== 'string') throw new Error('Не удалось загрузить вложение');
+    const binary = atob(media.data);
+    const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0));
+    return { url: URL.createObjectURL(new Blob([bytes], { type: media.mime_type || 'application/octet-stream' })), temporary: true };
+  },
   downloadMedia: async (id: number | string): Promise<{ data: Blob }> => {
-    const response = await api.get<{ data: { data: string; mime_type?: string } | { data: string; mime_type?: string }[] }>(`/user/ticket/media/${id}`);
+    const response = await api.get<{ data: { data: string; mime_type?: string } | { data: string; mime_type?: string }[] }>(`/user/ticket/media/${id}`, { timeout: 45_000 });
     const payload = response.data?.data;
     const media = Array.isArray(payload) ? payload[0] : payload;
     if (!media || typeof media.data !== 'string') throw new Error('Не удалось загрузить вложение');

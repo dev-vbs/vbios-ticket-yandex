@@ -1,0 +1,21 @@
+{
+  "id": -1001234567890,
+  "telegram_profile": "vBios_BOT",
+  "forum_topics": 1,
+  "admin_user_url_template": "https://admin.example.com/users/{user_id}",
+  "storage": {
+    "provider": "yandex",
+    "bucket": "REPLACE_WITH_PRIVATE_BUCKET"
+  },
+  "ai": {
+    "enabled": false,
+    "api_key": "REPLACE_WITH_TIMEWEB_AI_PROXY_KEY",
+    "model": "dashscope/qwen3.5-flash",
+    "reply_mode": "auto",
+    "history_messages": 12,
+    "max_replies_per_ticket": 5,
+    "max_tokens": 1600,
+    "timeout_seconds": 30,
+    "instructions": "Ты помощник поддержки сервиса. Помогай с кабинетом, оплатой и подключением VPN. Не утверждай, что проверил баланс или изменил услугу. Не запрашивай пароли, токены и ссылки подписки. Не выдумывай тарифы и способы оплаты. Если требуется действие сотрудника, предложи обратиться в поддержку. Отвечай понятно и по шагам."
+  }
+}

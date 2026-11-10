@@ -18,7 +18,7 @@ sub structure {
     };
 }
 
-sub _row { my ($self,$id)=@_; return $self->dbh->selectrow_hashref('SELECT * FROM tickets WHERE ticket_id = ?', undef, $id) }
+sub _row { my ($self,$id)=@_; return $self->dbh->selectrow_hashref('SELECT t.*,p.responder FROM tickets t LEFT JOIN ticket_preferences p ON p.ticket_id=t.ticket_id WHERE t.ticket_id = ?', undef, $id) }
 sub _messages {
     my ($self,$id)=@_; my $rows=$self->dbh->selectall_arrayref('SELECT * FROM ticket_messages WHERE ticket_id=? ORDER BY message_id', {Slice=>{}}, $id);
     for my $m (@$rows) { $m->{media}=$self->dbh->selectall_arrayref('SELECT m.id,m.name,m.mime_type,m.size,m.created FROM ticket_media m JOIN ticket_message_media x ON x.media_id=m.id WHERE x.message_id=? ORDER BY m.id',{Slice=>{}},$m->{message_id}) }
@@ -29,7 +29,7 @@ sub _input { my ($self,%a)=@_; return (%a ? %a : %{$self->res||{}}) }
 
 sub api_list {
     my ($self,%a)=@_; my $uid=$self->user_id; my $status=$a{status};
-    my $sql='SELECT * FROM tickets WHERE user_id=?'; my @p=($uid); if (defined $status && length $status) { $sql.=' AND status=?'; push @p,$status } $sql.=' ORDER BY updated DESC LIMIT 100';
+    my $sql='SELECT t.*,p.responder FROM tickets t LEFT JOIN ticket_preferences p ON p.ticket_id=t.ticket_id WHERE user_id=?'; my @p=($uid); if (defined $status && length $status) { $sql.=' AND status=?'; push @p,$status } $sql.=' ORDER BY updated DESC LIMIT 100';
     my $rows=$self->dbh->selectall_arrayref($sql,{Slice=>{}},@p); $_->{messages}=$self->_messages($_->{ticket_id}) for @$rows; return wantarray ? @$rows : $rows;
 }
 sub api_get { my ($self,%a)=@_; my $id=$a{ticket_id}||$a{id}; my $row=$self->_row($id); die 'ticket not found' unless $row && $row->{user_id} == $self->user_id; return $self->_result($id,1) }
@@ -39,6 +39,8 @@ sub api_create {
     local $db->{RaiseError}=1;
     local $db->{PrintError}=0;
     my $uid=$self->user_id;
+    my $responder=$a{responder} || 'human';
+    $self->_validate_responder($responder);
     my $subject=substr(($a{subject}//'Без темы'),0,160);
     my $msg=substr(($a{message}//''),0,10000);
     die 'message is required' unless $msg =~ /\S/;
@@ -50,6 +52,7 @@ sub api_create {
     eval {
         $id=$self->add(user_id=>$uid,subject=>$subject,status=>'open',priority=>($a{priority}||'normal'),ticket_type=>($a{ticket_type}||'other'),user_service_id=>$a{user_service_id});
         die 'ticket insert failed' unless $id;
+        $db->do('INSERT INTO ticket_preferences(ticket_id,responder) VALUES(?,?)',undef,$id,$responder);
         $self->_add_message($id,$uid,0,$msg,$a{media_ids});
         $db->commit or die 'Ticket commit failed';
         1;
@@ -61,6 +64,8 @@ sub api_create {
 }
 sub _notify_safe {
     my ($self,$id)=@_;
+    my $row=$self->_row($id) || {};
+    return if ($row->{responder} || '') eq 'ai';
     eval { $self->telegram_sync($id); $self->dbh->commit; 1 } or do {
         my $error=$@ || 'Telegram synchronization failed';
         eval {
@@ -68,6 +73,47 @@ sub _notify_safe {
             $self->dbh->commit;
         };
     };
+}
+
+sub api_options {
+    my $cfg=get_service('config')->data_by_name('ticket') || {};
+    my $ai=$cfg->{ai} || {};
+    return {ai_available => (defined($ai->{enabled}) && $ai->{enabled} =~ /^(?:1|true)$/i && ($ai->{reply_mode}||'draft') eq 'auto' && ($ENV{TIMEWEB_AI_KEY} || $ai->{api_key})) ? 1 : 0};
+}
+sub _validate_responder {
+    my ($self,$value)=@_;
+    die 'Choose ai or human' unless $value eq 'ai' || $value eq 'human';
+    die 'AI assistant is not available' if $value eq 'ai' && !$self->api_options->{ai_available};
+}
+sub api_responder {
+    my ($self,%a)=@_;
+    my $id=$a{ticket_id};
+    $self->_validate_responder($a{responder} || '');
+    my $db=$self->dbh;
+    local $db->{RaiseError}=1;
+    eval {
+        my $row=$db->selectrow_hashref('SELECT * FROM tickets WHERE ticket_id=? FOR UPDATE',undef,$id);
+        die 'ticket not found' unless $row && $row->{user_id}==$self->user_id;
+        die 'ticket closed' if $row->{status} eq 'closed' || $row->{status} eq 'archived';
+        if ($a{responder} eq 'ai') {
+            my ($human)=$db->selectrow_array('SELECT COUNT(*) FROM ticket_messages m WHERE m.ticket_id=? AND m.is_admin<>0 AND NOT EXISTS(SELECT 1 FROM ticket_ai_jobs j WHERE j.reply_message_id=m.message_id)',undef,$id);
+            die 'A staff member has already joined this ticket' if $human;
+        }
+        $db->do('INSERT INTO ticket_preferences(ticket_id,responder) VALUES(?,?) ON DUPLICATE KEY UPDATE responder=VALUES(responder)',undef,$id,$a{responder});
+        $db->do('UPDATE tickets SET updated=NOW() WHERE ticket_id=?',undef,$id);
+        $db->commit or die 'Responder commit failed';
+        1;
+    } or do { my $error=$@; $db->rollback; die $error; };
+    # Switching to staff sends the latest user message with conversation context.
+    if ($a{responder} eq 'human') {
+        eval { $self->telegram_sync($id,1); $db->commit; 1 } or do {
+            my $error=$@ || 'Telegram handoff failed';
+            $db->do('UPDATE tickets SET telegram_error=? WHERE ticket_id=?',undef,substr($error,0,255),$id);
+            $db->commit;
+        };
+    }
+    # AI starts with the next user message; switching does not replay old requests.
+    return $self->_result($id,1);
 }
 sub _add_message {
     my ($self,$tid,$uid,$admin,$msg,$media)=@_; my $mid=$self->dbh->do('INSERT INTO ticket_messages(ticket_id,user_id,is_admin,message) VALUES(?,?,?,?)',undef,$tid,$uid,$admin,$msg); $mid=$self->insert_id;
@@ -85,7 +131,7 @@ sub api_message {
     eval {
         my $r=$db->selectrow_hashref('SELECT * FROM tickets WHERE ticket_id=? FOR UPDATE',undef,$id);
         die 'ticket not found' unless $r && $r->{user_id}==$self->user_id;
-        die 'ticket closed' if $r->{status} eq 'closed';
+        die 'ticket closed' if $r->{status} eq 'closed' || $r->{status} eq 'archived';
         $mid=$self->_add_message($id,$self->user_id,0,substr($a{message},0,10000),$a{media_ids});
         $db->commit or die 'Message commit failed';
         1;
@@ -143,6 +189,8 @@ sub api_media_download {
     if ($object) {
         require Core::TicketStorage;
         my $storage=Core::TicketStorage->new($self->_media_storage_config);
+        return {id=>$r->{id},name=>$r->{name},mime_type=>$r->{mime_type},url=>$storage->download_url($object->{bucket},$object->{object_key}),expires_in=>900}
+            if ($a{delivery} || '') eq 'url';
         $bytes=$storage->request('GET',$object->{bucket},$object->{object_key});
     }
     require MIME::Base64;
@@ -165,7 +213,7 @@ sub _tg {
     return $tg;
 }
 sub telegram_sync {
-    my ($self, $id) = @_;
+    my ($self, $id, $handoff) = @_;
     my $cfg = get_service('config')->data_by_name('ticket') || {};
     my $chat = $cfg->{id} || $cfg->{admin_chat_id};
     if (defined $chat) { $chat =~ s/^\s+|\s+$//g; die 'ticket.id must be a numeric Telegram chat ID' unless $chat =~ /^-?[1-9][0-9]*$/; }
@@ -174,7 +222,7 @@ sub telegram_sync {
         return;
     }
     my $r = $self->_row($id) or die 'ticket not found';
-    my $m = $self->dbh->selectrow_hashref('SELECT * FROM ticket_messages WHERE ticket_id=? ORDER BY message_id DESC LIMIT 1', undef, $id) or return;
+    my $m = $self->dbh->selectrow_hashref('SELECT * FROM ticket_messages WHERE ticket_id=? AND is_admin=0 ORDER BY message_id DESC LIMIT 1', undef, $id) or return;
     my $tg = $self->_tg;
     my $thread = $r->{telegram_thread_id};
     $chat = $r->{telegram_chat_id} if $thread && $r->{telegram_chat_id};
@@ -205,6 +253,12 @@ sub telegram_sync {
     }
     my $heading = $m->{message_id} == ($self->dbh->selectrow_array('SELECT MIN(message_id) FROM ticket_messages WHERE ticket_id=?', undef, $id) || 0) ? 'Новое обращение' : 'Новое сообщение';
     my $text = "📩 $heading #$id\n👤 $display · ID $r->{user_id}\n📌 $subject\n📂 $kind · ⚡ $priority$service_line\n\n💬 " . $m->{message};
+    if ($handoff) {
+        my $history=$self->dbh->selectall_arrayref('SELECT is_admin,message FROM ticket_messages WHERE ticket_id=? ORDER BY message_id DESC LIMIT 6',{Slice=>{}},$id);
+        $text="🙋 Пользователь выбрал сотрудника поддержки. ИИ отключён для обращения.\n".
+            "Тикет #$id · $subject · Пользователь $display (ID $r->{user_id})\n\n".
+            join("\n\n",map {($_->{is_admin}?'Поддержка / ИИ: ':'Пользователь: ').substr($_->{message},0,500)} reverse @$history);
+    }
     $text = substr($text, 0, 4000);
     my $keyboard;
     if (defined $cfg->{admin_user_url_template} && $cfg->{admin_user_url_template} =~ m{^https://[^\s]+$} && $cfg->{admin_user_url_template} =~ /\{user_id\}/) {

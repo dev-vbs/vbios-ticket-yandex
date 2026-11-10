@@ -95,4 +95,29 @@ sub request {
     }
     return $res->content;
 }
+
+# Private, short-lived GET URL. Only generated after the API checks ownership.
+# The browser can display it without downloading base64 through a SHM worker.
+sub download_url {
+    my ($self,$bucket,$key,$timestamp)=@_;
+    die 'Invalid object key' unless $key =~ /\Atickets\/[1-9][0-9]*\/[a-f0-9]{48}\.(?:jpg|png|webp|gif)\z/;
+    die 'Invalid bucket' unless $bucket =~ /\A[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]\z/;
+    require URI::Escape;
+    $timestamp ||= strftime('%Y%m%dT%H%M%SZ',gmtime(time));
+    my $date=substr($timestamp,0,8);
+    my $scope="$date/ru-central1/s3/aws4_request";
+    my $host=$bucket =~ /\./ ? 'storage.yandexcloud.net' : $bucket.'.storage.yandexcloud.net';
+    my $path=$bucket =~ /\./ ? "/$bucket/$key" : "/$key";
+    my %query=(
+        'X-Amz-Algorithm'=>'AWS4-HMAC-SHA256',
+        'X-Amz-Credential'=>$self->{config}{access_key}.'/'.$scope,
+        'X-Amz-Date'=>$timestamp, 'X-Amz-Expires'=>900,
+        'X-Amz-SignedHeaders'=>'host',
+    );
+    my $query=join('&',map { $_.'='.URI::Escape::uri_escape_utf8($query{$_},'^A-Za-z0-9\-._~') } sort keys %query);
+    my $canonical=join("\n",'GET',$path,$query,"host:$host\n",'host','UNSIGNED-PAYLOAD');
+    my $to_sign=join("\n",'AWS4-HMAC-SHA256',$timestamp,$scope,sha256_hex($canonical));
+    my $signing=hmac_sha256('aws4_request',hmac_sha256('s3',hmac_sha256('ru-central1',hmac_sha256($date,'AWS4'.$self->{config}{secret_key}))));
+    return 'https://'.$host.$path.'?'.$query.'&X-Amz-Signature='.hmac_sha256_hex($to_sign,$signing);
+}
 1;

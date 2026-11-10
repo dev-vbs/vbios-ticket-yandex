@@ -1356,6 +1356,7 @@ sub ticket_group_update {
     unless ($received && $received ne '0E0') {$self->dbh->commit;return {};}
     $self->dbh->do('INSERT INTO ticket_messages(ticket_id,user_id,is_admin,message) VALUES(?,?,1,?)',undef,$row->{ticket_id},0,substr($text,0,10000));
     my $support_mid=$self->dbh->{mysql_insertid};
+    $self->dbh->do("INSERT INTO ticket_preferences(ticket_id,responder) VALUES(?,'human') ON DUPLICATE KEY UPDATE responder='human'",undef,$row->{ticket_id});
     $self->dbh->do('INSERT INTO ticket_message_media(message_id,media_id) VALUES(?,?)',undef,$support_mid,$media->{id}) if $media;
     $self->dbh->do("UPDATE tickets SET status='waiting',updated=NOW() WHERE ticket_id=?",undef,$row->{ticket_id});
     my $u = $self->user($row->{user_id});

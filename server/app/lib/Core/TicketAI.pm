@@ -33,7 +33,9 @@ sub reply {
     local $db->{PrintError}=0;
     my $json=JSON->new->utf8;
     my $row=$db->selectrow_hashref('SELECT * FROM tickets WHERE ticket_id=?',undef,$id);
-    return unless $row && $row->{status} ne 'closed';
+    return unless $row && $row->{status} ne 'closed' && $row->{status} ne 'archived';
+    my ($responder)=$db->selectrow_array('SELECT responder FROM ticket_preferences WHERE ticket_id=?',undef,$id);
+    return if ($responder || '') eq 'human';
     my $source=$db->selectrow_hashref('SELECT * FROM ticket_messages WHERE ticket_id=? ORDER BY message_id DESC LIMIT 1',undef,$id);
     return unless $source && !$source->{is_admin} && $source->{message} =~ /\S/;
     my $mid=$source->{message_id};
@@ -79,8 +81,9 @@ sub reply {
         eval {
             $stage='lock_ticket';
             my $current=$db->selectrow_hashref('SELECT status FROM tickets WHERE ticket_id=? FOR UPDATE',undef,$id);
+            my ($now_responder)=$db->selectrow_array('SELECT responder FROM ticket_preferences WHERE ticket_id=?',undef,$id);
             my ($latest)=$db->selectrow_array('SELECT MAX(message_id) FROM ticket_messages WHERE ticket_id=?',undef,$id);
-            if (!$current || $current->{status} eq 'closed' || $latest != $mid) {
+            if (!$current || $current->{status} eq 'closed' || $current->{status} eq 'archived' || $latest != $mid || ($now_responder || '') eq 'human') {
                 $db->do("UPDATE ticket_ai_jobs SET status='skipped' WHERE source_message_id=?",undef,$mid);
             } elsif ($mode eq 'draft') {
                 $stage='save_draft';

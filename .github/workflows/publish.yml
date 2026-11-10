@@ -16,7 +16,17 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Perl test dependencies
+        run: sudo apt-get update && sudo apt-get install -y libjson-perl libwww-perl liburi-perl
+      - name: Check ticket delivery and responder selection
+        run: prove media-multipart-test.t media-private-copy-test.t ticket-delivery-test.t
   build:
+    needs: test
     runs-on: ubuntu-latest
     timeout-minutes: 45
     permissions:

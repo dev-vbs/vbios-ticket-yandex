@@ -40,6 +40,8 @@ import { useStore } from '../store/useStore';
 function MediaPreview({ media, onPreview, onDownload }: { media: TicketMedia; onPreview: (m: TicketMedia, url: string) => void; onDownload: (m: TicketMedia) => void }) {
   const [objectUrl, setObjectUrl] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
+  const [attempt, setAttempt] = useState(0);
+  const imageTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   const mime = media.mime_type ?? '';
   const isImage = mime.startsWith('image/');
@@ -52,20 +54,45 @@ function MediaPreview({ media, onPreview, onDownload }: { media: TicketMedia; on
     let cancelled = false;
     setFailed(false);
     setObjectUrl(null);
-    ticketApi.downloadMedia(media.id)
-      .then((res) => {
-        if (cancelled) return;
-        url = URL.createObjectURL(res.data);
-        setObjectUrl(url);
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    ticketApi.mediaSource(media.id, attempt >= 2)
+      .then((source) => {
+        if (cancelled) { if (source.temporary) URL.revokeObjectURL(source.url); return; }
+        if (source.temporary) url = source.url;
+        imageTimer.current = setTimeout(() => {
+          if (!cancelled) {
+            if (attempt < 2) setAttempt((value) => value + 1);
+            else setFailed(true);
+          }
+        }, 20_000);
+        setObjectUrl(source.url);
       })
-      .catch(() => { if (!cancelled) setFailed(true); });
+      .catch(() => {
+        if (cancelled) return;
+        if (attempt < 2) timer = setTimeout(() => setAttempt((value) => value + 1), 800 * (attempt + 1));
+        else setFailed(true);
+      });
     return () => {
       cancelled = true;
+      clearTimeout(timer);
+      clearTimeout(imageTimer.current);
       if (url) URL.revokeObjectURL(url);
     };
-  }, [media.id, isPreviewable]);
+  }, [media.id, isPreviewable, attempt]);
 
-  if (!isPreviewable || failed) {
+  const onMediaError = () => {
+    clearTimeout(imageTimer.current);
+    if (attempt < 2) setAttempt((value) => value + 1);
+    else setFailed(true);
+  };
+
+  if (failed) {
+    return <Stack gap={4}><Text size="xs" c="dimmed">Не удалось загрузить {media.name}</Text><Group gap="xs">
+      <Button size="xs" variant="light" onClick={() => { setFailed(false); setAttempt(0); }}>Повторить загрузку</Button>
+      <Button size="xs" variant="subtle" onClick={() => onDownload(media)}>Скачать файл</Button>
+    </Group></Stack>;
+  }
+  if (!isPreviewable) {
     return (
       <Button
         variant="subtle"
@@ -87,6 +114,10 @@ function MediaPreview({ media, onPreview, onDownload }: { media: TicketMedia; on
       <img
         src={objectUrl}
         alt={media.name}
+        decoding="async"
+        referrerPolicy="no-referrer"
+        onError={onMediaError}
+        onLoad={() => clearTimeout(imageTimer.current)}
         style={{ maxWidth: '100%', maxHeight: 320, borderRadius: 8, display: 'block', cursor: 'pointer' }}
         onClick={() => onPreview(media, objectUrl)}
       />
@@ -97,6 +128,8 @@ function MediaPreview({ media, onPreview, onDownload }: { media: TicketMedia; on
     <video
       src={objectUrl}
       controls
+      onError={onMediaError}
+      onLoadedData={() => clearTimeout(imageTimer.current)}
       style={{ maxWidth: '100%', maxHeight: 320, borderRadius: 8, display: 'block', cursor: 'pointer' }}
       onClick={(e) => { e.preventDefault(); onPreview(media, objectUrl); }}
     />
@@ -185,6 +218,9 @@ export default function Tickets() {
   const [newMessage, setNewMessage] = useState('');
   const [newPriority, setNewPriority] = useState<string>('normal');
   const [newType, setNewType] = useState<string>('other');
+  const [newResponder, setNewResponder] = useState<'ai' | 'human'>('human');
+  const [aiAvailable, setAiAvailable] = useState(false);
+  const [changingResponder, setChangingResponder] = useState(false);
   const [newServiceId, setNewServiceId] = useState<string | null>(null);
   const [newFiles, setNewFiles] = useState<File[]>([]);
   const [payments, setPayments] = useState<PaymentItem[]>([]);
@@ -239,6 +275,16 @@ export default function Tickets() {
   useEffect(() => {
     loadTickets();
   }, [loadTickets]);
+
+  useEffect(() => {
+    let cancelled = false;
+    ticketApi.options().then((response) => {
+      const raw = response.data?.data;
+      const options = Array.isArray(raw) ? raw[0] : raw;
+      if (!cancelled) setAiAvailable(Number(options?.ai_available) === 1);
+    }).catch(() => { if (!cancelled) setAiAvailable(false); });
+    return () => { cancelled = true; };
+  }, []);
 
   useEffect(() => {
     const timer = window.setInterval(() => {
@@ -358,6 +404,7 @@ export default function Tickets() {
       }
       await ticketApi.create({
         subject: newSubject.trim(),
+        responder: newResponder,
         message: newMessage.trim() || 'Прикреплено изображение',
         priority: newPriority as 'low' | 'normal' | 'high' | 'urgent',
         ticket_type: newType as 'service' | 'payment' | 'other',
@@ -375,6 +422,7 @@ export default function Tickets() {
       setNewSubject('');
       setNewMessage('');
       setNewPriority('normal');
+      setNewResponder('human');
       setNewType('other');
       setNewServiceId(null);
       setNewPaymentId(null);
@@ -591,6 +639,22 @@ export default function Tickets() {
     }
   };
 
+  const changeResponder = async (value: string | null) => {
+    if (!selectedTicket || (value !== 'ai' && value !== 'human')) return;
+    const ticketId = selectedTicket.ticket_id;
+    setChangingResponder(true);
+    try {
+      await ticketApi.setResponder(ticketId, value);
+      const response = await ticketApi.get(ticketId);
+      const updated = response.data?.data?.[0];
+      if (updated) setSelectedTicket((current) => current?.ticket_id === ticketId ? updated : current);
+      const deliveryFailed = value === 'human' && updated?.telegram_error;
+      notifications.show({ message: deliveryFailed ? 'ИИ отключён. Обращение сохранено, но уведомить группу пока не удалось. Попробуйте выбрать сотрудника ещё раз.' : value === 'human' ? 'Обращение передано сотруднику. ИИ больше не отвечает в этом тикете.' : 'Выбран ИИ-помощник. Напишите следующий вопрос.', color: deliveryFailed ? 'yellow' : 'green' });
+    } catch (error) {
+      notifications.show({ title: t('common.error'), message: apiErrorMessage(error, 'Не удалось изменить выбор. Если сотрудник уже ответил, продолжайте общение с поддержкой.'), color: 'red' });
+    } finally { setChangingResponder(false); }
+  };
+
   const ticketIsClosed = (status?: string) => status === 'closed' || status === 'archived';
 
   const filterTickets = (list: TicketItem[]) => {
@@ -714,6 +778,15 @@ export default function Tickets() {
           )}
         </Group>
 
+        {!ticketIsClosed(selectedTicket.status) && <Select
+          label="Кто отвечает на обращение"
+          description={selectedTicket.responder === 'ai' ? 'ИИ помогает с вопросами. Для проверки оплаты и действий с услугой выберите сотрудника.' : 'Сотрудник отвечает через группу поддержки. Мгновенный ответ не гарантируется.'}
+          value={selectedTicket.responder || null}
+          placeholder="Выберите ИИ или сотрудника"
+          onChange={changeResponder}
+          disabled={changingResponder || sending}
+          data={[{ value: 'human', label: 'Техподдержка — сотрудник' }, { value: 'ai', label: aiAvailable ? 'ИИ-помощник' : 'ИИ-помощник недоступен', disabled: !aiAvailable }]}
+        />}
         <Divider />
 
         <ScrollArea style={{ flex: 1 }} offsetScrollbars viewportRef={messagesViewportRef}>
@@ -959,6 +1032,14 @@ export default function Tickets() {
         size="lg"
       >
         <Stack gap="md">
+          <Select
+            label="Кто должен ответить"
+            description="ИИ помогает с общими вопросами. Сотрудник проверяет оплату и решает вопросы с услугами."
+            value={newResponder}
+            onChange={(value) => setNewResponder(value === 'ai' ? 'ai' : 'human')}
+            disabled={creating}
+            data={[{ value: 'human', label: 'Техподдержка — сотрудник' }, { value: 'ai', label: aiAvailable ? 'ИИ-помощник' : 'ИИ-помощник недоступен', disabled: !aiAvailable }]}
+          />
           <TextInput
             label={t('tickets.subject')}
             placeholder={t('tickets.subjectPlaceholder')}

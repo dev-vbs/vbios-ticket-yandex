@@ -37,7 +37,6 @@ services:
     pull_policy: always
     restart: always
     deploy:
-      mode: replicated
       replicas: 2
     environment:
       TZ: "${TZ}"

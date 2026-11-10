@@ -1780,14 +1780,21 @@ state $routes //= {
 '/user/ticket' => {
     swagger => { tags => 'Tickets' },
     GET => { controller => 'Ticket', method => 'api_list', params => { status => { type => 'string' } } },
-    PUT => { controller => 'Ticket', method => 'api_create', params => { subject => { type => 'string', max_length => 160 }, message => { type => 'string', required => 1, max_length => 10000 }, priority => { type => 'string', max_length => 16 }, ticket_type => { type => 'string', max_length => 16 }, user_service_id => { type => 'integer' }, media_ids => { type => 'array' } } },
+    PUT => { controller => 'Ticket', method => 'api_create', params => { subject => { type => 'string', max_length => 160 }, message => { type => 'string', required => 1, max_length => 10000 }, priority => { type => 'string', max_length => 16 }, ticket_type => { type => 'string', max_length => 16 }, user_service_id => { type => 'integer' }, media_ids => { type => 'array' }, responder => { type => 'string', max_length => 16 } } },
+},
+'/user/ticket/options' => {
+    GET => { controller => 'Ticket', method => 'api_options' },
+},
+'/user/ticket/responder/*' => {
+    splat_to => 'ticket_id',
+    POST => { controller => 'Ticket', method => 'api_responder', params => { ticket_id => { type => 'integer', required => 1 }, responder => { type => 'string', required => 1, max_length => 16 } } },
 },
 '/user/ticket/media' => {
     PUT => { controller => 'Ticket', method => 'api_media', params => { name => { type => 'string', required => 1, max_length => 255 }, data => { type => 'string', required => 1 }, mime_type => { type => 'string', max_length => 100 } } },
 },
 '/user/ticket/media/*' => {
     splat_to => 'id',
-    GET => { controller => 'Ticket', method => 'api_media_download', params => { id => { type => 'integer', required => 1 } } },
+    GET => { controller => 'Ticket', method => 'api_media_download', params => { id => { type => 'integer', required => 1 }, delivery => { type => 'string', max_length => 16 } } },
 },
 '/user/ticket/*' => {
     splat_to => 'ticket_id',
@@ -2480,7 +2487,8 @@ $routes->{'/admin/system/locations'} //= {
 };
 
 state $router //= Router::Simple->new();
-for my $uri ( keys %{ $routes } ) {
+# Specific endpoints must precede wildcard routes (e.g. ticket/options vs ticket/*).
+for my $uri ( sort { (($a =~ /\*/) ? 1 : 0) <=> (($b =~ /\*/) ? 1 : 0) || length($b) <=> length($a) || $a cmp $b } keys %{ $routes } ) {
     for my $method ( 'GET','POST','PUT','DELETE' ) {
         next unless $routes->{$uri}->{$method};
         $routes->{$uri}->{$method}->{splat_to} = $routes->{$uri}->{splat_to} if $routes->{$uri}->{splat_to};
@@ -2688,6 +2696,8 @@ if ( my $p = $router->match( sprintf("%s:%s", $ENV{REQUEST_METHOD}, $uri )) ) {
 
     my @data;
     my %headers;
+    # Ticket JSON can contain private messages and temporary S3 credentials.
+    $headers{'Cache-Control'} = 'private, no-store' if ($p->{controller} || '') eq 'Ticket';
     my %info;
 
     # Temporary direct disallow `fields`
