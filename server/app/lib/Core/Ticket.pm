@@ -224,7 +224,10 @@ sub telegram_sync {
     for my $attachment (@$media) {
         my ($sent)=$self->dbh->selectrow_array('SELECT 1 FROM ticket_telegram_media_sent WHERE profile=? AND chat_id=? AND message_id=? AND media_id=?',undef,$tg->profile_name,$chat,$m->{message_id},$attachment->{media_id});
         next if $sent;
-        my $photo=Core::TicketTelegramMedia->outgoing($tg,$self,$attachment->{media_id},$chat,$thread,'Изображение к тикету #'.$id,undef);
+        my $caption='Тикет #'.$id."\n\n".($m->{message}||'Изображение');
+        # Telegram photo captions are limited; full message is already sent above.
+        $caption=substr($caption,0,850)."\n…Полный текст — в сообщении выше." if length($caption)>850;
+        my $photo=Core::TicketTelegramMedia->outgoing($tg,$self,$attachment->{media_id},$chat,$thread,$caption,undef);
         $self->dbh->do('INSERT IGNORE INTO ticket_telegram_media_sent(profile,chat_id,message_id,media_id,telegram_message_id) VALUES(?,?,?,?,?)',undef,$tg->profile_name,$chat,$m->{message_id},$attachment->{media_id},$photo->{message_id});
         $self->dbh->commit;
     }
