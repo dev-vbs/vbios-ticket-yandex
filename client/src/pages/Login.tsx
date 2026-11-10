@@ -1,4 +1,5 @@
 import './Login.css';
+import { useAuthOptions } from '../hooks/useAuthOptions';
 import { useEffect, useRef, useState } from 'react';
 import { Card, Text, Stack, Button, ActionIcon, TextInput, PasswordInput, Divider, Title, Center, Modal, Group, Loader, useMantineColorScheme, useComputedColorScheme, Checkbox, Tooltip } from '@mantine/core';
 import { useMediaQuery } from '@mantine/hooks';
@@ -14,7 +15,7 @@ import { config } from '../config';
 import { useTelegramWebApp } from '../hooks/useTelegramWebApp';
 import LanguageSwitcher from '../components/LanguageSwitcher';
 import DocumentModal from '../components/DocumentModal';
-import { hasTelegramOidcAuth, hasTelegramWebAppAutoAuth, hasTelegramWidget, hasTelegramWebAppAuth } from '../constants/webapp';
+import { hasTelegramWebAppAutoAuth, hasTelegramWidget, hasTelegramWebAppAuth } from '../constants/webapp';
 
 function isPdf(value: string) {
   return value.toLowerCase().endsWith('.pdf');
@@ -57,6 +58,8 @@ function ThemeToggle() {
 }
 
 export default function Login() {
+  const { loginEnabled, registerEnabled, captchaEnabled, telegramEnabled, telegramProfile, providers } = useAuthOptions();
+  useEffect(() => { if (!registerEnabled) setMode('login'); }, [registerEnabled]);
   const [mode, setMode] = useState<'login' | 'register'>('login');
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -134,13 +137,13 @@ export default function Login() {
   };
 
   useEffect(() => {
-    if (mode === 'register' && config.CAPTCHA_ENABLED === 'true') {
+    if (mode === 'register' && captchaEnabled) {
       void fetchCaptcha();
     } else {
       setCaptcha(null);
       setCaptchaAnswer('');
     }
-  }, [mode]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [mode, captchaEnabled]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (mode !== 'register') {
@@ -295,7 +298,7 @@ export default function Login() {
       return;
     }
 
-    if (config.CAPTCHA_ENABLED === 'true' && (!captcha || !captchaAnswer.trim())) {
+    if (captchaEnabled && (!captcha || !captchaAnswer.trim())) {
       notifications.show({ title: t('common.error'), message: t('auth.captchaRequired'), color: 'red' });
       return;
     }
@@ -322,7 +325,7 @@ export default function Login() {
       } else {
         notifications.show({ title: t('common.error'), message: t('auth.registerError'), color: 'red' });
       }
-      if (config.CAPTCHA_ENABLED === 'true') void fetchCaptcha();
+      if (captchaEnabled) void fetchCaptcha();
     } finally {
       setLoading(false);
     }
@@ -340,10 +343,10 @@ export default function Login() {
   const handleTelegramOidcAuth = async () => {
     setLoading(true);
     try {
-      const returnUrl = `${window.location.origin}${window.location.pathname}${window.location.search}${window.location.hash}`;
+      const returnUrl = `${window.location.origin}${window.location.pathname}`;
       const params = new URLSearchParams({
-        profile: config.TELEGRAM_BOT_AUTH_PROFILE,
-        register_if_not_exists: '1',
+        profile: telegramProfile,
+        register_if_not_exists: registerEnabled ? '1' : '0',
         return_url: returnUrl,
       });
       window.location.href = `/shm/v1/telegram/web/auth/start?${params.toString()}`;
@@ -537,7 +540,9 @@ export default function Login() {
               {mode === 'login' ? t('auth.loginTitle') : t('auth.registerTitle')}
           </Text>
 
-          {hasTelegramWebAppAuth && !showLoginForm && (
+          {!loginEnabled && <Text ta="center" c="dimmed">Вход временно отключён администратором.</Text>}
+
+          {loginEnabled && hasTelegramWebAppAuth && !showLoginForm && (
             <>
               <Button
                 color="blue"
@@ -561,9 +566,9 @@ export default function Login() {
             </>
           )}
 
-          {(hasTelegramOidcAuth || hasTelegramWidget) && (
+          {loginEnabled && (telegramEnabled || hasTelegramWidget) && (
             <>
-              {hasTelegramOidcAuth && (
+              {telegramEnabled && (
                 <Button
                   color="blue"
                   leftSection={<IconBrandTelegram size={18} />}
@@ -575,7 +580,7 @@ export default function Login() {
                 </Button>
               )}
 
-              {hasTelegramOidcAuth && hasTelegramWidget && <Divider label={t('common.or')} labelPosition="center" />}
+              {telegramEnabled && hasTelegramWidget && <Divider label={t('common.or')} labelPosition="center" />}
 
               {hasTelegramWidget && (
                 <Center>
@@ -592,7 +597,14 @@ export default function Login() {
             </>
           )}
 
-          {(!hasTelegramWebAppAuth || showLoginForm) && (
+          {loginEnabled && providers.map((provider) => (
+            <Button key={provider} variant="light" component="a"
+              href={`/shm/v1/oauth2/start/${provider}?${new URLSearchParams({ return_url: `${window.location.origin}${window.location.pathname}` })}`}>
+              {t('auth.login')} · {({ google: 'Google', yandex: 'Яндекс', vk: 'VK', github: 'GitHub' })[provider] || provider}
+            </Button>
+          ))}
+
+          {loginEnabled && (!hasTelegramWebAppAuth || showLoginForm) && (
             <>
               <form onSubmit={handleSubmit}>
                 <Stack gap="sm">
@@ -630,7 +642,7 @@ export default function Login() {
                       {...form.getInputProps('confirmPassword')}
                     />
                   )}
-                  {mode === 'register' && config.CAPTCHA_ENABLED === 'true' && (
+                  {mode === 'register' && captchaEnabled && (
                     <Group gap="xs" align="center">
                       {captcha?.image ? (
                         <img
@@ -734,7 +746,7 @@ export default function Login() {
                 </Stack>
               </form>
 
-              <Text size="sm" ta="center">
+              {registerEnabled && <Text size="sm" ta="center">
                 {mode === 'login' ? (
                   <>
                     {t('auth.noAccount')}{' '}
@@ -750,7 +762,7 @@ export default function Login() {
                     </Text>
                   </>
                 )}
-              </Text>
+              </Text>}
 
               {mode === 'login' && (
                 <Text size="sm" ta="center">

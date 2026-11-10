@@ -10,6 +10,19 @@ export function useNotificationFromUrl() {
     const params = new URLSearchParams(location.search)
     const title = params.get('_nt')
     const body = params.get('_nb')
+    const authStatus = params.get('tg_status') || params.get('oauth2_status')
+    if (authStatus) {
+      notifications.show({
+        color: authStatus === 'success' ? 'green' : 'red',
+        message: authStatus === 'success'
+          ? (location.pathname.includes('profile') ? 'Аккаунт успешно привязан.' : 'Вход выполнен.')
+          : 'Вход или привязка не завершены. Повторите попытку; проверьте, что аккаунт не привязан к другому пользователю.',
+      })
+      for (const key of ['tg_status', 'oauth2_status', 'error', 'msg']) params.delete(key)
+      const query = params.toString()
+      navigate(location.pathname + (query ? '?' + query : '') + location.hash, { replace: true })
+      return
+    }
     if (!title && !body) return
 
     notifications.show({

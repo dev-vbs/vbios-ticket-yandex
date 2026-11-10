@@ -835,6 +835,19 @@ sub telegram_oidc_init {
         @_,
     );
 
+    if ( $args{bind_to_profile} ) {
+        my %headers = parse_headers;
+        $args{session_id} ||= $headers{HTTP_SESSION_ID};
+        my $session = validate_session( session_id => $args{session_id} );
+        unless ( $session ) {
+            report->status(401);
+            report->error('A valid session is required to bind a Telegram account');
+            return undef;
+        }
+        # Freeze the authenticated session in state before leaving the cabinet.
+        $args{session_id} ||= Core::Utils::get_cookies('session_id');
+    }
+
     my $redirect_uri = $args{redirect_uri} || $self->telegram_web_callback_url;
     my $client_id = $self->telegram_oidc_client_id( profile => $args{profile} );
 

@@ -144,12 +144,16 @@ subtest 'Callback redirects to return_url on success' => sub {
 };
 
 subtest 'Callback redirects with tg_status=already_exists' => sub {
+    local *Core::Transport::Telegram::validate_session = sub {
+        return bless { user_id => 40092 }, 'Local::FakeSession';
+    };
     my $init = $tg->telegram_oidc_init(
         profile => 'telegram_bot',
         redirect_uri => 'https://example.com/shm/v1/telegram/web/callback',
         return_url => 'https://example.com/lk/profile',
         register_if_not_exists => 0,
         bind_to_profile => 1,
+        session_id => 'binding-session',
         bind_only_if_new => 1,
     );
 

@@ -247,7 +247,7 @@ sub version_info {
 
 sub api_data_by_auth {
     my $self = shift;
-    my $billing = $self->data_by_name('billing');
+    my $billing = $self->data_by_name('billing') || {};
     my $oauth2 = $self->data_by_name('oauth2') || {};
     my $telegram = $self->data_by_name('telegram') || {};
     my $passkey = $self->data_by_name('passkey') || {};
@@ -263,12 +263,16 @@ sub api_data_by_auth {
     }
 
     my $telegram_enabled = 0;
-    for my $bot ( values %$telegram ) {
+    my $telegram_profile;
+    for my $profile ( sort keys %$telegram ) {
+        my $bot = $telegram->{$profile};
         next unless ref $bot eq 'HASH';
         # если хотябы у одного бота заполнены client_id, client_secret и oidc_enabled
         # то считаем что авторизация по oidc включена
-        if ( $bot->{client_id} && $bot->{client_secret} && $bot->{oidc_enabled} ) {
+        if ( ($bot->{client_id} || $bot->{oidc_client_id})
+            && ($bot->{client_secret} || $bot->{oidc_client_secret}) && $bot->{oidc_enabled} ) {
             $telegram_enabled = 1;
+            $telegram_profile = $profile;
             last;
         }
     }
@@ -291,6 +295,7 @@ sub api_data_by_auth {
         },
         telegram => {
             enabled => $telegram_enabled ? JSON::true : JSON::false,
+            ( defined $telegram_profile ? ( profile => $telegram_profile ) : () ),
         },
     };
 }

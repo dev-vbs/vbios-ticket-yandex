@@ -155,6 +155,13 @@ state $routes //= {
 },
 '/user/auth' => {
     swagger => { tags => 'Пользователи' },
+    DELETE => {
+        controller => 'User',
+        method => 'logout_api',
+        skip_check_auth => 1,
+        params => {},
+        swagger => { summary => 'Выход из текущей сессии, включая OAuth2/Telegram OIDC' },
+    },
     POST => {
         controller => 'User',
         method => 'auth_api_safe',

@@ -1,5 +1,6 @@
 
 import axios from 'axios';
+import { useAuthOptions } from '../hooks/useAuthOptions';
 import { useState, useEffect, useCallback } from 'react';
 import { Card, Text, Stack, Group, Divider, Grid, Button, TextInput, Tooltip, ActionIcon, Avatar, Title, Modal, Loader, Center, Collapse, Alert, Skeleton, useMantineColorScheme } from '@mantine/core';
 import { IconUser, IconPhone, IconCopy, IconCheck, IconBrandTelegram, IconCreditCard, IconChevronDown, IconChevronUp, IconMail, IconAlertCircle, IconEdit } from '@tabler/icons-react';
@@ -66,6 +67,7 @@ interface ForecastData {
 }
 
 export default function Profile() {
+  const { telegramEnabled, telegramProfile } = useAuthOptions();
   const { telegramPhoto, userEmail: storeEmail, userEmailVerified: storeEmailVerified, setUserEmail, setUserEmailVerified, setUser, isEmailLoaded, setOpenEmailModal } = useStore();
   const emailBlocked = config.EMAIL_REQUIRED === 'true' && isEmailLoaded && !storeEmail;
   const [profile, setProfile] = useState<UserProfile | null>(null);
@@ -136,7 +138,7 @@ export default function Profile() {
       ]);
       const raw = telegramResponse.data?.data ?? telegramResponse.data;
       const data = Array.isArray(raw) ? raw[0] : raw;
-      const profileName = config.TELEGRAM_BOT_AUTH_PROFILE || config.TELEGRAM_WEBAPP_PROFILE;
+      const profileName = telegramProfile || config.TELEGRAM_WEBAPP_PROFILE;
       const entries = data && typeof data === 'object' ? Object.values(data) : [];
       const hasId = (value: any) => value && typeof value === 'object'
         && /^\d+$/.test(String(value.user_id ?? value.chat_id ?? ''));
@@ -148,7 +150,7 @@ export default function Profile() {
     } finally {
       setTelegramLoading(false);
     }
-  }, []);
+  }, [telegramProfile]);
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -199,51 +201,10 @@ export default function Profile() {
   }, []);
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const tgStatus = params.get('tg_status');
-
-    if (!tgStatus) return;
-
-    params.delete('tg_status');
-    params.delete('session_id');
-    params.delete('msg');
-    params.delete('error');
-    const nextSearch = params.toString();
-    window.history.replaceState({}, '', window.location.pathname + (nextSearch ? `?${nextSearch}` : '') + window.location.hash);
-
-    if (tgStatus === 'success') {
-      notifications.show({
-        title: t('common.success'),
-        message: t('auth.telegramBind'),
-        color: 'green',
-      });
-      if (config.ALLOW_TELEGRAM_PIN === 'true' || hasTelegramWidget) {
-        loadTelegramSettings();
-      }
-      return;
-    }
-
-    if (tgStatus === 'already_bound') {
-      notifications.show({
-        title: t('common.error'),
-        message: t('profile.telegramAlreadyBound'),
-        color: 'orange',
-      });
-      return;
-    }
-
-    notifications.show({
-      title: t('common.error'),
-      message: t('auth.telegramBindError'),
-      color: 'red',
-    });
-  }, [t, loadTelegramSettings]);
-
-  useEffect(() => {
     if (!profile) return;
 
     const loadExtras = async () => {
-      if (config.ALLOW_TELEGRAM_PIN === 'true' || hasTelegramWidget) {
+      if (config.ALLOW_TELEGRAM_PIN === 'true' || hasTelegramWidget || telegramEnabled) {
         await loadTelegramSettings();
       }
 
@@ -251,7 +212,7 @@ export default function Profile() {
     };
 
     loadExtras();
-  }, [profile, loadTelegramSettings]);
+  }, [profile, loadTelegramSettings, telegramEnabled]);
 
   const handleSave = async () => {
     const phone = formData.phone.trim();
@@ -321,35 +282,15 @@ export default function Profile() {
 
     setTelegramWaitingOpen(true);
     try {
-      const params = new URLSearchParams({
-        uid: String(profile.user_id),
-        return_url: `${window.location.origin}${window.location.pathname}${window.location.search}`,
-        profile: config.TELEGRAM_BOT_AUTH_PROFILE,
-        bind_to_profile: '1',
-        register_if_not_exists: '0',
+      const response = await telegramApi.initOidc({
+        return_url: `${window.location.origin}${window.location.pathname}`,
+        profile: telegramProfile,
       });
-      const startUrl = `/shm/v1/telegram/web/auth/start?${params.toString()}`;
-
-      const popup = window.open(startUrl, 'telegram-oidc-auth', 'popup=yes,width=520,height=760');
-      if (!popup) {
-        throw new Error('Telegram OIDC popup blocked');
-      }
-
-      const startedAt = Date.now();
-      const pollTimer = window.setInterval(async () => {
-        if (!popup.closed) {
-          if (Date.now() - startedAt < 180000) {
-            return;
-          }
-          window.clearInterval(pollTimer);
-          setTelegramWaitingOpen(false);
-          return;
-        }
-
-        window.clearInterval(pollTimer);
-        setTelegramWaitingOpen(false);
-        await loadTelegramSettings();
-      }, 700);
+      const raw = response.data?.data ?? response.data;
+      const result = Array.isArray(raw) ? raw[0] : raw;
+      const destination = new URL(result?.auth_url);
+      if (destination.origin !== 'https://oauth.telegram.org') throw new Error('Invalid Telegram authorization URL');
+      window.location.assign(destination.href);
     } catch {
       setTelegramWaitingOpen(false);
       notifications.show({
@@ -841,7 +782,7 @@ export default function Profile() {
         </Card>
       )}
 
-      {(config.ALLOW_TELEGRAM_PIN === 'true' || hasTelegramWidget) && (
+      {(config.ALLOW_TELEGRAM_PIN === 'true' || hasTelegramWidget || telegramEnabled) && (
         <Card withBorder radius="md" p="lg">
           <Group justify="space-between" mb="md">
             <Text fw={500}>{t('profile.telegram')}</Text>

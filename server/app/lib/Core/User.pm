@@ -28,6 +28,26 @@ use MIME::Base32;
 
 sub table { return 'users' };
 
+# Cookie-based OAuth sessions must be revoked on the server: HttpOnly cookies
+# cannot be removed by the cabinet's JavaScript.
+sub logout_api {
+    my $self = shift;
+    my %headers = Core::Utils::parse_headers();
+    my $session = SHM::validate_session(
+        session_id => $headers{HTTP_SESSION_ID} || get_cookies('session_id'),
+    );
+    $session->delete if $session;
+    require CGI::Cookie;
+    my $cookie = CGI::Cookie->new(
+        -name => 'session_id', -value => '', -path => '/',
+        -httponly => 1, -samesite => 'Lax', -expires => '-1d',
+    );
+    return { msg => 'Logged out', session_cookie => $cookie->as_string } if $ENV{SHM_TEST};
+    Core::Utils::print_header(cookie => $cookie);
+    Core::Utils::print_json({ msg => 'Logged out' });
+    exit 0;
+}
+
 sub structure {
     return {
         user_id => {
@@ -296,6 +316,10 @@ sub auth_api_safe {
     my $session_id = $user->gen_session( login => $user->{login} )->{id};
 
     $user->set( last_login => now );
+
+    # Replace a previous (possibly expired) OIDC HttpOnly cookie as well.
+    Core::Utils::print_header(cookie => Core::Utils::session_id_cookie($session_id))
+        unless $ENV{SHM_TEST};
 
     return {
         id => $session_id,

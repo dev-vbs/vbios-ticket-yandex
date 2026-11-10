@@ -37,7 +37,7 @@ api.interceptors.response.use(
   },
   (error) => {
     const isAuthRequest = error.config?.url?.includes('/auth');
-    if (error.response?.status === 401 && !isAuthRequest) {
+    if (error.response?.status === 401 && !isAuthRequest && !(error.config?.url === '/user' && error.config?.method === 'get')) {
       removeCookie();
       window.location.href = '/';
     }
@@ -66,7 +66,8 @@ export const auth = {
 
   getCurrentUser: () => api.get('/user'),
 
-  logout: () => {
+  logout: async () => {
+    await api.delete('/user/auth');
     removeCookie();
     window.location.href = '/login';
   },
@@ -303,7 +304,7 @@ export const telegramApi = {
   getSettings: () => api.get('/telegram/user'),
   updateSettings: (data: Record<string, unknown>) => api.post('/telegram/user', data),
   unbindAccount: () => api.delete('/telegram/user'),
-  initOidc: (params: { uid: number; return_url: string; profile?: string }) => api.get('/telegram/web/auth/init', {
+  initOidc: (params: { return_url: string; profile?: string }) => api.get('/telegram/web/auth/init', {
     params: {
       bind_to_profile: 1,
       register_if_not_exists: 0,

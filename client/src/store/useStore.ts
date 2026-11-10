@@ -1,5 +1,7 @@
 import { create } from 'zustand';
 import { removeCookie } from '../api/cookie';
+import { api } from '../api/client';
+import { notifications } from '@mantine/notifications';
 import { clearOfflineCabinet } from '../lib/offlineConnection';
 
 interface User {
@@ -77,7 +79,15 @@ export const useStore = create<AppState>((set) => ({
   },
   setOpenVerifyModal: (open) => set({ openVerifyModal: open }),
   setOpenEmailModal: (open) => set({ openEmailModal: open }),
-  logout: () => {
+  logout: async () => {
+    try {
+      await api.delete('/user/auth');
+    } catch (error) {
+      if (!(error && typeof error === 'object' && 'response' in error && (error.response as { status?: number })?.status === 401)) {
+        notifications.show({ color: 'red', message: 'Не удалось завершить сессию. Проверьте соединение и повторите выход.' });
+        return;
+      }
+    }
     removeCookie();
     localStorage.removeItem('shm_telegram_photo');
     clearOfflineCabinet();

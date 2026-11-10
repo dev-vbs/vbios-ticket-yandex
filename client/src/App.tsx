@@ -11,7 +11,7 @@ import { BrowserRouter, Routes, Route, Navigate, Link, useLocation, useNavigate,
 import { useTranslation } from 'react-i18next';
 import { useStore } from './store/useStore';
 import { auth } from './api/client';
-import { getCookie, removeCookie, parseAndSavePartnerId, parseAndSaveSessionId } from './api/cookie';
+import { removeCookie, parseAndSavePartnerId, parseAndSaveSessionId } from './api/cookie';
 import { config } from './config';
 import { isTelegramWebApp } from './constants/webapp';
 import { useEmailRequired } from './hooks/useEmailRequired';
@@ -111,8 +111,6 @@ function AppContent() {
   useEffect(() => {
     if (hasAddToHomeScreen) { setIsLoading(false); return; }
     const checkAuth = async () => {
-      const token = getCookie();
-      if (!token) { setIsLoading(false); return; }
       try {
         const response = await auth.getCurrentUser();
         const responseData = response.data.data;
