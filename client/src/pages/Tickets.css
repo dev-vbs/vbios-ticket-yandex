@@ -77,3 +77,32 @@
 .ticket-reply-box .mantine-ActionIcon-root { min-width:30px;min-height:30px; }
 .ticket-reply-box .mantine-Textarea-input { padding-right:86px; }
 @media(max-width:768px){.tickets-page .page-header>div{width:100%}.ticket-message{max-width:94%!important;padding:12px!important}.ticket-conversation__header>.mantine-Group-root{flex-basis:100%}}
+
+.ticket-create__header {
+  border-bottom: 1px solid var(--mantine-color-default-border);
+  margin-bottom: var(--mantine-spacing-md);
+}
+.ticket-create__options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--mantine-spacing-sm);
+}
+.ticket-create__attachments {
+  border: 1px dashed var(--mantine-color-default-border);
+  background: var(--mantine-color-default-hover);
+  border-radius: var(--mantine-radius-md);
+  padding: var(--mantine-spacing-sm);
+}
+.ticket-create__file {
+  padding: 4px 8px;
+  border-radius: var(--mantine-radius-sm);
+  background: var(--mantine-color-body);
+}
+.ticket-create__actions {
+  border-top: 1px solid var(--mantine-color-default-border);
+  padding-top: var(--mantine-spacing-md);
+}
+@media (max-width: 480px) {
+  .ticket-create__options { grid-template-columns: 1fr; }
+  .ticket-create__actions > button:last-child { flex: 1; }
+}

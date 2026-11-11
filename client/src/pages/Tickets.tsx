@@ -1030,11 +1030,14 @@ export default function Tickets() {
       <Modal
         opened={createOpen}
         onClose={() => setCreateOpen(false)}
-        title={t('tickets.createTicket')}
+        title={<Group gap="sm" wrap="nowrap"><ThemeIcon size="lg" radius="md" variant="light"><IconMessageCircle size={20} /></ThemeIcon><Text component="span" fw={700}>{t('tickets.createTicket')}</Text></Group>}
+        classNames={{ content: 'ticket-create', header: 'ticket-create__header' }}
+        radius="lg"
         fullScreen={!!isMobile}
         size="lg"
       >
         <Stack gap="md">
+          <Text size="sm" c="dimmed">Опишите вопрос и приложите скриншот, если он поможет разобраться.</Text>
           <Select
             label="Кто должен ответить"
             description="ИИ помогает с общими вопросами. Сотрудник проверяет оплату и решает вопросы с услугами."
@@ -1051,6 +1054,7 @@ export default function Tickets() {
             withAsterisk
           />
 
+          <div className="ticket-create__options">
           <Select
             label={t('tickets.ticketTypeLabel')}
             value={newType}
@@ -1079,6 +1083,8 @@ export default function Tickets() {
               { value: 'urgent', label: t('tickets.priority.urgent') },
             ]}
           />
+
+          </div>
 
           {newType === 'service' && (
             servicesLoading ? (
@@ -1138,10 +1144,11 @@ export default function Tickets() {
             minRows={5}
           />
 
-          <Stack gap={4}>
+          <Stack gap="xs" className="ticket-create__attachments">
+            <Group gap="xs"><IconPaperclip size={17} /><Text size="sm" fw={600}>Вложения</Text>{newFiles.length > 0 && <Badge size="xs" variant="light">{newFiles.length}</Badge>}</Group>
             <Text size="xs" c="dimmed">JPEG, PNG, WebP или GIF — до 5 МБ на изображение.</Text>
             {newFiles.map((file, index) => (
-              <Group key={`${file.name}_${index}`} justify="space-between" wrap="nowrap">
+              <Group key={`${file.name}_${index}`} justify="space-between" wrap="nowrap" className="ticket-create__file">
                 <Text size="sm" lineClamp={1}>{file.name}</Text>
                 <ActionIcon variant="subtle" color="red" onClick={() => removeNewFile(index)} aria-label="Удалить вложение">
                   <IconTrash size={16} />
@@ -1149,13 +1156,13 @@ export default function Tickets() {
               </Group>
             ))}
             <FileButton onChange={onPickNewFiles} accept={IMAGE_ACCEPT} multiple>
-              {(props) => <Button {...props} variant="light" leftSection={<IconPaperclip size={16} />}>Прикрепить изображения</Button>}
+              {(props) => <Button {...props} variant="default" leftSection={<IconPlus size={16} />}>Прикрепить изображения</Button>}
             </FileButton>
           </Stack>
 
-          <Group justify="flex-end">
+          <Group justify="flex-end" className="ticket-create__actions">
             <Button variant="light" onClick={() => setCreateOpen(false)}>{t('common.cancel')}</Button>
-            <Button onClick={createTicket} loading={creating}>{t('tickets.send')}</Button>
+            <Button onClick={createTicket} loading={creating} leftSection={<IconSend size={16} />}>{t('tickets.send')}</Button>
           </Group>
         </Stack>
       </Modal>
