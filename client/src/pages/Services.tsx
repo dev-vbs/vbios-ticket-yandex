@@ -820,7 +820,7 @@ function ServiceCard({ service, onClick, isChild = false, isLastChild = false }:
         <Group justify="space-between" align="flex-start" gap="md">
           <div style={{ minWidth: 0 }}>
             <Text size="xs" c="dimmed" mb={4}>Услуга #{service.user_service_id}</Text>
-            <Text fw={700} style={{ overflowWrap: 'anywhere' }}>{service.service.name}</Text>
+            <Text size="sm" fw={600} style={{ overflowWrap: 'anywhere' }}>{service.service.name}</Text>
           </div>
           <Badge color={statusColor} variant="light" size="lg" radius="sm">{statusLabel}</Badge>
         </Group>
@@ -1009,7 +1009,7 @@ export default function Services() {
     if (!detailService) return <Stack className="service-detail-page" gap="md"><Button component={Link} to="/services" variant="subtle" leftSection={<IconArrowLeft size={16} />}>Все услуги</Button><Paper withBorder p="xl" radius="lg"><Title order={3}>Услуга не найдена</Title><Text c="dimmed" mt="xs">Обновите список услуг и попробуйте ещё раз.</Text><Button mt="md" onClick={() => void fetchServices()}>Обновить список</Button></Paper></Stack>;
     const statusLabel = t(`status.${detailService.status}`, detailService.status);
     const expiry = getExpiryState(detailService.expire);
-    return <Stack gap="lg" className="service-detail-page"><Button component={Link} to="/services" variant="subtle" className="service-detail-page__back" leftSection={<IconArrowLeft size={16} />}>Все услуги</Button><Paper withBorder radius="lg" p="xl" className="service-detail-page__summary" style={{ borderRadius: 20, borderTop: '3px solid var(--mantine-primary-color-filled)', background: 'var(--mantine-color-body)' }}><Group justify="space-between" align="flex-start"><div><Text c="dimmed" size="sm">Услуга #{detailService.user_service_id}</Text><Title order={2} mt={6} style={{ fontSize: 'clamp(1.35rem, 4vw, 1.9rem)', lineHeight: 1.3, overflowWrap: 'anywhere' }}>{detailService.service.name}</Title><Text c="dimmed" mt="xs">Подключение, срок действия и настройки подписки.</Text></div><Stack gap="xs" align="flex-end"><Badge color={statusColors[detailService.status] || 'gray'} size="lg" variant="light">{statusLabel}</Badge>{expiry.label && <Text className={`expiry-indicator expiry-indicator--${expiry.tone}`}><IconCalendarTime size={15} />{expiry.label}</Text>}</Stack></Group></Paper><ServiceDetail service={detailService} onDelete={() => { void fetchServices(); navigate('/services'); }} onChangeTariff={handleChangeTariff} /></Stack>;
+    return <Stack gap="lg" className="service-detail-page"><Button component={Link} to="/services" variant="subtle" className="service-detail-page__back" leftSection={<IconArrowLeft size={16} />}>Все услуги</Button><Paper withBorder radius="lg" p="xl" className="service-detail-page__summary" style={{ borderRadius: 20, borderTop: '3px solid var(--mantine-primary-color-filled)', background: 'var(--mantine-color-body)' }}><Group justify="space-between" align="flex-start"><div><Text c="dimmed" size="xs">Услуга #{detailService.user_service_id}</Text><Title order={2} mt={6} style={{ fontSize: 'clamp(1rem, 2.5vw, 1.25rem)', lineHeight: 1.3, overflowWrap: 'anywhere' }}>{detailService.service.name}</Title><Text c="dimmed" size="sm" mt={6}>Подключение, срок действия и настройки подписки.</Text></div><Stack gap="xs" align="flex-end"><Badge color={statusColors[detailService.status] || 'gray'} size="lg" variant="light">{statusLabel}</Badge>{expiry.label && <Text className={`expiry-indicator expiry-indicator--${expiry.tone}`}><IconCalendarTime size={15} />{expiry.label}</Text>}</Stack></Group></Paper><ServiceDetail service={detailService} onDelete={() => { void fetchServices(); navigate('/services'); }} onChangeTariff={handleChangeTariff} /></Stack>;
   }
 
   return (
@@ -1069,8 +1069,8 @@ export default function Services() {
             <Accordion.Item key={category} value={category}>
               <Accordion.Control>
                 <Group>
-                  <Text fw={500}>{ categoryTitle }</Text>
-                  <Badge variant="light" size="sm">{categoryServices.length}</Badge>
+                  <Text size="sm" fw={600}>{ categoryTitle }</Text>
+                  <Badge variant="light" size="xs">{categoryServices.length}</Badge>
                 </Group>
               </Accordion.Control>
               <Accordion.Panel>
