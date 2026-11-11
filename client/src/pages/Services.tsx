@@ -820,8 +820,7 @@ function ServiceCard({ service, onClick, isChild = false, isLastChild = false }:
         <Group justify="space-between" align="flex-start" gap="md">
           <div style={{ minWidth: 0 }}>
             <Text size="xs" c="dimmed" mb={4}>Услуга #{service.user_service_id}</Text>
-            <Title order={3} size="h4" style={{ overflowWrap: 'anywhere' }}>{service.service.name}</Title>
-            <Text size="sm" c="dimmed" mt={4}>Подключение, срок действия и настройки подписки.</Text>
+            <Text fw={700} style={{ overflowWrap: 'anywhere' }}>{service.service.name}</Text>
           </div>
           <Badge color={statusColor} variant="light" size="lg" radius="sm">{statusLabel}</Badge>
         </Group>
