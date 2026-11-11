@@ -177,7 +177,7 @@ function ServiceDetail({ service, onDelete, onChangeTariff }: ServiceDetailProps
   const [forecastLoading, setForecastLoading] = useState(false);
   const [paySystems, setPaySystems] = useState<PaySystem[]>([]);
   const [selectedPaySystem, setSelectedPaySystem] = useState<string | null>(null);
-  const [payAmount, setPayAmount] = useState<number | string>(0);
+  const payAmount = forecastTotal ?? 0;
   const [paySystemsLoading, setPaySystemsLoading] = useState(false);
   const [paying, setPaying] = useState(false);
 
@@ -203,11 +203,13 @@ function ServiceDetail({ service, onDelete, onChangeTariff }: ServiceDetailProps
   const canDelete = config.ALLOW_SERVICE_DELETE === 'true' && ['BLOCK', 'NOT PAID', 'ERROR'].includes(service.status);
   const canStop = config.ALLOW_SERVICE_BLOCKED === 'true' && service.status === 'ACTIVE';
   const canChange = config.ALLOW_SERVICE_CHANGE === 'true' && ['BLOCK', 'ACTIVE'].includes(service.status);
+  const isExpired = !!service.expire && new Date(service.expire).getTime() <= Date.now();
   const isNotPaid = service.status === 'NOT PAID';
 
   useEffect(() => {
     if (!isNotPaid) return;
     const fetchForecast = async () => {
+      setForecastTotal(null);
       setForecastLoading(true);
       try {
         const response = await userApi.getForecast();
@@ -218,13 +220,8 @@ function ServiceDetail({ service, onDelete, onChangeTariff }: ServiceDetailProps
           const item = forecast.items?.find(
             (it: ForecastItem) => String(it.user_service_id) === String(service.user_service_id)
           );
-          if (item) {
-            const needToPay = Math.max(0, Math.ceil((item.total - balance) * 100) / 100);
-            setForecastTotal(needToPay);
-            setPayAmount(needToPay);
-          } else if (forecast.total > 0) {
-            setForecastTotal(forecast.total);
-            setPayAmount(Math.max(0, Math.ceil(forecast.total * 100) / 100));
+          if (item && Number.isFinite(Number(item.total)) && Number.isFinite(Number(balance))) {
+            setForecastTotal(Math.max(0, Math.ceil((Number(item.total) - Number(balance)) * 100) / 100));
           }
         }
       } catch {
@@ -260,7 +257,7 @@ function ServiceDetail({ service, onDelete, onChangeTariff }: ServiceDetailProps
 
   const handlePay = async () => {
     const paySystem = paySystems.find(ps => ps.shm_url === selectedPaySystem);
-    if (!paySystem) return;
+    if (!paySystem || payAmount <= 0) return;
     setPaying(true);
     try {
       if (paySystem.internal || paySystem.recurring) {
@@ -644,9 +641,8 @@ function ServiceDetail({ service, onDelete, onChangeTariff }: ServiceDetailProps
                     <NumberInput
                       label={t('payments.amount')}
                       value={payAmount}
-                      onChange={setPayAmount}
-                      min={1}
-                      step={10}
+                      readOnly
+                      hideControls
                       decimalScale={2}
                       suffix=" ₽"
                       size="sm"
@@ -658,12 +654,12 @@ function ServiceDetail({ service, onDelete, onChangeTariff }: ServiceDetailProps
                       loading={paying}
                       disabled={!selectedPaySystem}
                     >
-                      {t('services.payService', { amount: payAmount })}
+                      {isExpired ? `Пополнить для продления на ${payAmount.toFixed(2)} ${t('common.currency')}` : t('services.payService', { amount: payAmount })}
                     </Button>
                   </>
                 ) : null}
               </>
-            ) : null}
+            ) : <Text size="sm" c="dimmed">{forecastTotal === 0 ? "Доплата по этой услуге не требуется." : "Не удалось получить сумму по этой услуге. Обновите страницу и попробуйте снова."}</Text>}
           </Stack>
         </Paper>
       )}
