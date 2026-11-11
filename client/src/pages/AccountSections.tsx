@@ -18,7 +18,7 @@ export function BalancePage() {
 export function OperationsPage() {
   const [payments, setPayments] = useState(false);
   const [withdrawals, setWithdrawals] = useState(false);
-  return <Stack gap="xl"><header><Title order={1}>История операций</Title><Text c="dimmed" mt="sm">Пополнения и списания по вашему аккаунту.</Text></header><PaymentList /><section className="vpn-finance-panel"><Title order={2}>Подробная история</Title><Text c="dimmed" mt="sm">Посмотрите все пополнения или списания за подписки.</Text><Group mt="xl"><Button onClick={() => setPayments(true)}>Все пополнения</Button><Button variant="default" onClick={() => setWithdrawals(true)}>Списания за услуги</Button></Group></section><PayHistoryModal opened={payments} onClose={() => setPayments(false)} /><WithdrawHistoryModal opened={withdrawals} onClose={() => setWithdrawals(false)} /></Stack>;
+  return <Stack gap="xl"><header><Title order={1}>История операций</Title><Text c="dimmed" mt="sm">Пополнения и списания по вашему аккаунту.</Text></header><PaymentList /><Group gap="sm"><Button onClick={() => setPayments(true)}>Все пополнения</Button><Button variant="default" onClick={() => setWithdrawals(true)}>Списания за услуги</Button></Group><PayHistoryModal opened={payments} onClose={() => setPayments(false)} /><WithdrawHistoryModal opened={withdrawals} onClose={() => setWithdrawals(false)} /></Stack>;
 }
 
 type PaymentEntry = { id?: number; money: number | string; date?: string; created?: string; pay_system_id?: string };

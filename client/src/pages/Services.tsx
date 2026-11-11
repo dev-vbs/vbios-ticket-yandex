@@ -1014,7 +1014,7 @@ export default function Services() {
 
   return (
     <Stack gap="lg" className="services-overview">
-      <DataLoadStatus loading={refreshing} error={loadError && "Не удалось обновить услуги"} updatedAt={updatedAt} onRetry={() => void fetchServices()} />
+      <DataLoadStatus showRefresh={false} loading={refreshing} error={loadError && "Не удалось обновить услуги"} updatedAt={updatedAt} onRetry={() => void fetchServices()} />
       <Group className="page-header services-overview__header" justify="space-between">
         <div style={{ minWidth: 0 }}><Title className="page-header__title" order={2}>{t('services.title')}</Title><Text c="dimmed" size="sm" mt={6}>Ваши подписки, подключение и управление тарифами.</Text></div>
         <Group>
@@ -1032,26 +1032,11 @@ export default function Services() {
         </Group>
       </Group>
 
-      <Card withBorder radius="lg" p="lg" style={{ background: 'var(--mantine-primary-color-light)' }}>
-        <Group justify="space-between" align="flex-start">
-          <div>
-            <Title order={3} size="h4">Состояние услуг</Title>
-            <Text size="sm" c="dimmed" mt={4}>Откройте услугу, чтобы подключиться или управлять подпиской.</Text>
-          </div>
-          <Badge color="cyan" variant="light">{flatServices.filter((item) => item.status === 'ACTIVE').length}/{flatServices.length} активны</Badge>
-        </Group>
-        <Stack gap="sm" mt="md">
-          <Group justify="space-between">
-            <Group gap="sm"><IconCheck size={18} color="var(--mantine-color-green-6)" /><Text size="sm">Активные услуги</Text></Group>
-            <Text size="sm" fw={600}>{flatServices.filter((item) => item.status === 'ACTIVE').length}</Text>
-          </Group>
-          <Divider />
-          <Group justify="space-between">
-            <Group gap="sm"><IconCreditCard size={18} color="var(--mantine-color-orange-6)" /><Text size="sm">Ожидают оплаты</Text></Group>
-            <Text size="sm" fw={600}>{flatServices.filter((item) => item.status === 'NOT PAID').length}</Text>
-          </Group>
-        </Stack>
-      </Card>
+      <Group className="services-summary" gap="sm">
+<Badge color="green" variant="light">Активны: {flatServices.filter((item) => item.status === 'ACTIVE').length}</Badge>
+<Badge color="orange" variant="light">Ожидают оплаты: {flatServices.filter((item) => item.status === 'NOT PAID').length}</Badge>
+<Text size="sm" c="dimmed">Всего: {flatServices.length}</Text>
+</Group>
 
       <TextInput size="md" radius="md" className="services-search" value={search} onChange={(event) => setSearch(event.currentTarget.value)} placeholder="Поиск по названию или номеру услуги" leftSection={<IconSearch size={16} />} />
 

@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 
 import axios from 'axios';
 import { useAuthOptions } from '../hooks/useAuthOptions';
@@ -10,7 +11,7 @@ import { useTranslation } from 'react-i18next';
 import { userApi, telegramApi, userEmailApi, referralsApi } from '../api/client';
 import { encodePartnerIdBase64url } from '../api/cookie';
 import PayModal from '../components/PayModal';
-import PromoModal from '../components/PromoModal';
+
 import SecuritySettings from '../components/security/SecuritySettings';
 import { useStore } from '../store/useStore';
 import { config } from '../config';
@@ -82,7 +83,7 @@ export default function Profile() {
   const [telegramWaitingOpen, setTelegramWaitingOpen] = useState(false);
   const [payModalOpen, setPayModalOpen] = useState(false);
   const [payModalAmount, setPayModalAmount] = useState<number | undefined>(undefined);
-  const [promoModalOpen, setPromoModalOpen] = useState(false);
+
   const [emailModalOpen, setEmailModalOpen] = useState(false);
   const [emailInput, setEmailInput] = useState('');
   const [emailSaving, setEmailSaving] = useState(false);
@@ -269,12 +270,6 @@ export default function Profile() {
     setEditing(false);
   };
 
-  const refreshProfile = async () => {
-    const profileResponse = await userApi.getProfile();
-    const profileData = profileResponse.data.data;
-    const data = Array.isArray(profileData) ? profileData[0] : profileData;
-    setProfile(data);
-  };
 
   const handleTelegramOidcBind = async (event: any) => {
     event.preventDefault();
@@ -520,7 +515,7 @@ export default function Profile() {
           <Card className="profile-card profile-card--account" withBorder radius="lg" p="lg" style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
             <Group>
               <Avatar
-                size={80}
+                size={56}
                 radius="xl"
                 color="blue"
                 src={telegramPhoto || undefined}
@@ -575,27 +570,9 @@ export default function Profile() {
 
             <Divider my="md" />
 
-            <Group justify="space-between" align="center">
-              <div>
-                <Group gap="xs" align="baseline">
-                  {t('profile.balance')}: <Text c="cyan" size="xl" fw={700}>{profile.balance || '0.00'} {t('common.currency')}</Text>
-                </Group>
-              </div>
-              <Button leftSection={<IconCreditCard size={18} />} color="cyan" onClick={() => emailBlocked ? setOpenEmailModal(true) : (setPayModalAmount(forecast?.total ?? undefined), setPayModalOpen(true))}>
-                {t('profile.topUp')}
-              </Button>
-            </Group>
-
-            <Divider my="md" />
-
-            <Group justify="space-between" align="center">
-              <div>
-                  <Text size="xm" c="dimmed">{t('profile.bonus')}: {profile.bonus}</Text>
-              </div>
-              <Button onClick={() => emailBlocked ? setOpenEmailModal(true) : setPromoModalOpen(true)} color="cyan">
-                {t('profile.enterPromo')}
-              </Button>
-            </Group>
+            <Button component={Link} to="/balance" variant="light" fullWidth>
+              Баланс, бонусы и промокод
+            </Button>
 
           </Card>
 
@@ -826,11 +803,7 @@ export default function Profile() {
 
       <PayModal opened={payModalOpen} onClose={() => setPayModalOpen(false)} initialAmount={payModalAmount} />
 
-      <PromoModal
-        opened={promoModalOpen}
-        onClose={() => setPromoModalOpen(false)}
-        onSuccess={refreshProfile}
-      />
+
 
       <Modal
         opened={telegramWaitingOpen}

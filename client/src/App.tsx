@@ -5,8 +5,8 @@ import '@mantine/notifications/styles.css';
 import { useEffect, useState } from 'react';
 import { MantineProvider, Group, Text, Button, Modal, TextInput, Stack, DirectionProvider, Center, Loader, Box, localStorageColorSchemeManager } from '@mantine/core';
 import { Notifications } from '@mantine/notifications';
-import { useMediaQuery, useHotkeys } from '@mantine/hooks';
-import { BrowserRouter, Routes, Route, Navigate, Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import { useHotkeys } from '@mantine/hooks';
+import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 
 import { useTranslation } from 'react-i18next';
 import { useStore } from './store/useStore';
@@ -22,8 +22,6 @@ import PayModal from './components/PayModal';
 import WithdrawHistoryModal from './components/WithdrawHistoryModal';
 import { PWAInstallBanner } from './components/PWAInstallBanner';
 import { LegalLinks } from './components/LegalLinks';
-import { WebAppHeader } from './components/WebAppHeader';
-import { BottomNavigation } from './components/BottomNavigation';
 import { theme } from './theme';
 
 const colorSchemeManager = localStorageColorSchemeManager({ key: 'vbios-color-scheme-v2' });
@@ -48,7 +46,6 @@ function AppContent() {
   const isPWA = window.matchMedia('(display-mode: standalone)').matches || !!(window.navigator as Navigator & { standalone?: boolean }).standalone;
 
   const { isAuthenticated, isLoading, setUser, setIsLoading, user } = useStore();
-  const isMobile = useMediaQuery('(max-width: 768px)');
   const { t, i18n } = useTranslation();
   const {
     modalOpen: globalEmailModalOpen,
@@ -246,33 +243,6 @@ function AppContent() {
     </Modal>
   );
 
-  if (isTelegramWebApp || isMobile) {
-    return (
-      <>
-        {emailRequiredModal}
-        {verifyRequiredModal}
-        {versionModal}
-        <Box className="vpn-cabinet vpn-mobile" style={{ minHeight: '100vh', paddingBottom: 'calc(88px + env(safe-area-inset-bottom, 0px))' }}>
-          <WebAppHeader /><nav className="vpn-tabs" style={{ margin: '12px 16px' }} aria-label="Дополнительные разделы"><Link to="/balance">Баланс</Link><Link to="/operations">Операции</Link><Link to="/notifications">Уведомления</Link></nav>
-          <Box className="mobile-route-shell">
-            <Routes>
-              <Route path="/" element={<Dashboard />} />
-              <Route path="/services" element={<Services />} />
-              <Route path="/services/:serviceId" element={<Services />} />
-              <Route path="/profile" element={<Profile />} />
-              <Route path="/tickets" element={<Tickets />} /><Route path="/balance" element={<BalancePage />} /><Route path="/operations" element={<OperationsPage />} /><Route path="/notifications" element={<NotificationsPage />} />
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </Box>
-          <LegalLinks />
-          <BottomNavigation />
-        </Box>
-        <PayHistoryModal opened={payHistoryOpen} onClose={() => setPayHistoryOpen(false)} />
-        <WithdrawHistoryModal opened={withdrawHistoryOpen} onClose={() => setWithdrawHistoryOpen(false)} />
-        <PWAInstallBanner />
-      </>
-    );
-  }
 
 
   return (
