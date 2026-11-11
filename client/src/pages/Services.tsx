@@ -1,7 +1,7 @@
 import DataLoadStatus from '../components/DataLoadStatus';
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
-import { Card, Timeline, Text, Stack, Group, Badge, Button, Divider, ActionIcon, Loader, Center, Paper, Title, Tabs, Code, Tooltip, Accordion, Box, Select, NumberInput, Pagination, Alert, TextInput, Skeleton } from '@mantine/core';
+import { Card, Timeline, Text, Stack, Group, Badge, Button, Divider, ActionIcon, Loader, Center, Paper, Title, Tabs, Code, Tooltip, Box, Select, NumberInput, Pagination, Alert, TextInput, Skeleton } from '@mantine/core';
 import { IconQrcode, IconCopy, IconCheck, IconDownload, IconRefresh, IconTrash, IconPlus, IconPlayerStop, IconExchange, IconCreditCard, IconWallet, IconDeviceMobileCog, IconArrowLeft, IconSearch, IconCalendarTime, IconWifi, IconWifiOff } from '@tabler/icons-react';
 import { useDisclosure, useClipboard } from '@mantine/hooks';
 import { useTranslation } from 'react-i18next';
@@ -808,34 +808,29 @@ function ServiceCard({ service, onClick, isChild = false, isLastChild = false }:
     );
   }
 
+  const expiry = getExpiryState(service.expire);
   return (
-    <Card
+    <Paper
+      component="button"
+      type="button"
       withBorder
-      radius="md"
-      p="md"
-      className="service-overview-card" style={{ cursor: 'pointer', borderInlineStart: `3px solid var(--mantine-color-${statusColor}-6)`, borderRadius: 16, padding: 20 }}
+      radius="lg"
+      p="clamp(16px, 3vw, 32px)"
+      className="service-detail-page__summary service-list-card"
       onClick={onClick}
     >
-      <Stack gap="sm">
-        <Group justify="space-between" align="flex-start" gap="md">
-          <div style={{ minWidth: 0 }}>
-            <Text size="xs" c="dimmed" mb={4}>Услуга #{service.user_service_id}</Text>
-            <Title order={3} size="h4" style={{ overflowWrap: 'anywhere' }}>{service.service.name}</Title>
-            <Text size="sm" c="dimmed" mt={4}>Подключение, срок действия и настройки подписки.</Text>
-          </div>
-          <Badge color={statusColor} variant="light" size="lg" radius="sm">{statusLabel}</Badge>
-        </Group>
-        <Divider />
-        <Group justify="space-between" gap="md">
-          <Text size="sm" c="dimmed">Стоимость</Text>
-          <Text fw={700}>{service.service.cost > 0 ? `${service.service.cost} ${t('common.currency')}` : '—'}</Text>
-        </Group>
-        <Group justify="space-between" gap="md">
-          <Text size="sm" c="dimmed">Действует до</Text>
-          <Text size="sm" fw={600}>{service.expire ? new Date(service.expire as string).toLocaleDateString(i18n.language === 'ru' ? 'ru-RU' : 'en-US') : 'Не указан'}</Text>
-        </Group>
-      </Stack>
-    </Card>
+      <Group justify="space-between" align="flex-start" gap="sm">
+        <div style={{ flex: '1 1 240px', minWidth: 0 }}>
+          <Text c="dimmed" size="sm">Услуга #{service.user_service_id}</Text>
+          <Title order={3} mt={6} style={{ fontSize: 'clamp(1.25rem, 3vw, 1.9rem)', overflowWrap: 'anywhere' }}>{service.service.name}</Title>
+          <Text c="dimmed" mt="xs">Подключение, срок действия и настройки подписки.</Text>
+        </div>
+        <Stack gap="xs" align="flex-start">
+          <Badge color={statusColor} size="lg" variant="light">{statusLabel}</Badge>
+          {expiry.label && <Text className={`expiry-indicator expiry-indicator--${expiry.tone}`}><IconCalendarTime size={15} />{expiry.label}</Text>}
+        </Stack>
+      </Group>
+    </Paper>
   );
 }
 
@@ -1053,10 +1048,10 @@ export default function Services() {
           </Center>
         </Paper>
       ) : (
-        <Accordion variant="separated" radius="md" multiple defaultValue={Object.keys(groupedServices)}>
+        <Stack gap="lg">
           {Object.entries(groupedServices).map(([category, categoryServices]) => {
-            const page = categoryPages[category] || 1;
             const totalPages = Math.ceil(categoryServices.length / perPage);
+            const page = Math.min(categoryPages[category] || 1, totalPages);
             const paginatedServices = categoryServices.slice((page - 1) * perPage, page * perPage);
             let categoryTitle;
             if ( category === 'vpn' && config.VPN_CATEGORY_TITLE ) {
@@ -1067,14 +1062,12 @@ export default function Services() {
               categoryTitle = t(`categories.${category}`, category);
             }
             return (
-            <Accordion.Item key={category} value={category}>
-              <Accordion.Control>
+            <Stack key={category} gap="sm">
                 <Group>
                   <Text fw={500}>{ categoryTitle }</Text>
                   <Badge variant="light" size="sm">{categoryServices.length}</Badge>
                 </Group>
-              </Accordion.Control>
-              <Accordion.Panel>
+
                 <Stack gap="sm">
                   {paginatedServices.map((service) => (
                     <Box key={service.user_service_id}>
@@ -1108,11 +1101,10 @@ export default function Services() {
                     </Center>
                   )}
                 </Stack>
-              </Accordion.Panel>
-            </Accordion.Item>
+            </Stack>
             );
           })}
-        </Accordion>
+        </Stack>
       )}
 
       <OrderServiceModal
