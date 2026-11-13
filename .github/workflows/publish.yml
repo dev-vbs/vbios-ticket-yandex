@@ -47,6 +47,22 @@ jobs:
             target: client
     steps:
       - uses: actions/checkout@v4
+      - name: Prepare backend version metadata
+        if: matrix.context == './server'
+        shell: bash
+        run: |
+          # SHM reads this file during init and exposes it through /admin/system/version.
+          VERSION="$(git tag --sort=-v:refname | head -n1 | sed 's/^v//' || true)"
+          VERSION="${VERSION:-3.7.0}"
+          SHORT_SHA="${GITHUB_SHA:0:12}"
+          cat > server/app/version.json <<EOF
+          {
+            "version": "${VERSION}-${SHORT_SHA}",
+            "commitSha": "${GITHUB_SHA}",
+            "releaseUrl": "https://github.com/${GITHUB_REPOSITORY}/releases/tag/v${VERSION}"
+          }
+          EOF
+          cat server/app/version.json
       - name: Normalize registry owner
         id: owner
         env:
