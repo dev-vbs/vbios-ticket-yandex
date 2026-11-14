@@ -2,34 +2,37 @@ services:
   api:
     image: "${SHM_REPO}/vbios-api:${CORE_VERSION}"
     pull_policy: always
-    restart: always
+    restart: unless-stopped
     environment:
-      TRUSTED_IPS: ""
+      TRUSTED_IPS: "${TRUSTED_IPS:-}"
       ENABLE_RATE_LIMIT: "${ENABLE_RATE_LIMIT:-false}"
     depends_on:
-      - core
+      core:
+        condition: service_started
     healthcheck:
       test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1/shm/healthcheck.cgi || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 6
-      start_period: 15s
+      start_period: 30s
 
   core:
     image: "${SHM_REPO}/vbios-core:${CORE_VERSION}"
     pull_policy: always
-    restart: always
+    restart: unless-stopped
     environment:
-      TZ: "${TZ}"
+      TZ: "${TZ:-Europe/Moscow}"
       LANG: C.UTF-8
       WORKERS_COUNT: "${WORKERS_COUNT:-4}"
       DB_NAME: "${MYSQL_DATABASE}"
       DB_USER: "${MYSQL_USER}"
       DB_PASS: "${MYSQL_PASS}"
-      DB_HOST: "${MYSQL_HOST}"
-      DB_PORT: "${MYSQL_PORT}"
+      DB_HOST: "${MYSQL_HOST:-mysql}"
+      DB_PORT: "${MYSQL_PORT:-3306}"
       TICKET_S3_ACCESS_KEY: "${TICKET_S3_ACCESS_KEY:-}"
       TICKET_S3_SECRET_KEY: "${TICKET_S3_SECRET_KEY:-}"
+      TIMEWEB_AI_KEY: "${TIMEWEB_AI_KEY:-}"
+      CORS_ALLOWED_ORIGINS: "${CORS_ALLOWED_ORIGINS:-}"
     volumes:
       - shm-data:/app/data
     depends_on:
@@ -41,20 +44,20 @@ services:
   spool:
     image: "${SHM_REPO}/vbios-core:${CORE_VERSION}"
     pull_policy: always
-    restart: always
-    deploy:
-      replicas: 2
+    restart: unless-stopped
+    scale: 2
     environment:
-      TZ: "${TZ}"
+      TZ: "${TZ:-Europe/Moscow}"
       LANG: C.UTF-8
       SHM_ROLE: spool
       DB_NAME: "${MYSQL_DATABASE}"
       DB_USER: "${MYSQL_USER}"
       DB_PASS: "${MYSQL_PASS}"
-      DB_HOST: "${MYSQL_HOST}"
-      DB_PORT: "${MYSQL_PORT}"
+      DB_HOST: "${MYSQL_HOST:-mysql}"
+      DB_PORT: "${MYSQL_PORT:-3306}"
       TICKET_S3_ACCESS_KEY: "${TICKET_S3_ACCESS_KEY:-}"
       TICKET_S3_SECRET_KEY: "${TICKET_S3_SECRET_KEY:-}"
+      TIMEWEB_AI_KEY: "${TIMEWEB_AI_KEY:-}"
     volumes:
       - shm-data:/app/data
     depends_on:
@@ -63,59 +66,48 @@ services:
       redis:
         condition: service_healthy
 
-  phpmyadmin:
-    image: phpmyadmin:latest
-    pull_policy: always
-    restart: always
-    environment:
-      PMA_HOST: mysql
-      PMA_PORT: "3306"
-      PMA_ARBITRARY: "0"
-      UPLOAD_LIMIT: 64M
-    ports:
-      - "${PHPMYADMIN_PORT}:80"
-    depends_on:
-      mysql:
-        condition: service_healthy
-
   admin:
-    image: "${SHM_REPO}/vbios-admin:${ADMIN_VERSION:-latest}"
+    image: "${ADMIN_VERSION:-ghcr.io/dev-vbs/vbios-admin:latest}"
     pull_policy: always
-    restart: always
+    restart: unless-stopped
     environment:
       SHM_HOST: http://api
       SHM_BASE_PATH: /
-      VITE_SHOW_SWAGGER: "false"
+      VITE_SHOW_SWAGGER: "${VITE_SHOW_SWAGGER:-false}"
     ports:
-      - "${ADMIN_PORT}:80"
+      - "${ADMIN_PORT:-127.0.0.1:9081}:80"
     depends_on:
       api:
         condition: service_healthy
 
   client:
-    image: "${CLIENT_VERSION}"
+    image: "${CLIENT_VERSION:-ghcr.io/dev-vbs/vbios-clients:latest}"
     pull_policy: always
-    restart: always
+    restart: unless-stopped
     environment:
       SHM_HOST: http://api
       SHM_BASE_PATH: /
-      APP_NAME: vBios
-      OTP_ENABLE: "true"
-      TELEGRAM_BOT_AUTH_ENABLE: "false"
-      TELEGRAM_BOT_NAME: vbiosbot
-      TELEGRAM_BOT_AUTH_PROFILE: telegram_bot
-      TELEGRAM_OIDC_AUTH_ENABLE: "true"
+      APP_NAME: "${APP_NAME:-vBios}"
+      OTP_ENABLE: "${OTP_ENABLE:-true}"
+      TELEGRAM_BOT_NAME: "${TELEGRAM_BOT_NAME:-vbiosbot}"
+      TELEGRAM_BOT_AUTH_ENABLE: "${TELEGRAM_BOT_AUTH_ENABLE:-false}"
+      TELEGRAM_OIDC_AUTH_ENABLE: "${TELEGRAM_OIDC_AUTH_ENABLE:-true}"
+      TELEGRAM_BOT_AUTH_PROFILE: "${TELEGRAM_BOT_AUTH_PROFILE:-vBios_BOT}"
+      TELEGRAM_WEBAPP_AUTH_ENABLE: "${TELEGRAM_WEBAPP_AUTH_ENABLE:-false}"
+      TELEGRAM_WEBAPP_AUTO_AUTH_ENABLE: "${TELEGRAM_WEBAPP_AUTO_AUTH_ENABLE:-false}"
+      TELEGRAM_WEBAPP_PROFILE: "${TELEGRAM_WEBAPP_PROFILE:-vBios_BOT}"
+      ALLOW_TELEGRAM_PIN: "${ALLOW_TELEGRAM_PIN:-true}"
     ports:
-      - "${CLIENT_PORT}:80"
+      - "${CLIENT_PORT:-127.0.0.1:9082}:80"
     depends_on:
       api:
         condition: service_healthy
 
   mysql:
     image: mysql:lts
-    restart: always
+    restart: unless-stopped
     environment:
-      TZ: "${TZ}"
+      TZ: "${TZ:-Europe/Moscow}"
       LANG: C.UTF-8
       MYSQL_ROOT_PASSWORD: "${MYSQL_ROOT_PASS}"
       MYSQL_DATABASE: "${MYSQL_DATABASE}"
@@ -124,24 +116,37 @@ services:
     volumes:
       - mysql-data:/var/lib/mysql
     healthcheck:
-      test: ["CMD-SHELL", 'MYSQL_PWD="$$MYSQL_PASSWORD" mysqladmin ping -h 127.0.0.1 -u "$$MYSQL_USER" --silent']
+      test: ["CMD-SHELL", "MYSQL_PWD=\"$$MYSQL_PASSWORD\" mysql --protocol=TCP -h 127.0.0.1 -u \"$$MYSQL_USER\" -D \"$$MYSQL_DATABASE\" -e \"SELECT 1\" >/dev/null 2>&1"]
       interval: 5s
-      timeout: 3s
-      retries: 10
-      start_period: 30s
+      timeout: 5s
+      retries: 20
+      start_period: 60s
 
   redis:
     image: redis:latest
-    restart: always
+    restart: unless-stopped
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
       timeout: 3s
       retries: 10
 
+  phpmyadmin:
+    image: phpmyadmin:latest
+    restart: unless-stopped
+    environment:
+      PMA_HOST: mysql
+      PMA_PORT: "3306"
+      PMA_ARBITRARY: "0"
+      UPLOAD_LIMIT: 64M
+    ports:
+      - "${PHPMYADMIN_PORT:-127.0.0.1:9083}:80"
+    depends_on:
+      mysql:
+        condition: service_healthy
+
 volumes:
   mysql-data:
     driver: local
   shm-data:
     driver: local
-
