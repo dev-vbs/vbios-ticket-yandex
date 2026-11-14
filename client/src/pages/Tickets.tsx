@@ -139,6 +139,27 @@ function MediaPreview({ media, onPreview, onDownload }: { media: TicketMedia; on
   );
 }
 
+function PendingFilePreview({ file, onRemove, disabled }: { file: File; onRemove: () => void; disabled?: boolean }) {
+  const [url, setUrl] = useState<string>('');
+  useEffect(() => {
+    const nextUrl = URL.createObjectURL(file);
+    setUrl(nextUrl);
+    return () => URL.revokeObjectURL(nextUrl);
+  }, [file]);
+  return (
+    <div className="ticket-pending-file">
+      {url && <img src={url} alt="" className="ticket-pending-file__preview" />}
+      <div className="ticket-pending-file__meta">
+        <Text size="xs" fw={600} lineClamp={1}>{file.name}</Text>
+        <Text size="xs" c="dimmed">{Math.max(1, Math.round(file.size / 1024))} КБ</Text>
+      </div>
+      <ActionIcon variant="subtle" color="red" size="sm" disabled={disabled} onClick={onRemove} aria-label="Удалить вложение">
+        <IconTrash size={15} />
+      </ActionIcon>
+    </div>
+  );
+}
+
 interface UserServiceItem {
   user_service_id: number;
   name?: string;
@@ -843,23 +864,11 @@ export default function Tickets() {
         ) : (
           <Stack gap="xs" className="ticket-reply-box">
             {replyFiles.length > 0 && (
-              <Stack gap={4}>
+              <div className="ticket-pending-files" aria-label="Выбранные изображения">
                 {replyFiles.map((file, index) => (
-                  <Group key={`${file.name}_${index}`} justify="space-between" wrap="nowrap">
-                    <Text size="sm" lineClamp={1}>{file.name}</Text>
-                    <ActionIcon
-                      variant="subtle"
-                      color="red"
-                      aria-label="Удалить вложение"
-                      disabled={sending}
-                      onClick={() => removeReplyFile(index)}
-                      size="sm"
-                    >
-                      <IconTrash size={14} />
-                    </ActionIcon>
-                  </Group>
+                  <PendingFilePreview key={`${file.name}_${index}`} file={file} disabled={sending} onRemove={() => removeReplyFile(index)} />
                 ))}
-              </Stack>
+              </div>
             )}
 
             <Box style={{ position: 'relative' }}>
@@ -1138,14 +1147,7 @@ export default function Tickets() {
           <Stack gap="xs" className="ticket-create__attachments">
             <Group gap="xs"><IconPaperclip size={17} /><Text size="sm" fw={600}>Вложения</Text>{newFiles.length > 0 && <Badge size="xs" variant="light">{newFiles.length}</Badge>}</Group>
             <Text size="xs" c="dimmed">JPEG, PNG, WebP или GIF — до 5 МБ на изображение.</Text>
-            {newFiles.map((file, index) => (
-              <Group key={`${file.name}_${index}`} justify="space-between" wrap="nowrap" className="ticket-create__file">
-                <Text size="sm" lineClamp={1}>{file.name}</Text>
-                <ActionIcon variant="subtle" color="red" onClick={() => removeNewFile(index)} aria-label="Удалить вложение">
-                  <IconTrash size={16} />
-                </ActionIcon>
-              </Group>
-            ))}
+            {newFiles.length > 0 && <div className="ticket-pending-files">{newFiles.map((file, index) => <PendingFilePreview key={`${file.name}_${index}`} file={file} onRemove={() => removeNewFile(index)} />)}</div>}
             <FileButton onChange={onPickNewFiles} accept={IMAGE_ACCEPT} multiple>
               {(props) => <Button {...props} variant="default" leftSection={<IconPlus size={16} />}>Прикрепить изображения</Button>}
             </FileButton>
