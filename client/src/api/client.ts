@@ -162,6 +162,9 @@ export const auth = {
 export const userApi = {
   getProfile: () => api.get('/user'),
   updateProfile: (data: { full_name?: string; phone?: string }) => api.post('/user/profile', data),
+  getAvatar: () => api.get('/user/avatar'),
+  uploadAvatar: (data: { name: string; data: string; mime_type: string }) => api.put('/user/avatar', data),
+  deleteAvatar: () => api.delete('/user/avatar'),
   changePassword: (password: string, oldPassword?: string) => api.post('/user/passwd', {
     password,
     ...(oldPassword ? { old_password: oldPassword } : {}),

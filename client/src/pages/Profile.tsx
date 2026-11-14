@@ -3,8 +3,8 @@ import { Link } from 'react-router-dom';
 import axios from 'axios';
 import { useAuthOptions } from '../hooks/useAuthOptions';
 import { useState, useEffect, useCallback } from 'react';
-import { Card, Text, Stack, Group, Divider, Grid, Button, TextInput, Tooltip, ActionIcon, Avatar, Title, Modal, Loader, Center, Collapse, Alert, Skeleton, useMantineColorScheme } from '@mantine/core';
-import { IconUser, IconPhone, IconCopy, IconCheck, IconBrandTelegram, IconCreditCard, IconChevronDown, IconChevronUp, IconMail, IconAlertCircle, IconEdit } from '@tabler/icons-react';
+import { Card, Text, Stack, Group, Divider, Grid, Button, TextInput, Tooltip, ActionIcon, Avatar, Title, Modal, Loader, Center, Collapse, Alert, Skeleton, useMantineColorScheme, FileButton } from '@mantine/core';
+import { IconUser, IconPhone, IconCopy, IconCheck, IconBrandTelegram, IconCreditCard, IconChevronDown, IconChevronUp, IconMail, IconAlertCircle, IconEdit, IconCamera } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 import { useClipboard } from '@mantine/hooks';
 import { useTranslation } from 'react-i18next';
@@ -72,6 +72,8 @@ export default function Profile() {
   const { telegramPhoto, userEmail: storeEmail, userEmailVerified: storeEmailVerified, setUserEmail, setUserEmailVerified, setUser, isEmailLoaded, setOpenEmailModal } = useStore();
   const emailBlocked = config.EMAIL_REQUIRED === 'true' && isEmailLoaded && !storeEmail;
   const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [avatarUploading, setAvatarUploading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [profileError, setProfileError] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -93,6 +95,15 @@ export default function Profile() {
   useEffect(() => {
     setProfileEmail(storeEmail);
   }, [storeEmail]);
+
+  useEffect(() => { userApi.getAvatar().then((response) => { const raw=response.data?.data; const data=Array.isArray(raw)?raw[0]:raw; setAvatarUrl(data?.url || null); }).catch(() => setAvatarUrl(null)); }, []);
+
+  const uploadAvatar = async (file: File | null) => {
+    if (!file) return;
+    if (!['image/jpeg','image/png','image/webp','image/gif'].includes(file.type) || file.size > 5 * 1024 * 1024) { notifications.show({ title: t('common.error'), message: 'Выберите JPEG, PNG, WebP или GIF размером до 5 МБ', color: 'red' }); return; }
+    setAvatarUploading(true);
+    try { const encoded = await new Promise<string>((resolve, reject) => { const reader=new FileReader(); reader.onload=()=>resolve(String(reader.result).split(',')[1] || ''); reader.onerror=()=>reject(new Error('read')); reader.readAsDataURL(file); }); const response=await userApi.uploadAvatar({ name:file.name, mime_type:file.type, data:encoded }); const raw=response.data?.data; const data=Array.isArray(raw)?raw[0]:raw; setAvatarUrl(data?.url || null); notifications.show({ title:t('common.success'), message:'Фотография профиля обновлена', color:'green' }); } catch { notifications.show({ title:t('common.error'), message:'Не удалось загрузить фотографию', color:'red' }); } finally { setAvatarUploading(false); }
+  };
 
   useEffect(() => {
     setEmailVerified(storeEmailVerified || 0);
@@ -518,10 +529,13 @@ export default function Profile() {
                 size={56}
                 radius="xl"
                 color="blue"
-                src={telegramPhoto || undefined}
+                src={avatarUrl || telegramPhoto || undefined}
               >
                 {profile.full_name?.charAt(0) || profile.login?.charAt(0)?.toUpperCase() || '?'}
               </Avatar>
+              <FileButton onChange={uploadAvatar} accept="image/jpeg,image/png,image/webp,image/gif">
+                {(props) => <Button {...props} size="xs" variant="light" leftSection={<IconCamera size={14} />} loading={avatarUploading}>Фото профиля</Button>}
+              </FileButton>
               <div>
                 <Text fw={500} size="lg">{profile.full_name || profile.login || t('profile.user')}</Text>
                 <Text size="sm" c="cyan">{t('profile.id')}: {profile.user_id}

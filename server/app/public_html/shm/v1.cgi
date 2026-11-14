@@ -144,6 +144,11 @@ state $routes //= {
         swagger => { summary => 'Изменение личных данных пользователя' },
     },
 },
+'/user/avatar' => {
+    PUT => { controller => 'User', method => 'api_avatar_upload', params => { data => { type => 'string', required => 1, max_length => 6990508 }, mime_type => { type => 'string', max_length => 100 }, name => { type => 'string', max_length => 255 } }, swagger => { summary => 'Загрузка фотографии профиля' } },
+    GET => { controller => 'User', method => 'api_avatar', params => {}, swagger => { summary => 'Получение фотографии профиля' } },
+    DELETE => { controller => 'User', method => 'api_avatar_delete', params => {}, swagger => { summary => 'Удаление фотографии профиля' } },
+},
 '/user/referrals' => {
     swagger => { tags => 'Пользователи' },
     GET => {
