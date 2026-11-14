@@ -1,0 +1,9 @@
+.password-modal { border-radius: 18px; overflow: hidden; }
+.password-modal__header { padding: 18px 20px 12px; border-bottom: 1px solid var(--mantine-color-default-border); }
+.password-modal__body { padding: 16px 20px 20px; }
+.password-modal .mantine-PasswordInput-input { min-height: 42px; border-radius: 10px; }
+.password-modal .mantine-Button-root { min-height: 40px; border-radius: 10px; }
+@media (max-width: 480px) {
+  .password-modal__body { padding: 14px; }
+  .password-modal__header { padding: 16px 14px 10px; }
+}

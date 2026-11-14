@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { Card, Text, Stack, Group, Button, Modal, Space, PasswordInput, Tabs } from '@mantine/core';
-import { IconShieldLock, IconLock, IconShield, IconFingerprint, IconKey } from '@tabler/icons-react';
+import { Alert, Card, Text, Stack, Group, Button, Modal, Space, PasswordInput, Tabs, Progress, Badge, Divider } from '@mantine/core';
+import { IconShieldLock, IconLock, IconShield, IconFingerprint, IconKey, IconInfoCircle, IconCheck } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 import { useMediaQuery } from '@mantine/hooks';
 import { useTranslation } from 'react-i18next';
@@ -10,6 +10,7 @@ import OtpSettings from './OtpSettings';
 import PasswordAuthSettings from './PasswordAuthSettings';
 import { useTelegramWebApp } from '../../hooks/useTelegramWebApp';
 import { config } from '../../config';
+import './SecuritySettings.css';
 
 const otpEnabled = config.OTP_ENABLE === 'true';
 const passkeyEnabled = config.PASSKEY_AUTH_DISABLED === 'false' && config.PASSKEY_ENABLE === 'true';
@@ -20,6 +21,7 @@ export default function SecuritySettings() {
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [changingPassword, setChangingPassword] = useState(false);
   const [activeTab, setActiveTab] = useState<string | null>('password');
   const { isInsideTelegramWebApp } = useTelegramWebApp();
   const isMobile = useMediaQuery('(max-width: 768px)');
@@ -36,6 +38,7 @@ export default function SecuritySettings() {
       return;
     }
     try {
+      setChangingPassword(true);
       await userApi.changePassword(newPassword, currentPassword);
       setPasswordModalOpen(false);
       setCurrentPassword('');
@@ -52,8 +55,13 @@ export default function SecuritySettings() {
         message: t('profile.passwordChangeError'),
         color: 'red',
       });
+    } finally {
+      setChangingPassword(false);
     }
   };
+
+  const passwordScore = [newPassword.length >= 6, /[A-ZА-Я]/.test(newPassword), /\d/.test(newPassword), newPassword.length >= 10].filter(Boolean).length;
+  const resetPasswordForm = () => { setPasswordModalOpen(false); setCurrentPassword(''); setNewPassword(''); setConfirmPassword(''); };
 
   const hasTelegramWidget = !isInsideTelegramWebApp;
 
@@ -114,9 +122,8 @@ export default function SecuritySettings() {
                 <IconLock size={18} />
                 <Text fw={500}>{t('profile.changePassword')}</Text>
               </Group>
-              <Text size="sm" c="dimmed">
-                {t('security.changePasswordDescription')}
-              </Text>
+              <Text size="sm" c="dimmed">{t('security.changePasswordDescription')}</Text>
+              <Group gap="xs"><Badge size="sm" variant="light" color="teal">Пароль от 6 символов</Badge><Badge size="sm" variant="light" color="gray">Сессии будут завершены</Badge></Group>
               <Button
                 variant="light"
                 leftSection={<IconLock size={16} />}
@@ -136,10 +143,16 @@ export default function SecuritySettings() {
 
       <Modal
         opened={passwordModalOpen}
-        onClose={() => { setPasswordModalOpen(false); setCurrentPassword(''); setNewPassword(''); setConfirmPassword(''); }}
+        onClose={resetPasswordForm}
         title={t('profile.changePassword')}
+        size="sm"
+        centered
+        classNames={{ content: 'password-modal', header: 'password-modal__header', body: 'password-modal__body' }}
       >
-        <Stack gap="md">
+        <Stack gap="sm">
+          <Alert icon={<IconInfoCircle size={17} />} color="blue" variant="light" p="sm">
+            Используйте текущий пароль для подтверждения. После сохранения потребуется войти заново.
+          </Alert>
           <PasswordInput
             label={t('profile.currentPassword', { defaultValue: 'Текущий пароль' })}
             placeholder={t('profile.currentPasswordPlaceholder', { defaultValue: 'Введите текущий пароль' })}
@@ -165,11 +178,22 @@ export default function SecuritySettings() {
             autoComplete="new-password"
             error={confirmPassword.length > 0 && confirmPassword !== newPassword ? t('auth.passwordsMismatch') : undefined}
           />
+          <Group justify="space-between" gap="xs" mt={-2}>
+            <Text size="xs" c="dimmed">Надёжность пароля</Text>
+            <Text size="xs" c={passwordScore >= 3 ? 'teal' : 'dimmed'}>{passwordScore >= 3 ? 'Хорошая' : 'Минимум 6 символов'}</Text>
+          </Group>
+          <Progress value={passwordScore * 25} color={passwordScore >= 3 ? 'teal' : 'blue'} size="sm" radius="xl" />
+          <Group gap="xs" wrap="wrap">
+            <Badge leftSection={newPassword.length >= 6 ? <IconCheck size={12} /> : undefined} color={newPassword.length >= 6 ? 'teal' : 'gray'} variant="light">6+ символов</Badge>
+            <Badge leftSection={/[A-ZА-Я]/.test(newPassword) ? <IconCheck size={12} /> : undefined} color={/[A-ZА-Я]/.test(newPassword) ? 'teal' : 'gray'} variant="light">Заглавная буква</Badge>
+            <Badge leftSection={/\d/.test(newPassword) ? <IconCheck size={12} /> : undefined} color={/\d/.test(newPassword) ? 'teal' : 'gray'} variant="light">Цифра</Badge>
+          </Group>
+          <Divider my="xs" />
           <Group justify="flex-end">
-            <Button variant="light" onClick={() => { setPasswordModalOpen(false); setCurrentPassword(''); setNewPassword(''); setConfirmPassword(''); }}>
+            <Button variant="default" onClick={resetPasswordForm} disabled={changingPassword}>
               {t('common.cancel')}
             </Button>
-            <Button onClick={handleChangePassword} disabled={currentPassword.length < 1 || newPassword.length < 6 || newPassword !== confirmPassword}>
+            <Button onClick={handleChangePassword} loading={changingPassword} disabled={currentPassword.length < 1 || newPassword.length < 6 || newPassword !== confirmPassword}>
               {t('common.save')}
             </Button>
           </Group>
