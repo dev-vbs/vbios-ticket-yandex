@@ -23,10 +23,10 @@ export default function SecuritySettings() {
   const isMobile = useMediaQuery('(max-width: 768px)');
 
   const handleChangePassword = async () => {
-    if (!newPassword) {
+    if (newPassword.length < 6) {
       notifications.show({
         title: t('common.error'),
-        message: t('profile.enterNewPassword'),
+        message: t('auth.passwordTooShort'),
         color: 'red',
       });
       return;
@@ -139,12 +139,14 @@ export default function SecuritySettings() {
             placeholder={t('profile.newPasswordPlaceholder')}
             value={newPassword}
             onChange={(e) => setNewPassword(e.target.value)}
+            minLength={6}
+            error={newPassword.length > 0 && newPassword.length < 6 ? t('auth.passwordTooShort') : undefined}
           />
           <Group justify="flex-end">
             <Button variant="light" onClick={() => { setPasswordModalOpen(false); setNewPassword(''); }}>
               {t('common.cancel')}
             </Button>
-            <Button onClick={handleChangePassword}>
+            <Button onClick={handleChangePassword} disabled={newPassword.length < 6}>
               {t('common.save')}
             </Button>
           </Group>
