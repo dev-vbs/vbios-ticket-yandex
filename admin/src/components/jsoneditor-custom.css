@@ -1,0 +1,224 @@
+/* Кастомизация jsoneditor для интеграции с темами */
+
+.jsoneditor-react-container {
+  height: 100%;
+}
+
+/* Для светлой темы оставляем дефолтные стили библиотеки */
+
+/* Скрытие кнопок Sort и Transform */
+.jsoneditor-hide-sort-transform .jsoneditor-sort,
+.jsoneditor-hide-sort-transform .jsoneditor-transform {
+  display: none !important;
+}
+
+/* Поддержка темной темы */
+[data-theme="dark"] .jsoneditor {
+  border-color: #374151;
+  background-color: #111827;
+}
+
+[data-theme="dark"] .jsoneditor-menu {
+  background-color: #1f2937;
+  border-bottom-color: #374151;
+}
+
+[data-theme="dark"] .jsoneditor-menu > button,
+[data-theme="dark"] .jsoneditor-menu > .jsoneditor-modes > button {
+  background-color: #374151;
+  color: #f9fafb;
+  border-color: #4b5563;
+}
+
+[data-theme="dark"] .jsoneditor-menu > button:hover,
+[data-theme="dark"] .jsoneditor-menu > .jsoneditor-modes > button:hover {
+  background-color: #4b5563;
+}
+.jsoneditor {
+    border: 1px solid var(--theme-sidebar-border);
+    color: var(--theme-content-text);
+}
+.jsoneditor-menu {
+    background-color: var(--theme-card-bg);
+    border-bottom: 1px solid var(--theme-border);
+}
+div.jsoneditor-tree {
+  background-color: var(--theme-content-bg) !important;
+  color: var(--theme-content-text);
+}
+div.jsoneditor-field {
+  color: var(--theme-content-text);
+}
+.jsoneditor-frame {
+  background-color: var(--theme-content-bg) !important;
+  border: 1px solid var(--theme-sidebar-border) !important;
+  color: var(--theme-content-text) !important;
+}
+.jsoneditor-frame input {
+  background-color: var(--theme-content-bg) !important;
+  border: 1px solid var(--theme-sidebar-border) !important;
+  color: var(--theme-content-text) !important;
+}
+.ace-jsoneditor.ace_editor .ace_gutter {
+    background-color: var(--theme-content-bg) !important;
+    color: var(--theme-content-text) !important;
+}
+.ace-jsoneditor.ace_editor .ace_scroller {
+    background-color: var(--theme-content-bg) !important;
+    color: var(--theme-content-text) !important;
+}
+.ace-jsoneditor .ace_variable {
+    color: var(--theme-content-text) !important;
+}
+.ace-jsoneditor .ace_line_group {
+    background-color: var(--theme-content-bg) !important;
+}
+div.jsoneditor-field:hover {
+  color: #0f172a;
+}
+.jsoneditor-statusbar .ace_folding-enabled > .ace_gutter-cell {
+    background-color: var(--theme-card-bg);
+    border-top: 1px solid var(--theme-border);
+    color: var(--theme-content-text-muted);
+}
+.ace-jsoneditor .ace_gutter-active-line{
+    background-color: var(--theme-input-bg) !important;
+}
+/* Переопределение инлайн-стилей для tree */
+[data-theme="dark"] div.jsoneditor-tree {
+  background: #111827 !important;
+}
+
+[data-theme="dark"] .jsoneditor-text {
+  background-color: #111827;
+  color: #f9fafb;
+}
+
+/* Code режим (ace editor) */
+[data-theme="dark"] .jsoneditor-text .ace_editor,
+[data-theme="dark"] .jsoneditor-text .ace_scroller,
+[data-theme="dark"] .jsoneditor-text .ace_content {
+  background-color: #111827 !important;
+  color: #f9fafb !important;
+}
+
+[data-theme="dark"] .ace-jsoneditor {
+  background-color: #111827 !important;
+  color: #f9fafb !important;
+}
+
+[data-theme="dark"] .ace_text-input {
+  background-color: #111827 !important;
+  color: #f9fafb !important;
+}
+
+[data-theme="dark"] .ace_gutter {
+  background-color: #1f2937 !important;
+  color: #9ca3af !important;
+}
+
+[data-theme="dark"] .ace_gutter-active-line {
+  background-color: #374151 !important;
+}
+
+[data-theme="dark"] .ace_active-line {
+  background-color: #1f2937 !important;
+}
+
+[data-theme="dark"] .jsoneditor-field,
+[data-theme="dark"] .jsoneditor-value,
+[data-theme="dark"] .jsoneditor-readonly {
+  color: #f9fafb;
+}
+
+[data-theme="dark"] .jsoneditor-tree button.jsoneditor-button {
+  filter: invert(0.9);
+}
+
+/* Фон для пустого пространства внизу */
+[data-theme="dark"] .jsoneditor-tree > div.jsoneditor-tree-inner {
+  background-color: #111827;
+}
+
+[data-theme="dark"] .jsoneditor-outer {
+  background-color: #111827;
+}
+
+/* Контекстное меню */
+[data-theme="dark"] .jsoneditor-contextmenu {
+  background-color: #1f2937;
+  border-color: #374151;
+}
+
+[data-theme="dark"] .jsoneditor-contextmenu .jsoneditor-menu button {
+  background-color: #1f2937;
+  color: #f9fafb;
+}
+
+[data-theme="dark"] .jsoneditor-contextmenu .jsoneditor-menu button:hover {
+  background-color: #374151;
+}
+
+/* Поиск */
+[data-theme="dark"] .jsoneditor-search {
+  background-color: #1f2937;
+  border-color: #374151;
+}
+
+[data-theme="dark"] .jsoneditor-search input {
+  background-color: #111827;
+  color: #f9fafb;
+  border-color: #374151;
+}
+
+/* Рамка поиска (jsoneditor-frame) */
+[data-theme="dark"] .jsoneditor-frame {
+  background-color: #1f2937 !important;
+  border-color: #374151 !important;
+}
+
+[data-theme="dark"] .jsoneditor-frame input {
+  background-color: #111827 !important;
+  color: #f9fafb !important;
+  border-color: #374151 !important;
+}
+
+[data-theme="dark"] .jsoneditor-frame button {
+  background-color: #374151 !important;
+  border-color: #4b5563 !important;
+}
+
+[data-theme="dark"] .jsoneditor-frame button:hover {
+  background-color: #4b5563 !important;
+}
+
+/* Скроллбар */
+.jsoneditor-tree::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.jsoneditor-tree::-webkit-scrollbar-track {
+  background: var(--theme-card-bg);
+}
+
+.jsoneditor-tree::-webkit-scrollbar-thumb {
+  background: var(--theme-input-border);
+  border-radius: 4px;
+}
+
+.jsoneditor-tree::-webkit-scrollbar-thumb:hover {
+  background: var(--theme-content-text-muted);
+}
+
+[data-theme="dark"] .jsoneditor-tree::-webkit-scrollbar-track {
+  background: #111827;
+}
+
+[data-theme="dark"] .jsoneditor-tree::-webkit-scrollbar-thumb {
+  background: #374151;
+}
+
+[data-theme="dark"] .jsoneditor-tree::-webkit-scrollbar-thumb:hover {
+  background: #4b5563;
+}

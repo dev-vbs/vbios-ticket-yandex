@@ -1,23 +1,48 @@
 {
-  "name": "vbios-admin",
+  "name": "shm-admin-2",
+  "version": "0.1.0",
   "private": true,
-  "version": "1.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -p tsconfig.json && vite build",
-    "preview": "vite preview"
+    "devs": "vite --config vite.config-s.ts",
+    "dev:server": "node server/index.js",
+    "dev:all": "concurrently \"npm run dev:server\" \"npm run dev\"",
+    "build": "vite build",
+    "preview": "vite preview",
+    "start": "node server/index.js"
   },
   "dependencies": {
-    "@tabler/icons-react": "^3.36.1",
-    "@vitejs/plugin-react": "latest",
-    "react": "^19.1.1",
-    "react-dom": "^19.1.1",
-    "typescript": "^5.9.3",
-    "vite": "latest"
+    "@monaco-editor/react": "^4.6.0",
+    "@types/jsoneditor": "^9.9.6",
+    "clsx": "^2.1.1",
+    "cors": "^2.8.5",
+    "date-fns": "^4.1.0",
+    "dotenv": "^17.2.3",
+    "express": "^5.2.1",
+    "ioredis": "^5.8.2",
+    "jsoneditor": "^10.4.2",
+    "lucide-react": "^0.294.0",
+    "mysql2": "^3.15.3",
+    "qrcode": "^1.5.4",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-hot-toast": "^2.6.0",
+    "react-router-dom": "^6.20.0",
+    "recharts": "^3.5.1",
+    "zustand": "^4.4.7"
   },
   "devDependencies": {
-    "@types/react": "^19.3.0",
-    "@types/react-dom": "^19.3.0"
+    "@types/qrcode": "^1.5.6",
+    "@types/react": "^18.2.36",
+    "@types/react-dom": "^18.2.15",
+    "@vitejs/plugin-react": "^4.2.1",
+    "autoprefixer": "^10.4.16",
+    "concurrently": "^9.2.1",
+    "postcss": "^8.4.31",
+    "tailwindcss": "^3.3.0",
+    "terser": "^5.36.0",
+    "typescript": "^5.3.3",
+    "vite": "^5.0.10"
   }
 }
