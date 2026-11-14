@@ -805,6 +805,8 @@ sub telegram_oidc_init {
         @_,
     );
 
+    $args{profile} ||= 'telegram_bot';
+
     if ( $args{bind_to_profile} ) {
         my %headers = parse_headers;
         $args{session_id} ||= $headers{HTTP_SESSION_ID};
@@ -914,7 +916,7 @@ sub telegram_oidc_client_id {
         @_,
     );
 
-    my $profile = $args{profile};
+    my $profile = $args{profile} || 'telegram_bot';
     my $config = $self->config;
     my $profile_cfg = $config->{$profile} || {};
 
@@ -935,7 +937,7 @@ sub telegram_oidc_client_secret {
         @_,
     );
 
-    my $profile = $args{profile};
+    my $profile = $args{profile} || 'telegram_bot';
     my $config = $self->config;
     my $profile_cfg = $config->{$profile} || {};
 
@@ -956,6 +958,8 @@ sub telegram_oidc_exchange_code {
         client_secret => undef,
         @_,
     );
+
+    $args{profile} ||= 'telegram_bot';
 
     for my $required ( qw(code redirect_uri) ) {
         unless ( defined $args{$required} && $args{$required} ne '' ) {
@@ -1060,6 +1064,8 @@ sub verify_telegram_oidc_id_token {
         nonce => undef,
         @_,
     );
+
+    $args{profile} ||= 'telegram_bot';
 
     my $id_token = $args{id_token};
     return undef unless $id_token;
@@ -2071,6 +2077,8 @@ sub web_auth {
         @_,
     );
 
+    $args{profile} ||= 'telegram_bot';
+
     # Widget linking must present a bearer session explicitly; never bind using
     # an ambient browser cookie on a request carrying somebody else's identity.
     if ($args{bind_to_profile} && !$args{code} && !$args{id_token}
@@ -2310,6 +2318,8 @@ sub web_auth_callback {
         bind_only_if_new => 0,
         @_,
     );
+
+    $args{profile} ||= 'telegram_bot';
 
     my $ctx = Core::Auth::Base::resolve_callback_state($self, \%args, 'tg_oidc_state');
     unless ($ctx) {
