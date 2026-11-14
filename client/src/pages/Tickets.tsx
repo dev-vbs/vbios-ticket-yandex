@@ -783,7 +783,7 @@ export default function Tickets() {
 
         {!ticketIsClosed(selectedTicket.status) && <Select
           label="Кто отвечает на обращение"
-          description={selectedTicket.responder === 'ai' ? 'ИИ помогает с вопросами. Для проверки оплаты и действий с услугой выберите сотрудника.' : 'Сотрудник отвечает через группу поддержки. Мгновенный ответ не гарантируется.'}
+          description={selectedTicket.responder === 'ai' ? 'ИИ помогает с вопросами. Напишите «ОПЕРАТОР» или выберите сотрудника — ИИ перестанет отвечать, а история будет передана поддержке.' : 'Сотрудник отвечает через группу поддержки. Мгновенный ответ не гарантируется.'}
           value={selectedTicket.responder || null}
           placeholder="Выберите ИИ или сотрудника"
           onChange={changeResponder}

@@ -39,7 +39,7 @@ sub api_create {
     local $db->{RaiseError}=1;
     local $db->{PrintError}=0;
     my $uid=$self->user_id;
-    my $responder=$a{responder} || 'human';
+    my $responder=($a{message} || '') =~ /(?<!\p{L})оператор(?!\p{L})/i ? 'human' : ($a{responder} || 'human');
     $self->_validate_responder($responder);
     my $subject=substr(($a{subject}//'Без темы'),0,160);
     my $msg=substr(($a{message}//''),0,10000);
@@ -127,16 +127,23 @@ sub api_message {
     local $db->{PrintError}=0;
     my $id=$a{ticket_id}||$a{id};
     die 'message is required' unless defined($a{message}) && $a{message} =~ /\S/;
+    my $handoff=$a{message} =~ /(?<!\p{L})оператор(?!\p{L})/i;
     my $mid;
     eval {
         my $r=$db->selectrow_hashref('SELECT * FROM tickets WHERE ticket_id=? FOR UPDATE',undef,$id);
         die 'ticket not found' unless $r && $r->{user_id}==$self->user_id;
         die 'ticket closed' if $r->{status} eq 'closed' || $r->{status} eq 'archived';
+        $db->do("INSERT INTO ticket_preferences(ticket_id,responder) VALUES(?,'human') ON DUPLICATE KEY UPDATE responder='human'",undef,$id) if $handoff;
         $mid=$self->_add_message($id,$self->user_id,0,substr($a{message},0,10000),$a{media_ids});
         $db->commit or die 'Message commit failed';
         1;
     } or do { my $error=$@; $db->rollback; die $error; };
-    $self->_notify_safe($id);
+    if ($handoff) {
+        eval { $self->telegram_sync($id,1); $db->commit; 1 } or do {
+            $db->do('UPDATE tickets SET telegram_error=? WHERE ticket_id=?',undef,'Operator handoff delivery failed',$id);
+            $db->commit;
+        };
+    } else { $self->_notify_safe($id); }
     $self->_ai_reply_safe($id);
     $db->commit;
     return $db->selectrow_hashref('SELECT * FROM ticket_messages WHERE message_id=?',undef,$mid);
@@ -226,18 +233,18 @@ sub telegram_sync {
     my $tg = $self->_tg;
     my $thread = $r->{telegram_thread_id};
     $chat = $r->{telegram_chat_id} if $thread && $r->{telegram_chat_id};
+    my $u = $self->dbh->selectrow_hashref('SELECT login,full_name FROM users WHERE user_id=?', undef, $r->{user_id}) || {};
+    my $display = $u->{full_name} || $u->{login} || 'Пользователь';
+    $display =~ s/[\r\n]+/ /g;
     # Forum topics are opt-in. Plain chats and ordinary groups receive messages directly.
     if ($cfg->{forum_topics} && !$thread) {
-        my $response = $tg->http('createForumTopic', chat_id => $chat, data => {chat_id => $chat, name => substr("#$id $r->{subject}", 0, 128)});
+        my $response = $tg->http('createForumTopic', chat_id => $chat, data => {chat_id => $chat, name => substr("#$id · $display · ID $r->{user_id} · $r->{subject}", 0, 128)});
         my $body = eval { $response->decoded_content } || '';
         my $result = eval { decode_json($body) } || {};
         $thread = $result->{result}{message_thread_id};
         die 'Telegram topic creation failed (chat_id=' . $chat . ', profile=' . ($cfg->{telegram_profile} || 'telegram_bot') . '): ' . ($result->{description} || 'no response') unless $result->{ok} && $thread;
         $self->dbh->do('UPDATE tickets SET telegram_chat_id=?,telegram_thread_id=? WHERE ticket_id=?', undef, $chat, $thread, $id);
     }
-    my $u = $self->dbh->selectrow_hashref('SELECT login,full_name FROM users WHERE user_id=?', undef, $r->{user_id}) || {};
-    my $display = $u->{full_name} || $u->{login} || 'Пользователь';
-    $display =~ s/[\r\n]+/ /g;
     my $subject = $r->{subject} || 'Без темы';
     $subject =~ s/[\r\n]+/ /g;
     my %types = (service => 'Услуга', payment => 'Оплата', other => 'Другое');
