@@ -35,6 +35,9 @@ const initialLanguage = config.SINGLE_LANGUAGE === 'true'
   ? (config.DEFAULT_LANGUAGE || 'en')
   : (savedLanguage || config.DEFAULT_LANGUAGE || 'en');
 
+// Normalize values such as ru-RU/en-US before i18next resolves resources.
+const normalizedInitialLanguage = initialLanguage.split('-')[0].toLowerCase();
+
 i18n
   .use(HttpBackend)
   .use(LanguageDetector)
@@ -48,10 +51,12 @@ i18n
       // Custom languages remain deployable as /app/locales/<code>.json at runtime.
       loadPath: `${import.meta.env.BASE_URL}locales/{{lng}}.json`,
     },
-    lng: initialLanguage,
+    lng: normalizedInitialLanguage,
     fallbackLng: config.DEFAULT_LANGUAGE || 'en',
     supportedLngs: activeLangs,
     load: 'languageOnly',
+    cleanCode: true,
+    nonExplicitSupportedLngs: true,
 
     detection: {
       order: ['localStorage', 'navigator', 'htmlTag'],
@@ -63,6 +68,7 @@ i18n
       escapeValue: false,
     },
     returnNull: false,
+    returnEmptyString: false,
     react: {
       useSuspense: true,
     },

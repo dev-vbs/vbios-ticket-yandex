@@ -47,7 +47,8 @@ export default function LanguageSwitcher() {
 
   const languages = [...builtInLanguages, ...customLanguages];
 
-  const currentLang = languages.find(l => l.code === i18n.language) || languages[0];
+  const activeLanguage = (i18n.resolvedLanguage || i18n.language || '').split('-')[0].toLowerCase();
+  const currentLang = languages.find(l => l.code === activeLanguage) || languages[0];
 
   const handleChange = (code: string) => {
     i18n.changeLanguage(code);
@@ -70,8 +71,8 @@ export default function LanguageSwitcher() {
             key={lang.code}
             onClick={() => handleChange(lang.code)}
             style={{
-              fontWeight: i18n.language === lang.code ? 600 : 400,
-              backgroundColor: i18n.language === lang.code ? 'var(--mantine-color-blue-light)' : undefined,
+              fontWeight: activeLanguage === lang.code ? 600 : 400,
+              backgroundColor: activeLanguage === lang.code ? 'var(--mantine-color-blue-light)' : undefined,
             }}
           >
             {lang.flag} {lang.label}
