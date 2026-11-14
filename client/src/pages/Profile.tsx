@@ -69,10 +69,9 @@ interface ForecastData {
 
 export default function Profile() {
   const { telegramEnabled, telegramProfile } = useAuthOptions();
-  const { telegramPhoto, userEmail: storeEmail, userEmailVerified: storeEmailVerified, setUserEmail, setUserEmailVerified, setUser, isEmailLoaded, setOpenEmailModal } = useStore();
+  const { telegramPhoto, avatarUrl, setAvatarUrl, userEmail: storeEmail, userEmailVerified: storeEmailVerified, setUserEmail, setUserEmailVerified, setUser, isEmailLoaded, setOpenEmailModal } = useStore();
   const emailBlocked = config.EMAIL_REQUIRED === 'true' && isEmailLoaded && !storeEmail;
   const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [avatarUploading, setAvatarUploading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [profileError, setProfileError] = useState(false);
@@ -96,7 +95,7 @@ export default function Profile() {
     setProfileEmail(storeEmail);
   }, [storeEmail]);
 
-  useEffect(() => { userApi.getAvatar().then((response) => { const raw=response.data?.data; const data=Array.isArray(raw)?raw[0]:raw; setAvatarUrl(data?.url || null); }).catch(() => setAvatarUrl(null)); }, []);
+  useEffect(() => { userApi.getAvatar().then((response) => { const raw=response.data?.data; const data=Array.isArray(raw)?raw[0]:raw; setAvatarUrl(data?.url || null); }).catch(() => setAvatarUrl(null)); }, [setAvatarUrl]);
 
   const uploadAvatar = async (file: File | null) => {
     if (!file) return;

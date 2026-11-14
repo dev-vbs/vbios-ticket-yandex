@@ -25,6 +25,7 @@ interface AppState {
   isLoading: boolean;
   isEmailLoaded: boolean;
   telegramPhoto: string | null;
+  avatarUrl: string | null;
   hasNewTicketMessages: boolean;
   lastTicketCheck: number;
 
@@ -34,6 +35,7 @@ interface AppState {
   setIsLoading: (loading: boolean) => void;
   setIsEmailLoaded: (loaded: boolean) => void;
   setTelegramPhoto: (photo: string | null) => void;
+  setAvatarUrl: (photo: string | null) => void;
   setHasNewTicketMessages: (hasNew: boolean) => void;
   setLastTicketCheck: (timestamp: number) => void;
   openVerifyModal: boolean;
@@ -51,6 +53,7 @@ export const useStore = create<AppState>((set) => ({
   isLoading: true,
   isEmailLoaded: false,
   telegramPhoto: localStorage.getItem('shm_telegram_photo'),
+  avatarUrl: localStorage.getItem('shm_avatar_url'),
   hasNewTicketMessages: false,
   lastTicketCheck: parseInt(localStorage.getItem('shm_last_ticket_check') || '0'),
   openVerifyModal: false,
@@ -72,6 +75,7 @@ export const useStore = create<AppState>((set) => ({
     }
     set({ telegramPhoto: photo });
   },
+  setAvatarUrl: (photo) => { if (photo) localStorage.setItem('shm_avatar_url', photo); else localStorage.removeItem('shm_avatar_url'); set({ avatarUrl: photo }); },
   setHasNewTicketMessages: (hasNew) => set({ hasNewTicketMessages: hasNew }),
   setLastTicketCheck: (timestamp) => {
     localStorage.setItem('shm_last_ticket_check', String(timestamp));
@@ -90,7 +94,8 @@ export const useStore = create<AppState>((set) => ({
     }
     removeCookie();
     localStorage.removeItem('shm_telegram_photo');
+    localStorage.removeItem('shm_avatar_url');
     clearOfflineCabinet();
-    set({ user: null, isAuthenticated: false, telegramPhoto: null, hasNewTicketMessages: false, userEmail: null, userEmailVerified: null, isEmailLoaded: false });
+    set({ user: null, isAuthenticated: false, telegramPhoto: null, avatarUrl: null, hasNewTicketMessages: false, userEmail: null, userEmailVerified: null, isEmailLoaded: false });
   },
 }));
