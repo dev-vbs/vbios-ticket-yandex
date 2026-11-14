@@ -74,9 +74,11 @@
 .ticket-message .mantine-Text-root { overflow-wrap:anywhere; }
 .ticket-message--user { border-color:var(--mantine-primary-color-light)!important; }
 .ticket-reply-box { border-top:1px solid var(--mantine-color-default-border);padding-top:14px; }
+.ticket-operator-row { padding:10px 12px; border:1px solid var(--mantine-primary-color-light); border-radius:12px; background:var(--mantine-primary-color-light); }
 .ticket-reply-box .mantine-ActionIcon-root { min-width:30px;min-height:30px; }
 .ticket-reply-box .mantine-Textarea-input { padding-right:86px; }
 @media(max-width:768px){.tickets-page .page-header>div{width:100%}.ticket-message{max-width:94%!important;padding:12px!important}.ticket-conversation__header>.mantine-Group-root{flex-basis:100%}}
+@media(max-width:768px){.ticket-operator-row{align-items:stretch!important;flex-direction:column;padding:10px}.ticket-operator-row .mantine-Text-root{width:100%}.ticket-operator-row .mantine-Button-root{width:100%;min-height:42px}}
 
 .ticket-create__header {
   border-bottom: 1px solid var(--mantine-color-default-border);

@@ -800,12 +800,12 @@ export default function Tickets() {
           )}
         </Group>
 
-        {!ticketIsClosed(selectedTicket.status) && <Group justify="space-between" align="center" gap="sm">
+        {!ticketIsClosed(selectedTicket.status) && <Group justify="space-between" align="center" gap="sm" className="ticket-operator-row">
           <Text size="sm" c="dimmed" style={{ flex: 1 }}>
             {selectedTicket.responder === 'ai' ? 'Вам отвечает ИИ-помощник. При необходимости подключите сотрудника поддержки.' : 'Обращение у оператора. ИИ отключён, ожидайте ответа сотрудника.'}
           </Text>
           {(selectedTicket.responder !== 'human' || selectedTicket.telegram_error) && <Button
-            size="sm" variant="light" leftSection={<IconMessageCircle size={16} />}
+            size="sm" variant="light" fullWidth={isMobile} leftSection={<IconMessageCircle size={16} />}
             onClick={() => void changeResponder('human')} loading={changingResponder} disabled={sending}
           >{selectedTicket.telegram_error ? 'Повторить связь с оператором' : 'Связаться с оператором'}</Button>}
         </Group>}
