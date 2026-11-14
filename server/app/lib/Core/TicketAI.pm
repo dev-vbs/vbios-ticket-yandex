@@ -62,6 +62,7 @@ sub reply {
         unless ($response->is_success) {
             my $detail = eval { $json->decode($response->content)->{error}{message} } || '';
             $detail = '' if ref($detail);
+            $detail = substr($response->content,0,2000) unless length($detail);
             $detail =~ s/\Q$key\E/[REDACTED]/g;
             $detail =~ s/Bearer\s+\S+/Bearer [REDACTED]/gi;
             $detail =~ s/sk-[A-Za-z0-9_-]+/[REDACTED]/g;
