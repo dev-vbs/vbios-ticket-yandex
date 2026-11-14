@@ -1,8 +1,9 @@
-import { Modal, Stack, Center, Button, Group, Alert } from '@mantine/core';
+import { Modal, Stack, Center, Button, Group, Alert, Text, Divider, Badge } from '@mantine/core';
 import { useTranslation } from 'react-i18next';
-import { IconDownload, IconAlertCircle } from '@tabler/icons-react';
+import { IconDownload, IconAlertCircle, IconQrcode, IconDeviceMobile } from '@tabler/icons-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { useMemo } from 'react';
+import './QrModal.css';
 
 const MAX_QR_DATA_LENGTH = 2900;
 
@@ -25,14 +26,16 @@ export default function QrModal({ opened, onClose, data, title, onDownload }: Qr
   if (!data) return null;
 
   return (
-    <Modal opened={opened} onClose={onClose} title={title || t('services.qrCode')} size="md">
-      <Stack gap="md" align="center">
+    <Modal opened={opened} onClose={onClose} title={title || t('services.qrCode')} size="lg" centered classNames={{ content: 'qr-modal', header: 'qr-modal__header', body: 'qr-modal__body' }}>
+      <Text c="dimmed" size="sm" mb="lg">Отсканируйте код в HAPP или другом VPN-приложении, чтобы быстро добавить подписку.</Text>
+      <div className="qr-layout">
+      <Stack gap="md" align="center" className="qr-fields">
         {isDataTooLong ? (
           <Alert icon={<IconAlertCircle size={16} />} color="orange" title={t('services.qrTooLong')}>
             {t('services.qrTooLongDesc')}
           </Alert>
         ) : (
-          <Center p="md" bg="white" style={{ borderRadius: 8 }}>
+          <Center p="md" bg="white" className="qr-code-card">
             <QRCodeSVG
               id="qr-code-svg"
               value={data}
@@ -43,7 +46,7 @@ export default function QrModal({ opened, onClose, data, title, onDownload }: Qr
           </Center>
         )}
 
-        <Group>
+        <Group justify="center">
           {onDownload && (
             <Button
               variant="light"
@@ -55,6 +58,8 @@ export default function QrModal({ opened, onClose, data, title, onDownload }: Qr
           )}
         </Group>
       </Stack>
+      <aside className="qr-summary"><div className="qr-summary__icon"><IconQrcode size={24} /></div><Text size="sm" c="dimmed" mt="md">Способ подключения</Text><Text className="qr-summary__title">QR-код подписки</Text><Divider my="md" /><Text size="xs" c="dimmed" lh={1.6}>Откройте HAPP, выберите добавление подписки и наведите камеру на код.</Text><Group gap="xs" mt="md"><Badge leftSection={<IconDeviceMobile size={13} />} color="blue" variant="light">Быстрое подключение</Badge></Group></aside>
+      </div>
     </Modal>
   );
 }
