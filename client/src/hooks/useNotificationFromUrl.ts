@@ -15,6 +15,10 @@ export function useNotificationFromUrl() {
       const error = params.get('error')
       const alreadyBound = authStatus === 'already_bound'
       const succeeded = authStatus === 'success' || alreadyBound
+      let errorText = ''
+      if (error) {
+        try { errorText = decodeURIComponent(error).replace(/[<>]/g, '') } catch { errorText = error.replace(/[<>]/g, '') }
+      }
       notifications.show({
         color: succeeded ? 'green' : 'red',
         message: alreadyBound
@@ -25,7 +29,10 @@ export function useNotificationFromUrl() {
             ? 'Этот аккаунт привязан к другому пользователю. Для входа выйдите из текущего профиля и выберите вход через Telegram.'
             : error === 'Profile already bound to another Telegram account'
               ? 'К вашему профилю уже привязан другой аккаунт Telegram. Для изменения привязки обратитесь в поддержку.'
-              : 'Не удалось завершить вход или привязку. Повторите попытку. Если ошибка повторяется, обратитесь в поддержку.',
+          : errorText
+            ? `Не удалось завершить вход: ${errorText}`
+            : 'Не удалось завершить вход или привязку. Повторите попытку. Если ошибка повторяется, обратитесь в поддержку.',
+        autoClose: succeeded ? 5000 : 10000,
       })
       for (const key of ['tg_status', 'oauth2_status', 'error', 'msg']) params.delete(key)
       const query = params.toString()
