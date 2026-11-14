@@ -2,7 +2,7 @@ import { usePushNotifications } from '../hooks/usePushNotifications';
 import { type ReactNode, useRef, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Menu } from '@mantine/core';
-import { IconHeadset, IconLogout, IconShieldLock, IconSettings, IconLayoutDashboard, IconWallet, IconReceipt, IconBell, IconChevronDown, IconUser } from '@tabler/icons-react';
+import { IconHeadset, IconLogout, IconShieldLock, IconSettings, IconLayoutDashboard, IconWallet, IconReceipt, IconBell, IconChevronDown, IconUser, IconHelpCircle } from '@tabler/icons-react';
 import { config } from '../config';
 import { useStore } from '../store/useStore';
 import { ThemeToggle } from './ThemeToggle';
@@ -18,6 +18,7 @@ const desktopItems = [
   { path: '/operations', label: 'Операции', icon: IconReceipt },
   { path: '/notifications', label: 'Уведомления', icon: IconBell },
   { path: '/tickets', label: 'Поддержка', icon: IconHeadset },
+  { path: '/help', label: 'Помощь', icon: IconHelpCircle },
 ];
 const mobileItems = [desktopItems[0], desktopItems[1], desktopItems[2], desktopItems[5], { path: '/profile', label: 'Профиль', icon: IconUser }];
 

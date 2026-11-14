@@ -1,4 +1,5 @@
 import NotificationsPage from './pages/NotificationsPage';
+import HelpPage from './pages/HelpPage';
 import '@mantine/core/styles.css';
 import { BalancePage, OperationsPage } from './pages/AccountSections';
 import '@mantine/notifications/styles.css';
@@ -256,6 +257,7 @@ function AppContent() {
               <Route path="/services/:serviceId" element={<Services />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/tickets" element={<Tickets />} /><Route path="/balance" element={<BalancePage />} /><Route path="/operations" element={<OperationsPage />} /><Route path="/notifications" element={<NotificationsPage />} />
+          <Route path="/help" element={<HelpPage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </CabinetLayout>
