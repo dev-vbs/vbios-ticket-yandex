@@ -66,21 +66,27 @@ export async function shm_login(login: string, password: string, otpToken?: stri
     }),
   });
 
+  const raw = await response.text();
+  let data: any = {};
+  try { data = raw ? JSON.parse(raw) : {}; } catch { /* handled below */ }
+
   if (!response.ok) {
-    throw new Error('Неверный логин или пароль');
+    const message = data?.error || data?.message || data?.msg || data?.data?.[0]?.error;
+    throw new Error(message || (response.status === 401 ? 'Неверный логин или пароль' : `Ошибка входа (${response.status})`));
   }
 
-  const data = await response.json();
+  // SHM may return either a plain object or the standard { data: [...] } envelope.
+  const payload = Array.isArray(data?.data) ? (data.data[0] || {}) : (data?.data || data);
 
-  if (data.status === 'fail' && data.msg === 'INVALID_OTP_TOKEN') {
+  if ((payload.status === 'fail' || data.status === 'fail') && (payload.msg || data.msg) === 'INVALID_OTP_TOKEN') {
     throw new Error('Неверный OTP код');
   }
 
-  if (data.otp_required) {
-    return { otpRequired: true, login: data.login };
+  if (payload.otp_required || data.otp_required) {
+    return { otpRequired: true, login: payload.login || data.login || login };
   }
 
-  const sessionId = data.id;
+  const sessionId = payload.id || data.id || data.session_id;
 
   if (!sessionId) {
     throw new Error('Не получен session_id');
