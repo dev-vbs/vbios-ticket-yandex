@@ -5,10 +5,14 @@ import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 import { UniversalPaymentModal, PaymentSystem } from '../modals/PaymentSystems/UniversalPaymentModal';
 
+const catalog: PaymentSystem[] = [
+  ['T-Банк (Tinkoff)','Приём платежей через Т-Банк',0],['ЮKassa','Приём платежей для самозанятых и юридических лиц',0],['Wata','Карты, СБП, T-Pay и SberPay',4500],['Перевод','Платёжная система из конфигурации',0],['Точка Банк','Интернет-эквайринг Точка Банка',9000],['ФНС Чеки (SHM Customlab)','Отправка чеков в ФНС России',0],['ЮMoney','Приём платежей для физических лиц',0],['Aaio','Приём платежей через Aaio',0],['CryptoCloud','Приём криптовалютных платежей',0],['Cryptomus','Приём криптовалютных платежей',0],['CryptoPay (Crypto Bot)','Платежи через Crypto Bot',0],['FreeKassa','Приём платежей через FreeKassa',2700],['Heleket','Криптовалютные платежи через Heleket',4500],['Life Pay (СБП)','Приём платежей через СБП',4500],['Pally','Приём платежей через Pally',4500],['Pike Payments','Приём платежей через Pike Payments',9000],['Platega','Приём платежей через Platega',2700],['Robokassa','Приём платежей через Robokassa',4500],['Telegapay','Приём платежей через Telegapay',0],['Telegram Stars','Платежи Telegram Stars',0],['Tribute','Донаты через Tribute.tg',1800],].map(([title,description,price])=>({name:String(title),title:String(title),description:String(description),price:Number(price),paid:false,fields:[]}));
+
 type SortType = 'alpha' | 'price-asc' | 'price-desc' | 'paid-first' | 'unpaid-first';
 
 function PaymentSystems() {
   const navigate = useNavigate();
+  const [availableNames, setAvailableNames] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [paymentSystems, setPaymentSystems] = useState<PaymentSystem[]>([]);
   const [selectedSystem, setSelectedSystem] = useState<PaymentSystem | null>(null);
@@ -30,15 +34,19 @@ function PaymentSystems() {
     try {
       const response = await shm_request('shm/v1/admin/cloud/proxy/service/paysystems/list');
       const systems = Array.isArray(response.data) ? response.data : (Array.isArray(response) ? response : []);
-      setPaymentSystems(systems);
+      setAvailableNames(systems.map((item: PaymentSystem) => item.name));
+      const configured = new Map(systems.map((item: PaymentSystem) => [item.name, item]));
+      setPaymentSystems(catalog.map(item => configured.get(item.name) || item).concat(systems.filter((item: PaymentSystem) => !catalog.some(c => c.name === item.name))));
     } catch (error) {
-      toast.error('Ошибка загрузки платежных систем');
+      setPaymentSystems(catalog);
+      toast.error('Каталог SHM Cloud недоступен. Показан справочный список, установка недоступна.');
     } finally {
       setLoading(false);
     }
   };
 
   const handleSystemClick = (system: PaymentSystem) => {
+    if (!availableNames.includes(system.name)) { toast.error('Модуль отсутствует в каталоге вашего SHM Cloud. Установка и настройка пока недоступны.'); return; }
     setSelectedSystem(system);
     setModalOpen(true);
   };
@@ -166,11 +174,11 @@ function PaymentSystems() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {sortedSystems.map((system) => (
           <div
             key={system.name}
-            className="rounded-lg border p-6 cursor-pointer transition-all hover:shadow-lg hover:scale-105"
+            className="rounded-lg border p-5 cursor-pointer transition-all hover:shadow-md"
             style={cardStyles}
             onClick={() => handleSystemClick(system)}
           >
@@ -185,6 +193,7 @@ function PaymentSystems() {
             <p className="text-sm" style={{ color: 'var(--theme-content-text-muted)' }}>
               {system.description}
             </p>
+            {!availableNames.includes(system.name) && <p className="mt-3 text-xs" style={{color: 'var(--theme-content-text-muted)'}}>Справочно · доступность модуля не подтверждена</p>}
             {system.paid ? (
               <div className="mt-4 pt-4 border-t" style={{ borderColor: 'var(--theme-card-border)' }}>
                 <p className="text-sm font-semibold" style={{ color: 'var(--accent-success)' }}>
