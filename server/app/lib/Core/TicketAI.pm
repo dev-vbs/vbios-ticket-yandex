@@ -26,8 +26,13 @@ sub process_queued {
     my ($class)=@_;
     my $cfg=get_service('config');
     my $db=$cfg->dbh_auto_commit;
-    my $row=$db->selectrow_hashref("SELECT j.source_message_id,j.ticket_id,t.user_id FROM ticket_ai_jobs j JOIN tickets t ON t.ticket_id=j.ticket_id WHERE j.status='queued' ORDER BY j.created LIMIT 1");
+    my $row=$db->selectrow_hashref("SELECT j.source_message_id,j.ticket_id,t.user_id,t.status AS ticket_status FROM ticket_ai_jobs j JOIN tickets t ON t.ticket_id=j.ticket_id WHERE j.status='queued' ORDER BY j.created LIMIT 1");
     return unless $row;
+    my ($responder)=$db->selectrow_array('SELECT responder FROM ticket_preferences WHERE ticket_id=?',undef,$row->{ticket_id});
+    if (($row->{ticket_status}||'') eq 'closed' || ($row->{ticket_status}||'') eq 'archived' || ($responder||'') eq 'human') {
+        $db->do("UPDATE ticket_ai_jobs SET status='skipped',error=? WHERE source_message_id=? AND status='queued'",undef,'Ticket is not eligible for AI processing',$row->{source_message_id});
+        return;
+    }
     my $ticket=get_service('Ticket',user_id=>$row->{user_id});
     eval { $class->reply($ticket,$row->{ticket_id}); 1 } or do {
         my $error = "$@" || 'AI processing failed';
