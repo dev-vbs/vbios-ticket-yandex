@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActionIcon,
+  Avatar,
   Badge,
   Box,
   Button,
@@ -228,6 +229,7 @@ function statusColor(status?: string): string {
 
 export default function Tickets() {
   const { t } = useTranslation();
+  const { avatarUrl, telegramPhoto, user } = useStore();
   const isMobile = useMediaQuery('(max-width: 768px)');
   const setHasNewTicketMessages = useStore((s) => s.setHasNewTicketMessages);
 
@@ -829,13 +831,9 @@ export default function Tickets() {
                   }}
                 >
                   <Group gap={6} mb={6}>
-                    <ThemeIcon
-                      size="sm"
-                      variant="transparent"
-                      color={isAdmin ? 'gray' : 'blue'}
-                    >
-                      <IconMessageCircle size={14} />
-                    </ThemeIcon>
+                    <Avatar size={24} radius="xl" color={isAdmin ? 'gray' : 'blue'} src={isAdmin ? undefined : (avatarUrl || telegramPhoto || undefined)}>
+                      {isAdmin ? <IconMessageCircle size={14} /> : (user?.full_name || user?.login || 'Вы').charAt(0).toUpperCase()}
+                    </Avatar>
                     <Text size="xs" fw={600}>{isAdmin ? t('tickets.supportAuthor', { defaultValue: 'Поддержка' }) : t('tickets.youAuthor', { defaultValue: 'Вы' })}</Text><Text size="xs" c="dimmed">{formatDate(message.created)}</Text>
                   </Group>
 
