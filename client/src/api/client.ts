@@ -162,7 +162,10 @@ export const auth = {
 export const userApi = {
   getProfile: () => api.get('/user'),
   updateProfile: (data: { full_name?: string; phone?: string }) => api.post('/user/profile', data),
-  changePassword: (password: string) => api.post('/user/passwd', { password }),
+  changePassword: (password: string, oldPassword?: string) => api.post('/user/passwd', {
+    password,
+    ...(oldPassword ? { old_password: oldPassword } : {}),
+  }),
   resetPassword: (params: { login?: string; email?: string }) => api.post('/user/passwd/reset', params),
   verifyResetToken: (token: string) => api.get('/user/passwd/reset/verify', { params: { token } }),
   resetPasswordWithToken: (token: string, password: string) => api.post('/user/passwd/reset/verify', { token, password }),

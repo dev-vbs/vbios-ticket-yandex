@@ -17,24 +17,30 @@ const passkeyEnabled = config.PASSKEY_AUTH_DISABLED === 'false' && config.PASSKE
 export default function SecuritySettings() {
   const { t } = useTranslation();
   const [passwordModalOpen, setPasswordModalOpen] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [activeTab, setActiveTab] = useState<string | null>('password');
   const { isInsideTelegramWebApp } = useTelegramWebApp();
   const isMobile = useMediaQuery('(max-width: 768px)');
 
   const handleChangePassword = async () => {
-    if (newPassword.length < 6) {
+    if (newPassword.length < 6 || newPassword !== confirmPassword) {
       notifications.show({
         title: t('common.error'),
-        message: t('auth.passwordTooShort'),
+        message: newPassword.length < 6
+          ? t('auth.passwordTooShort')
+          : t('auth.passwordsMismatch'),
         color: 'red',
       });
       return;
     }
     try {
-      await userApi.changePassword(newPassword);
+      await userApi.changePassword(newPassword, currentPassword);
       setPasswordModalOpen(false);
+      setCurrentPassword('');
       setNewPassword('');
+      setConfirmPassword('');
       notifications.show({
         title: t('common.success'),
         message: t('profile.passwordChanged'),
@@ -130,23 +136,40 @@ export default function SecuritySettings() {
 
       <Modal
         opened={passwordModalOpen}
-        onClose={() => { setPasswordModalOpen(false); setNewPassword(''); }}
+        onClose={() => { setPasswordModalOpen(false); setCurrentPassword(''); setNewPassword(''); setConfirmPassword(''); }}
         title={t('profile.changePassword')}
       >
         <Stack gap="md">
+          <PasswordInput
+            label={t('profile.currentPassword', { defaultValue: 'Текущий пароль' })}
+            placeholder={t('profile.currentPasswordPlaceholder', { defaultValue: 'Введите текущий пароль' })}
+            value={currentPassword}
+            onChange={(e) => setCurrentPassword(e.target.value)}
+            autoComplete="current-password"
+            required
+          />
           <PasswordInput
             label={t('profile.newPassword')}
             placeholder={t('profile.newPasswordPlaceholder')}
             value={newPassword}
             onChange={(e) => setNewPassword(e.target.value)}
+            autoComplete="new-password"
             minLength={6}
             error={newPassword.length > 0 && newPassword.length < 6 ? t('auth.passwordTooShort') : undefined}
           />
+          <PasswordInput
+            label={t('profile.confirmNewPassword', { defaultValue: 'Повторите новый пароль' })}
+            placeholder={t('profile.confirmNewPasswordPlaceholder', { defaultValue: 'Повторите новый пароль' })}
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            autoComplete="new-password"
+            error={confirmPassword.length > 0 && confirmPassword !== newPassword ? t('auth.passwordsMismatch') : undefined}
+          />
           <Group justify="flex-end">
-            <Button variant="light" onClick={() => { setPasswordModalOpen(false); setNewPassword(''); }}>
+            <Button variant="light" onClick={() => { setPasswordModalOpen(false); setCurrentPassword(''); setNewPassword(''); setConfirmPassword(''); }}>
               {t('common.cancel')}
             </Button>
-            <Button onClick={handleChangePassword} disabled={newPassword.length < 6}>
+            <Button onClick={handleChangePassword} disabled={currentPassword.length < 1 || newPassword.length < 6 || newPassword !== confirmPassword}>
               {t('common.save')}
             </Button>
           </Group>
