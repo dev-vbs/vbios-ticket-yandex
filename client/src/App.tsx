@@ -68,8 +68,7 @@ function AppContent() {
   } = useEmailRequired();
 
   useNotificationFromUrl();
-  // useTicketPoller(isAuthenticated);
-  useTicketPoller(false); // TODO: включить когда бэкенд будет готов
+  useTicketPoller(isAuthenticated);
 
   const [payHistoryOpen, setPayHistoryOpen] = useState(false);
   const [withdrawHistoryOpen, setWithdrawHistoryOpen] = useState(false);
