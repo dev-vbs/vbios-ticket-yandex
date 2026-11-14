@@ -731,8 +731,10 @@ function Layout() {
         </header>
 
         {}
-        <main className="flex-1 overflow-auto p-6">
-          <Outlet />
+        <main className="admin-main flex-1 overflow-auto p-4 sm:p-6">
+          <div className="page-container">
+            <Outlet />
+          </div>
         </main>
       </div>
             {/* Global Template Modal */}

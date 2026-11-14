@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { CreditCard, ArrowLeft, SortAsc, SortDesc, Check, X, RussianRuble } from 'lucide-react';
+import { CreditCard, ArrowLeft, SortAsc, SortDesc, Check, X, RussianRuble, Search, HelpCircle } from 'lucide-react';
 import { shm_request } from '../lib/shm_request';
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
@@ -9,6 +9,7 @@ const catalog: PaymentSystem[] = [
   ['T-Банк (Tinkoff)','Приём платежей через Т-Банк',0],['ЮKassa','Приём платежей для самозанятых и юридических лиц',0],['Wata','Карты, СБП, T-Pay и SberPay',4500],['Перевод','Платёжная система из конфигурации',0],['Точка Банк','Интернет-эквайринг Точка Банка',9000],['ФНС Чеки (SHM Customlab)','Отправка чеков в ФНС России',0],['ЮMoney','Приём платежей для физических лиц',0],['Aaio','Приём платежей через Aaio',0],['CryptoCloud','Приём криптовалютных платежей',0],['Cryptomus','Приём криптовалютных платежей',0],['CryptoPay (Crypto Bot)','Платежи через Crypto Bot',0],['FreeKassa','Приём платежей через FreeKassa',2700],['Heleket','Криптовалютные платежи через Heleket',4500],['Life Pay (СБП)','Приём платежей через СБП',4500],['Pally','Приём платежей через Pally',4500],['Pike Payments','Приём платежей через Pike Payments',9000],['Platega','Приём платежей через Platega',2700],['Robokassa','Приём платежей через Robokassa',4500],['Telegapay','Приём платежей через Telegapay',0],['Telegram Stars','Платежи Telegram Stars',0],['Tribute','Донаты через Tribute.tg',1800],].map(([title,description,price])=>({name:String(title),title:String(title),description:String(description),price:Number(price),paid:false,fields:[]}));
 
 type SortType = 'alpha' | 'price-asc' | 'price-desc' | 'paid-first' | 'unpaid-first';
+type FilterType = 'all' | 'installed' | 'reference' | 'free' | 'paid';
 
 function PaymentSystems() {
   const navigate = useNavigate();
@@ -18,6 +19,8 @@ function PaymentSystems() {
   const [selectedSystem, setSelectedSystem] = useState<PaymentSystem | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [sortType, setSortType] = useState<SortType>('alpha');
+  const [filter, setFilter] = useState<FilterType>('all');
+  const [query, setQuery] = useState('');
 
   const cardStyles = {
     backgroundColor: 'var(--theme-card-bg)',
@@ -90,7 +93,17 @@ function PaymentSystems() {
     }
   };
 
-  const sortedSystems = sortSystems(paymentSystems);
+  const visibleSystems = paymentSystems.filter((system) => {
+    const matchesQuery = !query.trim() || `${system.title} ${system.description}`.toLocaleLowerCase('ru').includes(query.trim().toLocaleLowerCase('ru'));
+    const installed = availableNames.includes(system.name);
+    const matchesFilter = filter === 'all'
+      || (filter === 'installed' && installed)
+      || (filter === 'reference' && !installed)
+      || (filter === 'free' && !system.price)
+      || (filter === 'paid' && Boolean(system.price));
+    return matchesQuery && matchesFilter;
+  });
+  const sortedSystems = sortSystems(visibleSystems);
 
   if (loading) {
     return (
@@ -106,16 +119,20 @@ function PaymentSystems() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
+      <div className="toolbar">
         <h1
-          className="text-2xl font-bold flex items-center gap-3"
+          className="page-title flex items-center gap-3"
           style={{ color: 'var(--theme-content-text)' }}
         >
           <CreditCard className="w-7 h-7" style={{ color: 'var(--theme-primary-color)' }} />
           Платежные системы
         </h1>
         
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          <label className="relative block w-56 max-w-full">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
+            <input className="input pl-9" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Поиск системы" />
+          </label>
           {/* Кнопки сортировки */}
           <div className="flex items-center gap-1 mr-4">
             <button
@@ -174,6 +191,15 @@ function PaymentSystems() {
         </div>
       </div>
 
+      <div className="flex items-center gap-2 flex-wrap mb-5">
+        {([
+          ['all', 'Все'], ['installed', 'Установлены'], ['reference', 'Справочные'], ['free', 'Бесплатные'], ['paid', 'Платные']
+        ] as [FilterType, string][]).map(([value, label]) => (
+          <button key={value} onClick={() => setFilter(value)} className={filter === value ? 'btn-primary btn-sm' : 'btn-secondary btn-sm'}>{label}</button>
+        ))}
+        <span className="text-sm text-muted ml-auto">Показано: {sortedSystems.length} из {paymentSystems.length}</span>
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {sortedSystems.map((system) => (
           <div
@@ -182,18 +208,18 @@ function PaymentSystems() {
             style={cardStyles}
             onClick={() => handleSystemClick(system)}
           >
-            <div className="flex items-center gap-3 mb-4">
+            <div className="flex items-start gap-3 mb-4">
               <div className="p-3 rounded-lg" style={{ backgroundColor: 'var(--theme-input-bg)' }}>
                 <CreditCard className="w-6 h-6" style={{ color: 'var(--accent-primary)' }} />
               </div>
-              <h3 className="text-lg font-semibold" style={{ color: 'var(--theme-content-text)' }}>
+              <h3 className="text-base font-semibold leading-tight" style={{ color: 'var(--theme-content-text)' }}>
                 {system.title}
               </h3>
             </div>
             <p className="text-sm" style={{ color: 'var(--theme-content-text-muted)' }}>
               {system.description}
             </p>
-            {!availableNames.includes(system.name) && <p className="mt-3 text-xs" style={{color: 'var(--theme-content-text-muted)'}}>Справочно · доступность модуля не подтверждена</p>}
+            {!availableNames.includes(system.name) && <p className="mt-3 text-xs flex items-center gap-1" style={{color: 'var(--theme-content-text-muted)'}}><HelpCircle className="w-3.5 h-3.5" /> Справочно · модуль не подключён</p>}
             {system.paid ? (
               <div className="mt-4 pt-4 border-t" style={{ borderColor: 'var(--theme-card-border)' }}>
                 <p className="text-sm font-semibold" style={{ color: 'var(--accent-success)' }}>
@@ -223,6 +249,9 @@ function PaymentSystems() {
             Нет доступных платежных систем
           </p>
         </div>
+      )}
+      {paymentSystems.length > 0 && sortedSystems.length === 0 && (
+        <div className="state-panel"><Search className="w-7 h-7" /><p>По выбранным условиям ничего не найдено</p><button className="btn-secondary btn-sm" onClick={() => { setQuery(''); setFilter('all'); }}>Сбросить фильтры</button></div>
       )}
 
       {selectedSystem && (
