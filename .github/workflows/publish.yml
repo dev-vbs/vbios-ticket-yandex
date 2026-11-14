@@ -45,6 +45,9 @@ jobs:
           - image: vbios-clients
             context: ./client
             target: client
+          - image: vbios-admin
+            context: ./admin
+            target: admin
     steps:
       - uses: actions/checkout@v4
       - name: Prepare backend version metadata
