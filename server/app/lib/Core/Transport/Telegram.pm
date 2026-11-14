@@ -1287,6 +1287,10 @@ sub process_message {
         return {};
     }
 
+    if ($user && !$user->is_blocked && $self->ticket_main_chat($user)) {
+        return {};
+    }
+
     my $response = $self->exec_template(
         cmd => $cmd,
     );
@@ -1302,6 +1306,48 @@ sub process_message {
     return {};
     # Reply directly for only first response
     return get_last_object( $response );
+}
+
+# Ordinary text in the private bot chat uses a persistent ticket conversation.
+sub ticket_main_chat {
+    my ($self,$user)=@_;
+    my $cfg=cfg('ticket') || {};
+    return 0 unless $cfg->{ai}{main_chat_enabled};
+    return 0 if $self->get_callback_query;
+    my $msg=$self->message || {};
+    my $text=$msg->{text} || '';
+    return 0 unless length($text) && $text !~ m{^/} && !$msg->{reply_to_message};
+    my $chat=$msg->{chat}{id};
+    return 0 unless $chat && $chat =~ /^[1-9][0-9]*$/;
+    my $ticket=get_service('Ticket',user_id=>$user->id);
+    my $subject='Telegram chat '.$self->profile_name;
+    my $row=$self->dbh->selectrow_hashref("SELECT ticket_id FROM tickets WHERE user_id=? AND subject=? AND status NOT IN ('closed','archived') ORDER BY ticket_id DESC LIMIT 1",undef,$user->id,$subject);
+    my $operator=$text =~ /(?<!\p{L})оператор(?!\p{L})/i;
+    my $result=eval {
+        my $id=$row ? $row->{ticket_id} : undef;
+        if ($id) {
+            $ticket->api_responder(ticket_id=>$id,responder=>'human') if $operator;
+            $ticket->api_message(ticket_id=>$id,message=>$text);
+        } else {
+            my $created=$ticket->api_create(subject=>$subject,message=>$text,responder=>$operator?'human':'ai');
+            $id=$created->{ticket_id};
+        }
+        my $answer=$self->dbh->selectrow_hashref("SELECT m.message_id,m.message FROM ticket_ai_jobs j JOIN ticket_messages m ON m.message_id=j.reply_message_id WHERE j.ticket_id=? AND j.status='done' ORDER BY j.source_message_id DESC LIMIT 1",undef,$id);
+        my $state=$ticket->_row($id);
+        if (!$operator && ($state->{responder}||'') eq 'ai' && $answer) {
+            my ($sent)=$self->dbh->selectrow_array('SELECT 1 FROM ticket_telegram_links WHERE profile=? AND chat_id=? AND ticket_id=? AND telegram_message_id=?',undef,$self->profile_name,$chat,$id,-$answer->{message_id});
+            unless ($sent) {
+                my $response=$self->http('sendMessage',data=>{chat_id=>$chat,text=>$answer->{message}});
+                my $body=JSON::decode_json($response->decoded_content);
+                die 'AI private delivery failed' unless $body->{ok};
+                $self->dbh->do('INSERT IGNORE INTO ticket_telegram_links(profile,chat_id,telegram_message_id,ticket_id,user_id) VALUES(?,?,?,?,?)',undef,$self->profile_name,$chat,-$answer->{message_id},$id,$user->id);
+                $self->dbh->commit;
+            }
+        }
+        1;
+    };
+    unless ($result) { logger->error('Main chat AI processing failed; check ticket AI jobs'); }
+    return 1;
 }
 
 sub ticket_group_update {
