@@ -72,7 +72,7 @@ export default function Dashboard() {
         <div className="dashboard-amount">{rubles(Number(user?.balance || 0))}<span> ₽</span></div>
         <p>{hasBalance ? 'Для оплаты и продления услуг' : 'Пополните баланс перед оплатой услуги'}</p>
         <button type="button" className="dashboard-pay" onClick={() => setPayModalOpen(true)}><IconPlus size={18} />Пополнить баланс</button>
-        <div className="dashboard-forecast"><div><span>К оплате за услуги</span><strong>{forecast ? `${rubles(Number(forecast.total || 0))} ₽` : '—'}</strong></div><Link to="/profile">Расчёт оплаты<IconArrowRight size={15} /></Link></div>
+        <div className="dashboard-forecast"><div><span>К оплате за услуги</span><strong>{forecast ? `${rubles(Number(forecast.total || 0))} ₽` : '—'}</strong></div><Link to="/operations">Расчёт оплаты<IconArrowRight size={15} /></Link></div>
         {forecastError && <p role="status" className="dashboard-inline-error">Не удалось обновить расчёт. Повторите обновление.</p>}
       </section>
       <section className="cabinet-panel dashboard-connections" aria-labelledby="connections-heading">
