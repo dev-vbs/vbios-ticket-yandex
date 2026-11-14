@@ -1,3 +1,5 @@
+import { createRoot } from 'react-dom/client';
+import { Component, type ReactNode } from 'react';
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { IconActivity, IconBell, IconChevronRight, IconCloud, IconCreditCard, IconLayoutDashboard, IconLogout, IconMenu2, IconSearch, IconSettings, IconShieldCheck, IconTicket, IconUser, IconUsers, IconX } from '@tabler/icons-react';
 import './styles.css';
@@ -23,3 +25,15 @@ function Topology(){const [data,setData]=useState<any>(null),[error,setError]=us
 function Metric({icon:Icon,label,value}:{icon:any,label:string,value:string}){return <div className="metric"><Icon size={20}/><span>{label}</span><strong>{value}</strong></div>}
 export default App;
 
+
+class AdminErrorBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
+  state = { failed: false };
+  static getDerivedStateFromError() { return { failed: true }; }
+  render() {
+    if (this.state.failed) return <main className="login"><section className="login-card" role="alert"><h1>Не удалось открыть панель</h1><p>Произошла ошибка интерфейса. Перезагрузите страницу.</p><button className="primary" onClick={() => window.location.reload()}>Перезагрузить</button></section></main>;
+    return this.props.children;
+  }
+}
+const rootElement = document.getElementById('root');
+if (!rootElement) throw new Error('Admin root element is missing');
+createRoot(rootElement).render(<AdminErrorBoundary><App /></AdminErrorBoundary>);
