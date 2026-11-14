@@ -90,6 +90,8 @@ const baseNavigation: MenuItem[] = [
     children: [
       { name: 'Шаблоны', href: '/templates' },
       { name: 'Конфигурация', href: '/configuration' },
+      { name: 'Платёжные системы', href: '/payment-systems' },
+      { name: 'Конвертер валют', href: '/currency-converter' },
     ]
   },
   {
@@ -197,14 +199,12 @@ function Layout() {
 
   const showSwagger = import.meta.env.VITE_SHOW_SWAGGER === 'true';
 
-  const navigation: MenuItem[] = hasCloudSub
-    ? [
-        baseNavigation[0], // Главная
-        { name: 'Аналитика', href: '/analytics', icon: BarChart3 },
-        { name: 'Топология', href: '/topology', icon: Cloud },
-        ...baseNavigation.slice(1)
-      ]
-    : baseNavigation;
+  const navigation: MenuItem[] = [
+    baseNavigation[0],
+    { name: 'Аналитика', href: '/analytics', icon: BarChart3 },
+    { name: 'Топология', href: '/topology', icon: Cloud },
+    ...baseNavigation.slice(1),
+  ];
   
   const menuItems = showSwagger
     ? [...navigation, { name: 'Swagger', href: '/swagger', icon: FileText }]
