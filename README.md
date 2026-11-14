@@ -365,10 +365,10 @@ docker compose up -d --no-deps --force-recreate core spool
     "api_key": "REPLACE_WITH_TIMEWEB_AI_PROXY_KEY",
     "model": "dashscope/qwen3.5-flash",
     "reply_mode": "auto",
-    "history_messages": 12,
+    "history_messages": 6,
     "max_replies_per_ticket": 5,
-    "max_tokens": 1600,
-    "timeout_seconds": 30,
+    "max_tokens": 700,
+    "timeout_seconds": 12,
     "instructions": "Ты помощник поддержки сервиса. Помогай с кабинетом, оплатой и подключением VPN. Не утверждай, что проверил баланс или изменил услугу. Не запрашивай пароли, токены и ссылки подписки. Не выдумывай тарифы и способы оплаты. Если требуется действие сотрудника, предложи обратиться в поддержку. Отвечай понятно и по шагам."
   }
 }
