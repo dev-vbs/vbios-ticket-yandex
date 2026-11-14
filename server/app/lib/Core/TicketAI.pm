@@ -50,13 +50,13 @@ sub reply {
             $db->do("UPDATE ticket_ai_jobs SET status='skipped' WHERE source_message_id=?",undef,$mid);
             return;
         }
-        my $history=$db->selectall_arrayref('SELECT is_admin,message FROM ticket_messages WHERE ticket_id=? ORDER BY message_id DESC LIMIT '. _limit($ai->{history_messages},6,30),{Slice=>{}},$id);
+        my $history=$db->selectall_arrayref('SELECT is_admin,message FROM ticket_messages WHERE ticket_id=? ORDER BY message_id DESC LIMIT '. _limit($ai->{history_messages},2,30),{Slice=>{}},$id);
         my @messages=({role=>'system',content=>$prompt});
         push @messages, map { {role=>$_->{is_admin}?'assistant':'user',content=>substr($_->{message},0,10000)} } reverse @$history;
         my $request=HTTP::Request->new('POST','https://api.timeweb.ai/v1/chat/completions');
         $request->header('Content-Type'=>'application/json','Authorization'=>'Bearer '.$key);
-        $request->content($json->encode({model=>$ai->{model} || 'dashscope/qwen3.5-flash',messages=>\@messages,max_tokens=>_limit($ai->{max_tokens},700,4000),stream=>JSON::false()}));
-        my $ua=LWP::UserAgent->new(timeout=>_limit($ai->{timeout_seconds},12,30),max_size=>2_000_000,requests_redirectable=>[]);
+        $request->content($json->encode({model=>$ai->{model} || 'dashscope/qwen3.5-flash',messages=>\@messages,max_tokens=>_limit($ai->{max_tokens},300,4000),stream=>JSON::false()}));
+        my $ua=LWP::UserAgent->new(timeout=>_limit($ai->{timeout_seconds},3,30),max_size=>2_000_000,requests_redirectable=>[]);
         $stage='provider_request';
         my $response=$ua->request($request);
         unless ($response->is_success) {

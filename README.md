@@ -367,10 +367,10 @@ docker compose up -d --no-deps --force-recreate core spool
     "api_key": "",
     "model": "dashscope/qwen3.5-flash",
     "reply_mode": "auto",
-    "history_messages": 6,
+    "history_messages": 2,
     "max_replies_per_ticket": 5,
-    "max_tokens": 700,
-    "timeout_seconds": 12,
+    "max_tokens": 300,
+    "timeout_seconds": 3,
     "instructions": "Ты помощник поддержки сервиса. Помогай с кабинетом, оплатой и подключением VPN. Не утверждай, что проверил баланс или изменил услугу. Не запрашивай пароли, токены и ссылки подписки. Не выдумывай тарифы и способы оплаты. Если требуется действие сотрудника, предложи обратиться в поддержку. Отвечай понятно и по шагам."
   }
 }
@@ -480,9 +480,9 @@ docker compose exec mysql mysql -u webface -p webface -e 'SELECT source_message_
   "enabled": true,
   "main_chat_enabled": true,
   "reply_mode": "auto",
-  "history_messages": 6,
-  "max_tokens": 700,
-  "timeout_seconds": 12,
+  "history_messages": 2,
+  "max_tokens": 300,
+  "timeout_seconds": 3,
   "max_replies_per_ticket": 5
 }
 ```
