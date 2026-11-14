@@ -219,6 +219,40 @@ sub _tg {
     $tg->{token} = $token;
     return $tg;
 }
+
+# Send the owner's private profile avatar to the ticket topic once, before the
+# first ticket message. The object is downloaded server-side; signed storage
+# URLs and credentials are never exposed to Telegram or written to logs.
+sub _telegram_owner_avatar {
+    my ($self, $tg, $chat, $thread, $ticket_id, $user_id, $display) = @_;
+    return unless $chat && $user_id;
+    my $row = eval { $self->dbh->selectrow_hashref(
+        'SELECT bucket,object_key,mime_type FROM user_avatars WHERE user_id=?', undef, $user_id
+    ) };
+    return unless $row && $row->{bucket} && $row->{object_key};
+    my $ok = eval {
+        require Core::TicketStorage;
+        my $cfg = get_service('config')->data_by_name('ticket') || {};
+        my $storage_cfg = $cfg->{storage} || {};
+        my $storage = Core::TicketStorage->new($storage_cfg);
+        my $bytes = $storage->request('GET', $row->{bucket}, $row->{object_key});
+        my ($ext) = ($row->{mime_type} || '') =~ m{image/(jpeg|png|webp|gif)}i;
+        $ext = lc($ext || 'jpeg'); $ext = 'jpg' if $ext eq 'jpeg';
+        my $caption = '👤 ' . ($display || 'Пользователь') . " · ID $user_id\n📩 Тикет #$ticket_id";
+        my $response = $tg->uploadPhoto($bytes,
+            filename => "avatar.$ext",
+            chat_id => $chat,
+            (defined $thread ? (message_thread_id => $thread) : ()),
+            caption => substr($caption, 0, 1024),
+        );
+        my $body = eval { $response->decoded_content } || '';
+        my $result = eval { decode_json($body) } || {};
+        die 'avatar upload rejected' unless $result->{ok};
+        1;
+    };
+    logger->error("Ticket $ticket_id avatar upload failed") unless $ok;
+    return $ok;
+}
 sub telegram_sync {
     my ($self, $id, $handoff) = @_;
     my $cfg = get_service('config')->data_by_name('ticket') || {};
@@ -258,7 +292,8 @@ sub telegram_sync {
         $name =~ s/[\r\n]+/ /g;
         $service_line = "\n🌐 Услуга: $name (#$r->{user_service_id})";
     }
-    my $heading = $m->{message_id} == ($self->dbh->selectrow_array('SELECT MIN(message_id) FROM ticket_messages WHERE ticket_id=?', undef, $id) || 0) ? 'Новое обращение' : 'Новое сообщение';
+    my $is_first_message = $m->{message_id} == ($self->dbh->selectrow_array('SELECT MIN(message_id) FROM ticket_messages WHERE ticket_id=?', undef, $id) || 0);
+    my $heading = $is_first_message ? 'Новое обращение' : 'Новое сообщение';
     my $text = "📩 $heading #$id\n👤 $display · ID $r->{user_id}\n📌 $subject\n📂 $kind · ⚡ $priority$service_line\n\n💬 " . $m->{message};
     if ($handoff) {
         my $history=$self->dbh->selectall_arrayref('SELECT is_admin,message FROM ticket_messages WHERE ticket_id=? ORDER BY message_id DESC LIMIT 6',{Slice=>{}},$id);
@@ -267,6 +302,7 @@ sub telegram_sync {
             join("\n\n",map {($_->{is_admin}?'Поддержка / ИИ: ':'Пользователь: ').substr($_->{message},0,500)} reverse @$history);
     }
     $text = substr($text, 0, 4000);
+    $self->_telegram_owner_avatar($tg, $chat, $thread, $id, $r->{user_id}, $display) if $is_first_message;
     my $keyboard = { inline_keyboard => [] };
     if (defined $cfg->{admin_user_url_template} && $cfg->{admin_user_url_template} =~ m{^https://[^\s]+$} && $cfg->{admin_user_url_template} =~ /\{user_id\}/) {
         my $url = $cfg->{admin_user_url_template};
