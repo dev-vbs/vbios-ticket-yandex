@@ -260,12 +260,13 @@ sub telegram_sync {
             join("\n\n",map {($_->{is_admin}?'Поддержка / ИИ: ':'Пользователь: ').substr($_->{message},0,500)} reverse @$history);
     }
     $text = substr($text, 0, 4000);
-    my $keyboard;
+    my $keyboard = { inline_keyboard => [] };
     if (defined $cfg->{admin_user_url_template} && $cfg->{admin_user_url_template} =~ m{^https://[^\s]+$} && $cfg->{admin_user_url_template} =~ /\{user_id\}/) {
         my $url = $cfg->{admin_user_url_template};
         $url =~ s/\{user_id\}/$r->{user_id}/g;
-        $keyboard = { inline_keyboard => [[{ text => '👤 Открыть пользователя', url => $url }]] };
+        push @{$keyboard->{inline_keyboard}}, [{ text => '👤 Открыть пользователя', url => $url }];
     }
+    push @{$keyboard->{inline_keyboard}}, [{ text => '✅ Закрыть тикет', callback_data => 'ticket_close '.$id }] if $thread;
     my $response = $tg->http('sendMessage', chat_id => $chat, data => {
         chat_id => $chat, ($thread ? (message_thread_id => $thread) : ()), text => $text,
         ($keyboard ? (reply_markup => $keyboard) : ()),

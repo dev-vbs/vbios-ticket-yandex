@@ -1309,20 +1309,28 @@ sub ticket_group_update {
     my $cfg = cfg('ticket') || {};
     my $admin_chat = $cfg->{id} || $cfg->{admin_chat_id};
     my $msg = $self->message || {};
-    return {} if $msg->{from}{is_bot};
+    my $cb = eval { $self->get_callback_query } || {};
+    my $close_id = ($cb->{data} || '') =~ /^ticket_close ([1-9][0-9]*)$/ ? $1 : undef;
+    return {} if $msg->{from}{is_bot} && !$close_id;
+    my $actor = $close_id ? $cb->{from}{id} : $msg->{from}{id};
     return {} unless $admin_chat && ($msg->{chat}{id}||'') eq $admin_chat;
     my $thread = $msg->{message_thread_id};
     return {} unless $thread;
     my $row = $self->dbh->selectrow_hashref('SELECT * FROM tickets WHERE telegram_chat_id=? AND telegram_thread_id=? AND status<>"closed"',undef,$admin_chat,$thread);
-    return {} unless $row;
+    unless ($row) {
+        $self->http('answerCallbackQuery', data => { callback_query_id => $cb->{id}, text => 'Тикет уже закрыт или недоступен.' }) if $close_id;
+        return {};
+    }
+    return {} if $close_id && $close_id != $row->{ticket_id};
     my $text = $msg->{text} || $msg->{caption} || '';
-    if ($text =~ m{^/close(?:@\S+)?\s*$}i) {
+    if ($close_id || $text =~ m{^/close(?:@\S+)?\s*$}i) {
         # Only a real administrator of the configured support group may close a ticket.
         my $member_response = eval { $self->http('getChatMember', data => {
-            chat_id => $admin_chat, user_id => $msg->{from}{id},
+            chat_id => $admin_chat, user_id => $actor,
         }) };
         my $member = eval { JSON::decode_json($member_response->decoded_content) } || {};
         unless ($member->{ok} && ($member->{result}{status} || '') =~ /^(?:creator|administrator)$/) {
+            $self->http('answerCallbackQuery', data => { callback_query_id => $cb->{id}, text => 'Только для администратора группы.' }) if $close_id;
             $self->http('sendMessage', data => { chat_id => $admin_chat, message_thread_id => $thread,
                 text => 'Закрывать обращения могут только администраторы группы.' });
             return {};
@@ -1330,6 +1338,11 @@ sub ticket_group_update {
         my $changed = $self->dbh->do("UPDATE tickets SET status='closed',closed_at=NOW(),updated=NOW() WHERE ticket_id=? AND status NOT IN ('closed','archived')",undef,$row->{ticket_id});
         $self->dbh->commit;
         return {} unless $changed && $changed ne '0E0';
+        if ($close_id) {
+            $self->http('answerCallbackQuery', data => { callback_query_id => $cb->{id}, text => 'Тикет закрыт' });
+            eval { $self->http('editMessageReplyMarkup', data => { chat_id => $admin_chat,
+                message_id => $msg->{message_id}, reply_markup => { inline_keyboard => [] } }) };
+        }
         my $owner = $self->user($row->{user_id});
         my $settings = $owner ? ($owner->settings->{telegram} || {}) : {};
         my $profile = $settings->{$self->profile_name} || $settings;
@@ -2398,3 +2411,4 @@ sub set_webhook {
 }
 
 1;
+
