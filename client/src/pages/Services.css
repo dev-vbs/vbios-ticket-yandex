@@ -14,6 +14,12 @@
 .services-overview .mantine-Accordion-content { padding: 0 12px 12px; }
 .services-search { width: 100%; max-width: 460px; }
 .service-overview-card { line-height: 1.45; }
+.service-overview-card { transition: border-color .18s ease, box-shadow .18s ease; }
+.service-overview-card:hover { box-shadow: 0 8px 26px rgba(20, 35, 60, .08); }
+.service-card__divider { margin-inline: -4px; }
+.service-card__price { font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
+.service-card__expiry { font-weight: 600; }
+.service-overview-card .mantine-Button-root { min-height: 38px; }
 .service-detail-page__back { align-self: flex-start; }
 
 .vpn-cabinet :is(.service-detail-page__summary, .service-connection-card, .connection-diagnostics) {

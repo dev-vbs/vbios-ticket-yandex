@@ -2,7 +2,7 @@ import DataLoadStatus from '../components/DataLoadStatus';
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import { Card, Timeline, Text, Stack, Group, Badge, Button, Divider, ActionIcon, Loader, Center, Paper, Title, Tabs, Code, Tooltip, Accordion, Box, Select, NumberInput, Pagination, Alert, TextInput, Skeleton } from '@mantine/core';
-import { IconQrcode, IconCopy, IconCheck, IconDownload, IconRefresh, IconTrash, IconPlus, IconPlayerStop, IconExchange, IconCreditCard, IconWallet, IconDeviceMobileCog, IconArrowLeft, IconSearch, IconCalendarTime, IconWifi, IconWifiOff } from '@tabler/icons-react';
+import { IconQrcode, IconCopy, IconCheck, IconDownload, IconRefresh, IconTrash, IconPlus, IconPlayerStop, IconExchange, IconCreditCard, IconWallet, IconDeviceMobileCog, IconArrowLeft, IconArrowRight, IconSearch, IconCalendarTime, IconWifi, IconWifiOff } from '@tabler/icons-react';
 import { useDisclosure, useClipboard } from '@mantine/hooks';
 import { useTranslation } from 'react-i18next';
 import { api, servicesApi, storageApi, userApi } from '../api/client';
@@ -742,6 +742,7 @@ function ServiceCard({ service, onClick, isChild = false, isLastChild = false }:
   const { t, i18n } = useTranslation();
   const statusColor = statusColors[service.status] || 'gray';
   const statusLabel = t(`status.${service.status}`, service.status);
+  const expiry = getExpiryState(service.expire);
 
   if (isChild) {
     return (
@@ -818,17 +819,21 @@ function ServiceCard({ service, onClick, isChild = false, isLastChild = false }:
             <Text size="xs" c="dimmed" mb={4}>Услуга #{service.user_service_id}</Text>
             <Text size="sm" fw={600} style={{ overflowWrap: 'anywhere' }}>{service.service.name}</Text>
           </div>
-          <Badge color={statusColor} variant="light" size="lg" radius="sm">{statusLabel}</Badge>
+          <Badge color={statusColor} variant="light" size="md" radius="sm">{statusLabel}</Badge>
         </Group>
-        <Divider />
-        <Group justify="space-between" gap="md">
-          <Text size="sm" c="dimmed">Стоимость</Text>
-          <Text fw={700}>{service.service.cost > 0 ? `${service.service.cost} ${t('common.currency')}` : '—'}</Text>
+        <Divider className="service-card__divider" />
+        <Group justify="space-between" gap="md" align="center">
+          <Stack gap={2}>
+            <Text size="xs" c="dimmed">Стоимость продления</Text>
+            <Text fw={700} size="lg" className="service-card__price">{service.service.cost > 0 ? `${service.service.cost} ${t('common.currency')}` : '—'}</Text>
+          </Stack>
+          <Stack gap={2} align="flex-end">
+            <Text size="xs" c="dimmed">Действует до</Text>
+            <Text size="sm" fw={600}>{service.expire ? new Date(service.expire as string).toLocaleDateString(i18n.language === 'ru' ? 'ru-RU' : 'en-US') : 'Не указан'}</Text>
+          </Stack>
         </Group>
-        <Group justify="space-between" gap="md">
-          <Text size="sm" c="dimmed">Действует до</Text>
-          <Text size="sm" fw={600}>{service.expire ? new Date(service.expire as string).toLocaleDateString(i18n.language === 'ru' ? 'ru-RU' : 'en-US') : 'Не указан'}</Text>
-        </Group>
+        {expiry.label && <Text size="xs" className={`service-card__expiry expiry-indicator--${expiry.tone}`}>{expiry.label}</Text>}
+        <Button fullWidth variant="light" size="sm" rightSection={<IconArrowRight size={15} />} onClick={(event) => { event.stopPropagation(); onClick(); }}>Открыть услугу</Button>
       </Stack>
     </Card>
   );
