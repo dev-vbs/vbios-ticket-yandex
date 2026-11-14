@@ -60,8 +60,14 @@ export function CabinetLayout({ children }: { children: ReactNode }) {
       </div>
     </div></header>
     <div className="vpn-workspace">
-      <nav className="vpn-tabs" aria-label="Разделы кабинета">{nav(desktopItems)}</nav>
-      <main ref={main} id="cabinet-content" tabIndex={-1} className="cabinet-main cabinet-page-main">{children}<footer className="cabinet-legal"><LegalLinks /></footer></main>
+      <aside className="vpn-sidebar" aria-label="Навигация кабинета">
+        <div className="vpn-sidebar__caption">УПРАВЛЕНИЕ</div>
+        <nav className="vpn-sidebar__nav">{nav(desktopItems)}</nav>
+        <div className="vpn-sidebar__footer">Безопасный кабинет<br /><span>vBios</span></div>
+      </aside>
+      <div className="vpn-content">
+        <main ref={main} id="cabinet-content" tabIndex={-1} className="cabinet-main cabinet-page-main">{children}<footer className="cabinet-legal"><LegalLinks /></footer></main>
+      </div>
     </div>
     <nav className="vpn-bottom-nav" aria-label="Навигация кабинета">{nav(mobileItems)}</nav>
   </div>;
