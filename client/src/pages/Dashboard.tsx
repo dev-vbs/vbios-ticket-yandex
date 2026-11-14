@@ -48,6 +48,7 @@ export default function Dashboard() {
   const hasBalance = Number(user?.balance || 0) > 0;
   const { hasNewTicketMessages } = useStore();
   const expiringServices = activeServices.filter((service) => expiry(service.expire));
+  const blockedServices = services.filter((service) => ['BLOCK', 'block'].includes(service.status || ''));
   return <div className="dashboard-overview">
     <header className="cabinet-header">
       <div><h1>Главная</h1><p>Здравствуйте, {user?.full_name || user?.login || 'пользователь'}. Всё важное по вашему аккаунту.</p></div>
@@ -60,6 +61,11 @@ export default function Dashboard() {
       {expiringServices.slice(0, 2).map(service => <Link key={service.user_service_id} to={`/services/${service.user_service_id}`}><IconCalendarEvent size={19} /><span>{service.service?.name || service.name || `Услуга #${service.user_service_id}`} · {expiry(service.expire)}</span><IconArrowRight size={16} /></Link>)}
       {hasNewTicketMessages && <Link to="/tickets"><IconHeadset size={19} /><span>Новый ответ поддержки</span><IconArrowRight size={16} /></Link>}
     </section>}
+    <section className="dashboard-stats" aria-label="Сводка по аккаунту">
+      <Link to="/services" className="dashboard-stat"><span className="dashboard-stat__label">Активные услуги</span><strong>{loading ? '—' : activeServices.length}</strong><span className="dashboard-stat__hint">управление VPN</span></Link>
+      <Link to="/services" className="dashboard-stat dashboard-stat--warning"><span className="dashboard-stat__label">Истекают скоро</span><strong>{loading ? '—' : expiringServices.length}</strong><span className="dashboard-stat__hint">требуют внимания</span></Link>
+      <Link to="/services" className="dashboard-stat dashboard-stat--muted"><span className="dashboard-stat__label">Приостановлены</span><strong>{loading ? '—' : blockedServices.length}</strong><span className="dashboard-stat__hint">проверить услуги</span></Link>
+    </section>
     <div className="dashboard-primary">
       <section className="dashboard-funds" aria-label="Баланс аккаунта">
         <div className="dashboard-section-label"><IconWallet size={18} />Ваш баланс</div>
