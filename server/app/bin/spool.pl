@@ -30,12 +30,34 @@ my $request_count = 0;
 my $max_requests = 10000;
 my $random_factor = int rand(11);
 my $last_task_time = time();
+my $last_ticket_cleanup = 0;
+
+sub cleanup_closed_tickets {
+    my $db = $user->dbh_auto_commit;
+    my $rows = $db->selectall_arrayref(
+        "SELECT ticket_id,user_id FROM tickets WHERE status IN ('closed','archived') AND closed_at IS NOT NULL AND closed_at < DATE_SUB(NOW(), INTERVAL 3 DAY) ORDER BY closed_at LIMIT 25",
+        { Slice => {} }
+    );
+    for my $row (@$rows) {
+        my $ticket = eval { get_service('Ticket', user_id => $row->{user_id}) };
+        eval { $ticket->telegram_close($row->{ticket_id}) } if $ticket;
+        eval {
+            $db->do('DELETE FROM tickets WHERE ticket_id=? AND status IN (\'closed\',\'archived\') AND closed_at < DATE_SUB(NOW(), INTERVAL 3 DAY)', undef, $row->{ticket_id});
+            $db->commit;
+            say "Deleted ticket $row->{ticket_id} after 3 days";
+        } or warn "Ticket cleanup failed for $row->{ticket_id}: $@";
+    }
+}
 
 say "SHM spool started at: " . localtime;
 
 my $spool = get_service('spool');
 
 for (;;) {
+    if (time - $last_ticket_cleanup >= 60) {
+        eval { cleanup_closed_tickets(); 1 } or warn "Ticket cleanup error: $@";
+        $last_ticket_cleanup = time;
+    }
     eval { require Core::TicketAI; Core::TicketAI->process_queued(); 1 };
     my $task_exists = 0;
     do {
