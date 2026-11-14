@@ -73,7 +73,7 @@ services:
         condition: service_healthy
 
   admin:
-    image: "danuk/shm-admin:${ADMIN_VERSION}"
+    image: "${SHM_REPO}/vbios-admin:${ADMIN_VERSION:-latest}"
     pull_policy: always
     restart: always
     environment:
@@ -138,3 +138,4 @@ volumes:
     driver: local
   shm-data:
     driver: local
+
