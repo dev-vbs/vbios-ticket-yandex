@@ -10,7 +10,8 @@
 .vpn-header__actions{display:flex;align-items:center;gap:12px;flex-shrink:0}
 .vpn-cabinet .vpn-header__actions .mantine-ActionIcon-root{width:34px;height:34px;min-width:34px;min-height:34px;border:1px solid var(--ui-border);border-radius:9px;background:var(--ui-surface);color:var(--ui-muted)}
 .vpn-account-trigger{display:flex;align-items:center;gap:9px;border:0;border-left:1px solid var(--ui-border);padding:0 0 0 16px;min-height:36px;background:none;color:var(--ui-text);cursor:pointer;font:inherit;font-size:13px}
-.vpn-avatar{display:grid;place-items:center;width:32px;height:32px;border-radius:50%;background:var(--ui-accent-soft);color:var(--ui-accent-strong);font-size:13px;font-weight:650;flex-shrink:0}
+.vpn-avatar{display:grid;place-items:center;width:32px;height:32px;border-radius:50%;background:var(--ui-accent-soft);color:var(--ui-accent-strong);font-size:13px;font-weight:650;flex-shrink:0;overflow:hidden}
+.vpn-account-trigger .vpn-avatar img{width:100%;height:100%;object-fit:cover}
 .vpn-account-name{max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .vpn-workspace{max-width:1280px;margin:0 auto;padding:28px;display:grid;grid-template-columns:214px minmax(0,1fr);gap:28px;align-items:start}
 .vpn-sidebar{position:sticky;top:18px;padding:14px 10px 12px;background:#1d2a3b;border:1px solid #27384d;border-radius:10px;color:#dbe6f4;min-height:calc(100vh - 138px);display:flex;flex-direction:column}
