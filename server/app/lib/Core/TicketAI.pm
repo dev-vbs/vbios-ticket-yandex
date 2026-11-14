@@ -39,7 +39,10 @@ sub reply {
     return unless ref($ai) eq 'HASH' && defined($ai->{enabled}) && $ai->{enabled} =~ /^(?:1|true)$/i;
     my $mode=$ai->{reply_mode} || 'draft';
     die 'Invalid AI mode' unless $mode eq 'draft' || $mode eq 'auto';
-    my $key=$ENV{TIMEWEB_AI_KEY} || $ai->{api_key};
+    # The AI credential is configured only in config.ticket.ai.api_key.
+    # Do not fall back to an environment variable: this keeps the source of
+    # truth in SHM configuration and prevents a hidden deployment override.
+    my $key=$ai->{api_key};
     die 'Missing AI key' unless defined $key && length $key;
     # The mounted prompt file is the deployable source of truth. This avoids
     # silently using an old value left in ticket.ai.instructions in the DB.

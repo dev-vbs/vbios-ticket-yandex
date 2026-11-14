@@ -78,7 +78,7 @@ sub _notify_safe {
 sub api_options {
     my $cfg=get_service('config')->data_by_name('ticket') || {};
     my $ai=$cfg->{ai} || {};
-    return {ai_available => (defined($ai->{enabled}) && $ai->{enabled} =~ /^(?:1|true)$/i && ($ai->{reply_mode}||'draft') eq 'auto' && ($ENV{TIMEWEB_AI_KEY} || $ai->{api_key})) ? 1 : 0};
+    return {ai_available => (defined($ai->{enabled}) && $ai->{enabled} =~ /^(?:1|true)$/i && ($ai->{reply_mode}||'draft') eq 'auto' && $ai->{api_key}) ? 1 : 0};
 }
 sub _validate_responder {
     my ($self,$value)=@_;
