@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Card, Text, Stack, Group, Button, TextInput, Badge, Loader, Box, Modal, Code, ActionIcon, SimpleGrid } from '@mantine/core';
+import { Card, Text, Stack, Group, Button, TextInput, Badge, Loader, Box, Modal, Code, ActionIcon, SimpleGrid, Divider } from '@mantine/core';
 import { IconShieldLock, IconCheck, IconCopy, IconQrcode } from '@tabler/icons-react';
 import { useClipboard } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
@@ -7,6 +7,7 @@ import { useTranslation } from 'react-i18next';
 import { otpApi, OtpStatus, OtpSetupResponse } from '../../api/client';
 import QrModal from './../QrModal';
 import { config } from '../../config';
+import './OtpSettings.css';
 
 interface OtpSettingsProps {
   embedded?: boolean;
@@ -161,41 +162,18 @@ export default function OtpSettings({ embedded = false, isActive = true }: OtpSe
   }
 
   const mainContent = (
-    <Stack gap={embedded ? "xs" : "md"}>
-      <Group justify="space-between">
-        <Group gap="xs">
-          <IconShieldLock size={embedded ? 18 : 24} />
-          <Text fw={500}>{t('otp.title')}</Text>
-        </Group>
-        {status?.enabled && (
-          <Badge color="green" variant="light">
-            {t('otp.enabled')}
-          </Badge>
-        )}
-      </Group>
-
-      <Text size="sm" c="dimmed">
-        {t('otp.description')}
-      </Text>
-
-      {status?.enabled ? (
-        <Button
-          variant="light"
-          color="red"
-          onClick={() => setDisableModalOpen(true)}
-        >
-          {t('otp.disable')}
-        </Button>
-      ) : (
-        <Button
-          variant="light"
-          color="blue"
-          onClick={handleSetup}
-        >
-          {t('otp.enable')}
-        </Button>
-      )}
-    </Stack>
+    <div className="otp-layout">
+      <Stack gap="sm" className="otp-fields">
+        <Group gap="xs"><IconShieldLock size={embedded ? 18 : 22} /><Text fw={600}>{t('otp.title')}</Text>{status?.enabled && <Badge color="green" variant="light">{t('otp.enabled')}</Badge>}</Group>
+        <Text size="sm" c="dimmed">{t('otp.description')}</Text>
+        <Divider my="xs" />
+        <Text size="xs" c="dimmed" fw={600}>Как это работает</Text>
+        <Group gap="xs" wrap="nowrap"><Badge size="sm" circle color="blue">1</Badge><Text size="sm">Сканируйте QR-код в приложении-аутентификаторе.</Text></Group>
+        <Group gap="xs" wrap="nowrap"><Badge size="sm" circle color="blue">2</Badge><Text size="sm">Введите шестизначный код для подтверждения.</Text></Group>
+        {status?.enabled ? <Button variant="light" color="red" onClick={() => setDisableModalOpen(true)} mt="xs">{t('otp.disable')}</Button> : <Button variant="light" color="blue" onClick={handleSetup} mt="xs">{t('otp.enable')}</Button>}
+      </Stack>
+      <aside className="otp-summary"><div className="otp-summary__icon"><IconShieldLock size={24} /></div><Text size="sm" c="dimmed" mt="md">Статус защиты</Text><Text className="otp-summary__status">{status?.enabled ? 'Включена' : 'Не включена'}</Text><Divider my="md" /><Text size="xs" c="dimmed" lh={1.6}>{status?.enabled ? 'Ваш аккаунт защищён дополнительным кодом.' : 'Добавьте второй фактор, чтобы защитить вход в кабинет.'}</Text></aside>
+    </div>
   );
 
   return (
@@ -212,7 +190,9 @@ export default function OtpSettings({ embedded = false, isActive = true }: OtpSe
         opened={setupModalOpen}
         onClose={handleCloseSetup}
         title={t('otp.setupTitle')}
-        size="md"
+        size="lg"
+        centered
+        classNames={{ content: 'otp-modal', header: 'otp-modal__header', body: 'otp-modal__body' }}
       >
         {setupData && !showBackupCodes && (
           <Stack gap="md">

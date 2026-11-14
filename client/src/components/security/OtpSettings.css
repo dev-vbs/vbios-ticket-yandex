@@ -1,0 +1,10 @@
+.otp-layout { display:grid; grid-template-columns:minmax(0,1.2fr) minmax(0,1fr); gap:24px; align-items:start; }
+.otp-fields { min-width:0; }
+.otp-summary { padding:22px; border-radius:16px; background:var(--mantine-primary-color-light); border:1px solid var(--mantine-color-default-border); }
+.otp-summary__icon { display:flex; color:var(--mantine-primary-color-light-color); }
+.otp-summary__status { font-size:clamp(26px,4vw,34px); font-weight:750; letter-spacing:-1px; line-height:1.3; margin-top:6px; }
+.otp-modal { border-radius:24px; overflow:hidden; }
+.otp-modal__header { padding:24px 24px 12px; border-bottom:1px solid var(--mantine-color-default-border); }
+.otp-modal__header .mantine-Modal-title { font-size:24px; font-weight:750; }
+.otp-modal__body { padding:14px 24px 24px; }
+@media (max-width:600px) { .otp-layout { grid-template-columns:minmax(0,1fr); gap:20px; } .otp-summary { padding:16px; } .otp-summary__icon { display:none; } .otp-modal__header { padding:18px 16px 10px; } .otp-modal__body { padding:10px 16px 18px; } }
