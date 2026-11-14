@@ -1325,8 +1325,8 @@ sub ticket_main_chat {
     my $subject='Telegram chat '.$self->profile_name;
     my $row=$self->dbh->selectrow_hashref("SELECT ticket_id FROM tickets WHERE user_id=? AND subject=? AND status NOT IN ('closed','archived') ORDER BY ticket_id DESC LIMIT 1",undef,$user->id,$subject);
     my $operator=$text =~ /(?<!\p{L})оператор(?!\p{L})/i;
+    my $id=$row ? $row->{ticket_id} : undef;
     my $result=eval {
-        my $id=$row ? $row->{ticket_id} : undef;
         if ($id) {
             $ticket->api_message(ticket_id=>$id,message=>$text);
         } else {
@@ -1347,7 +1347,17 @@ sub ticket_main_chat {
         }
         1;
     };
-    unless ($result) { logger->error('Main chat AI processing failed; check ticket AI jobs'); }
+    unless ($result) {
+        logger->error('Main chat AI processing failed; handing ticket to support');
+        if ($id) {
+            eval {
+                $ticket->api_responder(ticket_id=>$id,responder=>'human');
+                my $state=$ticket->_row($id);
+                $self->http('sendMessage',data=>{chat_id=>$chat,text=>'ИИ временно недоступен. Ваш вопрос передан оператору поддержки.'});
+                1;
+            } or logger->error('Main chat support fallback failed for ticket #'.$id);
+        }
+    }
     return 1;
 }
 
