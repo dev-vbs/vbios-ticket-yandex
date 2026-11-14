@@ -1364,8 +1364,8 @@ sub ticket_group_update {
         }
         $self->http('sendMessage', data => { chat_id => $admin_chat, message_thread_id => $thread,
             text => '✅ Тикет #'.$row->{ticket_id}.($delivery ? ' закрыт. Пользователь уведомлён в личном боте.' : ' закрыт. Уведомление в личный бот не доставлено: проверьте привязку и доступность бота.') });
-        # Preserve the support history instead of deleting the topic.
-        eval { $self->http('closeForumTopic',data=>{chat_id=>$admin_chat,message_thread_id=>$thread}) };
+        # Remove the Telegram topic; the ticket history remains in SHM.
+        eval { $self->http('deleteForumTopic',data=>{chat_id=>$admin_chat,message_thread_id=>$thread}) };
         return {};
     }
     require Core::TicketTelegramMedia;
@@ -2411,4 +2411,3 @@ sub set_webhook {
 }
 
 1;
-
