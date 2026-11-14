@@ -87,6 +87,10 @@
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--mantine-spacing-sm);
 }
+.ticket-create-layout { display:grid; grid-template-columns:minmax(0,1.2fr) minmax(0,1fr); gap:24px; align-items:start; }
+.ticket-create-fields { min-width:0; }
+.ticket-create-summary { padding:22px; border-radius:16px; background:var(--mantine-primary-color-light); border:1px solid var(--mantine-color-default-border); overflow-wrap:anywhere; }
+.ticket-create-summary__title { font-size:clamp(20px,3vw,27px); font-weight:750; letter-spacing:-.5px; line-height:1.25; margin-top:6px; }
 .ticket-create__attachments {
   border: 1px dashed var(--mantine-color-default-border);
   background: var(--mantine-color-default-hover);
@@ -109,6 +113,8 @@
   padding-top: var(--mantine-spacing-md);
 }
 @media (max-width: 480px) {
+  .ticket-create-layout { grid-template-columns: minmax(0,1fr); gap:18px; }
+  .ticket-create-summary { padding:16px; }
   .ticket-create__options { grid-template-columns: 1fr; }
   .ticket-create__actions > button:last-child { flex: 1; }
   .ticket-pending-files { grid-template-columns:1fr; }

@@ -1046,6 +1046,8 @@ export default function Tickets() {
         <Stack gap="md">
           <Text size="sm" c="dimmed">Опишите вопрос и приложите скриншот, если он поможет разобраться.</Text>
           <Text size="xs" c="dimmed">{aiAvailable ? 'Сначала вам ответит ИИ-помощник. Кнопка «Связаться с оператором» доступна внутри обращения.' : 'Ваше обращение получит сотрудник поддержки.'}</Text>
+          <div className="ticket-create-layout">
+          <Stack gap="md" className="ticket-create-fields">
           <TextInput
             label={t('tickets.subject')}
             placeholder={t('tickets.subjectPlaceholder')}
@@ -1152,11 +1154,10 @@ export default function Tickets() {
               {(props) => <Button {...props} variant="default" leftSection={<IconPlus size={16} />}>Прикрепить изображения</Button>}
             </FileButton>
           </Stack>
-
-          <Group justify="flex-end" className="ticket-create__actions">
-            <Button variant="light" onClick={() => setCreateOpen(false)}>{t('common.cancel')}</Button>
-            <Button onClick={createTicket} loading={creating} leftSection={<IconSend size={16} />}>{t('tickets.send')}</Button>
-          </Group>
+          </Stack>
+          <aside className="ticket-create-summary"><ThemeIcon size={42} radius="md" variant="light"><IconMessageCircle size={22} /></ThemeIcon><Text size="sm" c="dimmed" mt="md">Ваше обращение</Text><Text className="ticket-create-summary__title">{newSubject.trim() || 'Тема не указана'}</Text><Divider my="md" /><Text size="xs" c="dimmed" lh={1.6}>{aiAvailable ? 'ИИ-помощник ответит первым. При необходимости можно подключить оператора.' : 'Обращение будет передано специалисту поддержки.'}</Text><Group gap="xs" mt="md"><Badge color="blue" variant="light">Ответ в кабинете</Badge>{newFiles.length > 0 && <Badge color="teal" variant="light">Файлов: {newFiles.length}</Badge>}</Group></aside>
+          </div>
+          <Group justify="space-between" className="ticket-create__actions"><Button variant="default" onClick={() => setCreateOpen(false)} disabled={creating}>{t('common.cancel')}</Button><Button onClick={createTicket} loading={creating} leftSection={<IconSend size={16} />}>{t('tickets.send')}</Button></Group>
         </Stack>
       </Modal>
 
