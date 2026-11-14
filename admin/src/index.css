@@ -2,6 +2,26 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Compact SHM client-inspired admin shell. Components keep their existing
+   semantic classes; these rules provide one consistent visual language. */
+.admin-main { background: linear-gradient(180deg, var(--theme-content-bg) 0%, color-mix(in srgb, var(--theme-content-bg) 92%, var(--theme-primary-color)) 100%); }
+.admin-main .page-container { max-width: 1440px; }
+.admin-main h1, .admin-main h2, .admin-main h3 { letter-spacing: -0.02em; }
+.admin-main .rounded-xl, .admin-main .rounded-lg { border-radius: 12px; }
+.admin-main .shadow, .admin-main .shadow-lg, .admin-main .shadow-xl { box-shadow: 0 12px 32px rgba(15, 23, 42, .08); }
+.admin-main table tbody tr { transition: background .15s ease; }
+.admin-main table tbody tr:hover { background: var(--theme-table-row-hover-bg); }
+.admin-main input, .admin-main select, .admin-main textarea { border-radius: 8px; transition: border-color .15s ease, box-shadow .15s ease; }
+.admin-main input:focus, .admin-main select:focus, .admin-main textarea:focus { outline: none; border-color: var(--theme-input-focus-border); box-shadow: 0 0 0 3px color-mix(in srgb, var(--theme-primary-color) 16%, transparent); }
+.sidebar { box-shadow: 1px 0 0 var(--theme-sidebar-border); }
+.sidebar nav { scrollbar-width: thin; }
+.nav-item { min-height: 40px; font-size: 13px; }
+.nav-item.active { font-weight: 600; }
+@media (max-width: 800px) {
+  .admin-main { padding: 16px !important; }
+  .admin-main .page-container { width: 100%; }
+}
+
 :root {
   /* Default to dark theme values */
   --theme-primary-color: #22d3ee;
