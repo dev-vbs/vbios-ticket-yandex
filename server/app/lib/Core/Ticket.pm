@@ -319,7 +319,7 @@ sub telegram_close {
 
 sub _ai_reply_safe {
     my ($self,$id)=@_;
-    eval { require Core::TicketAI; Core::TicketAI->reply($self,$id); 1 }
+    eval { require Core::TicketAI; Core::TicketAI->enqueue($self,$id); 1 }
         or logger->error("Ticket $id: AI failed; user message remains saved");
 }
 

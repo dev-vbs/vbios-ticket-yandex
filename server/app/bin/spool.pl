@@ -36,6 +36,7 @@ say "SHM spool started at: " . localtime;
 my $spool = get_service('spool');
 
 for (;;) {
+    eval { require Core::TicketAI; Core::TicketAI->process_queued(); 1 };
     my $task_exists = 0;
     do {
         try {

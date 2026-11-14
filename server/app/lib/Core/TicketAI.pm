@@ -13,6 +13,25 @@ sub _limit {
     return int($value > $max ? $max : $value);
 }
 
+sub enqueue {
+    my ($class,$ticket,$id)=@_;
+    my $db=$ticket->dbh_auto_commit;
+    my ($mid)=$db->selectrow_array('SELECT message_id FROM ticket_messages WHERE ticket_id=? ORDER BY message_id DESC LIMIT 1',undef,$id);
+    return unless $mid;
+    $db->do("INSERT IGNORE INTO ticket_ai_jobs(source_message_id,ticket_id,status) VALUES(?,?,'queued')",undef,$mid,$id);
+    $db->commit;
+}
+
+sub process_queued {
+    my ($class)=@_;
+    my $cfg=get_service('config');
+    my $db=$cfg->dbh_auto_commit;
+    my $row=$db->selectrow_hashref("SELECT j.ticket_id,t.user_id FROM ticket_ai_jobs j JOIN tickets t ON t.ticket_id=j.ticket_id WHERE j.status='queued' ORDER BY j.created LIMIT 1");
+    return unless $row;
+    my $ticket=get_service('Ticket',user_id=>$row->{user_id});
+    $class->reply($ticket,$row->{ticket_id});
+}
+
 sub reply {
     my ($class,$ticket,$id)=@_;
     my $cfg=get_service('config')->data_by_name('ticket') || {};
@@ -40,7 +59,8 @@ sub reply {
     return unless $source && !$source->{is_admin} && $source->{message} =~ /\S/;
     my $mid=$source->{message_id};
     # Permanent claim gives at most one provider attempt per source message.
-    my $claim=$db->do("INSERT IGNORE INTO ticket_ai_jobs(source_message_id,ticket_id,status) VALUES(?,?,'processing')",undef,$mid,$id);
+    my $claim=$db->do("UPDATE ticket_ai_jobs SET status='processing' WHERE source_message_id=? AND status='queued'",undef,$mid);
+    $claim ||= $db->do("INSERT IGNORE INTO ticket_ai_jobs(source_message_id,ticket_id,status) VALUES(?,?,'processing')",undef,$mid,$id);
     return unless $claim && $claim ne '0E0';
     my $stage='read_history';
     eval {
