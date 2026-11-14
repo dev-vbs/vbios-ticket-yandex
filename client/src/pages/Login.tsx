@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Card, Text, Stack, Button, ActionIcon, TextInput, PasswordInput, Divider, Title, Center, Modal, Group, Loader, useMantineColorScheme, useComputedColorScheme, Checkbox, Tooltip } from '@mantine/core';
 import { useMediaQuery } from '@mantine/hooks';
 import { useForm, isEmail, hasLength } from '@mantine/form';
-import { IconLogin, IconUserPlus, IconHeadset, IconFingerprint, IconShieldLock, IconBrandTelegram, IconMailForward, IconLock, IconMoon, IconSun} from '@tabler/icons-react';
+import { IconLogin, IconUserPlus, IconHeadset, IconFingerprint, IconShieldLock, IconBrandTelegram, IconMailForward, IconLock, IconMoon, IconSun, IconAt, IconKey, IconSparkles } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 import { useTranslation } from 'react-i18next';
 import { auth, passkeyApi, userApi, telegramSessionId } from '../api/client';
@@ -531,6 +531,10 @@ export default function Login() {
           {config.APP_DESCRIPTION && (
             <Text size="sm" c="dimmed" ta="center" style={{ flex: 'auto' }}>{config.APP_DESCRIPTION}</Text>
           )}
+          <div className="auth-intro">
+            <span className="auth-intro-icon"><IconSparkles size={16} /></span>
+            <Text className="auth-kicker" size="xs" fw={700} tt="uppercase">vBios account</Text>
+          </div>
           <Title order={3} className="auth-heading" ta="center">
               {mode === 'login' ? t('auth.loginTitle') : t('auth.registerTitle')}
           </Title>
@@ -563,6 +567,7 @@ export default function Login() {
 
           {loginEnabled && (telegramEnabled || hasTelegramWidget) && (
             <>
+              <div className="auth-social-section">
               {telegramEnabled && (
                 <Button
                   color="blue"
@@ -589,11 +594,12 @@ export default function Login() {
               )}
 
               <Divider label={t('common.or')} labelPosition="center" />
+              </div>
             </>
           )}
 
           {loginEnabled && providers.map((provider) => (
-            <Button key={provider} variant="light" component="a"
+            <Button key={provider} className="auth-provider-button" variant="light" component="a"
               href={`/shm/v1/oauth2/start/${provider}?${new URLSearchParams({ return_url: `${window.location.origin}${window.location.pathname}` })}`}>
               {t('auth.login')} · {({ google: 'Google', yandex: 'Яндекс', vk: 'VK', github: 'GitHub' })[provider] || provider}
             </Button>
@@ -601,6 +607,8 @@ export default function Login() {
 
           {loginEnabled && (!hasTelegramWebAppAuth || showLoginForm) && (
             <>
+              <div className="auth-form-section">
+              <div className="auth-section-label"><IconShieldLock size={15} /> {mode === 'login' ? t('auth.login') : t('auth.register')}</div>
               <form onSubmit={handleSubmit} aria-busy={loading}>
                 <fieldset className="auth-fieldset" disabled={loading}>
                 <Stack gap="sm">
@@ -611,6 +619,7 @@ export default function Login() {
                       autoComplete="email"
                       name="email"
                       type="email"
+                      leftSection={<IconAt size={16} />}
                       {...form.getInputProps('login')}
                     />
                   ) : (
@@ -619,6 +628,7 @@ export default function Login() {
                       placeholder={t('auth.loginPlaceholder')}
                       autoComplete="username"
                       name="username"
+                      leftSection={<IconAt size={16} />}
                       {...form.getInputProps('login')}
                     />
                   )}
@@ -627,6 +637,7 @@ export default function Login() {
                     placeholder={t('auth.passwordPlaceholder')}
                     autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
                     name="password"
+                    leftSection={<IconKey size={16} />}
                     {...form.getInputProps('password')}
                   />
                   {mode === 'register' && (
@@ -635,6 +646,7 @@ export default function Login() {
                       placeholder={t('auth.confirmPasswordPlaceholder')}
                       autoComplete="new-password"
                       name="confirm-password"
+                      leftSection={<IconKey size={16} />}
                       {...form.getInputProps('confirmPassword')}
                     />
                   )}
@@ -742,6 +754,7 @@ export default function Login() {
                 </Stack>
                 </fieldset>
               </form>
+              </div>
 
               {registerEnabled && <Text size="sm" ta="center">
                 {mode === 'login' ? (
