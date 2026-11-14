@@ -30,7 +30,7 @@ export const useAuthStore = create<AuthState>()(
         set({ user: null, sessionId: null });
       },
       isAuthenticated: () => !!get().sessionId,
-      isAdmin: () => get().user?.gid === 1,
+  isAdmin: () => Number(get().user?.gid) === 1,
       getSessionId: () => get().sessionId,
     }),
     {

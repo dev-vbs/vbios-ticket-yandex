@@ -49,7 +49,7 @@ function Login() {
       }
       
       const { user, sessionId } = result;
-      if (user?.gid !== 1) {
+      if (Number(user?.gid) !== 1) {
         throw new Error('У пользователя нет прав администратора');
       }
       setAuth(user, sessionId);
