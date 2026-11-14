@@ -1317,8 +1317,42 @@ sub ticket_group_update {
     return {} unless $row;
     my $text = $msg->{text} || $msg->{caption} || '';
     if ($text =~ m{^/close(?:@\S+)?\s*$}i) {
-        $self->dbh->do("UPDATE tickets SET status='closed',closed_at=NOW(),updated=NOW() WHERE ticket_id=?",undef,$row->{ticket_id});
-        eval { $self->http('deleteForumTopic',data=>{chat_id=>$admin_chat,message_thread_id=>$thread}) };
+        # Only a real administrator of the configured support group may close a ticket.
+        my $member_response = eval { $self->http('getChatMember', data => {
+            chat_id => $admin_chat, user_id => $msg->{from}{id},
+        }) };
+        my $member = eval { JSON::decode_json($member_response->decoded_content) } || {};
+        unless ($member->{ok} && ($member->{result}{status} || '') =~ /^(?:creator|administrator)$/) {
+            $self->http('sendMessage', data => { chat_id => $admin_chat, message_thread_id => $thread,
+                text => 'Закрывать обращения могут только администраторы группы.' });
+            return {};
+        }
+        my $changed = $self->dbh->do("UPDATE tickets SET status='closed',closed_at=NOW(),updated=NOW() WHERE ticket_id=? AND status NOT IN ('closed','archived')",undef,$row->{ticket_id});
+        $self->dbh->commit;
+        return {} unless $changed && $changed ne '0E0';
+        my $owner = $self->user($row->{user_id});
+        my $settings = $owner ? ($owner->settings->{telegram} || {}) : {};
+        my $profile = $settings->{$self->profile_name} || $settings;
+        my $destination = $profile->{chat_id} || $profile->{user_id};
+        my $delivery = eval {
+            die 'Private Telegram chat is not linked' unless $destination && $destination =~ /^[1-9][0-9]*$/;
+            my $response = $self->http('sendMessage', data => {
+                chat_id => $destination,
+                text => '✅ Обращение #'.$row->{ticket_id}." закрыто поддержкой.\n\nЕсли вопрос остался, создайте новое обращение в личном кабинете.",
+            });
+            my $result = JSON::decode_json($response->decoded_content);
+            die 'Telegram closure notification failed' unless $result->{ok};
+            1;
+        };
+        unless ($delivery) {
+            $self->dbh->do('UPDATE tickets SET telegram_error=? WHERE ticket_id=?',undef,
+                'Closure notification not delivered; ticket closed in cabinet',$row->{ticket_id});
+            $self->dbh->commit;
+        }
+        $self->http('sendMessage', data => { chat_id => $admin_chat, message_thread_id => $thread,
+            text => '✅ Тикет #'.$row->{ticket_id}.($delivery ? ' закрыт. Пользователь уведомлён в личном боте.' : ' закрыт. Уведомление в личный бот не доставлено: проверьте привязку и доступность бота.') });
+        # Preserve the support history instead of deleting the topic.
+        eval { $self->http('closeForumTopic',data=>{chat_id=>$admin_chat,message_thread_id=>$thread}) };
         return {};
     }
     require Core::TicketTelegramMedia;
