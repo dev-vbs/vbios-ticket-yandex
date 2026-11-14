@@ -56,7 +56,11 @@ sub reply {
         my $request=HTTP::Request->new('POST','https://api.timeweb.ai/v1/chat/completions');
         $request->header('Content-Type'=>'application/json','Authorization'=>'Bearer '.$key);
         $request->content($json->encode({model=>$ai->{model} || 'dashscope/qwen3.5-flash',messages=>\@messages,max_tokens=>_limit($ai->{max_tokens},300,4000),stream=>JSON::false()}));
-        my $ua=LWP::UserAgent->new(timeout=>_limit($ai->{timeout_seconds},3,30),max_size=>2_000_000,requests_redirectable=>[]);
+        # Provider responses often take longer than a few seconds. Keep a safe
+        # lower bound so an overly aggressive config cannot disable AI entirely.
+        my $timeout = _limit($ai->{timeout_seconds},12,30);
+        $timeout = 12 if $timeout < 12;
+        my $ua=LWP::UserAgent->new(timeout=>$timeout,max_size=>2_000_000,requests_redirectable=>[]);
         $stage='provider_request';
         my $response=$ua->request($request);
         unless ($response->is_success) {
