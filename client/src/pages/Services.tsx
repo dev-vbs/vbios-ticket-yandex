@@ -1016,9 +1016,9 @@ export default function Services() {
   return (
     <Stack gap="lg" className="services-overview">
       <DataLoadStatus showRefresh={false} loading={refreshing} error={loadError && "Не удалось обновить услуги"} updatedAt={updatedAt} onRetry={() => void fetchServices()} />
-      <Group className="page-header services-overview__header" justify="space-between">
-        <div style={{ minWidth: 0 }}><Title className="page-header__title" order={2}>{t('services.title')}</Title><Text c="dimmed" size="sm" mt={6}>Ваши подписки, подключение и управление тарифами.</Text></div>
-        <Group>
+      <Paper withBorder radius="lg" className="services-header-card">
+        <div className="services-header-card__copy"><Text size="xs" c="dimmed" tt="uppercase" fw={700}>Личный кабинет</Text><Title className="page-header__title" order={2}>{t('services.title')}</Title><Text c="dimmed" size="sm" mt={6}>Подписки, подключение и продление в одном месте.</Text></div>
+        <Group className="services-header-card__actions">
           <Button
             leftSection={<IconPlus size={16} />}
             disabled={config.BLOCK_ORDER_IF_UNPAID === 'true' && hasNotPaidServices(services)}
@@ -1031,13 +1031,13 @@ export default function Services() {
             {t('common.refresh')}
           </Button>
         </Group>
-      </Group>
+      </Paper>
 
-      <Group className="services-summary" gap="sm">
-<Badge color="green" variant="light">Активны: {flatServices.filter((item) => item.status === 'ACTIVE').length}</Badge>
-<Badge color="orange" variant="light">Ожидают оплаты: {flatServices.filter((item) => item.status === 'NOT PAID').length}</Badge>
-<Text size="sm" c="dimmed">Всего: {flatServices.length}</Text>
-</Group>
+      <div className="services-summary">
+        <div><Text size="xs" c="dimmed">Активные</Text><Text fw={750} size="xl">{flatServices.filter((item) => item.status === 'ACTIVE').length}</Text></div>
+        <div><Text size="xs" c="dimmed">Ожидают оплаты</Text><Text fw={750} size="xl" c="orange">{flatServices.filter((item) => item.status === 'NOT PAID').length}</Text></div>
+        <div><Text size="xs" c="dimmed">Всего услуг</Text><Text fw={750} size="xl">{flatServices.length}</Text></div>
+      </div>
 
       <TextInput size="md" radius="md" className="services-search" value={search} onChange={(event) => setSearch(event.currentTarget.value)} placeholder="Поиск по названию или номеру услуги" leftSection={<IconSearch size={16} />} />
 
