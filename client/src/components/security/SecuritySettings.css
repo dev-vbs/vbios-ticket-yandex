@@ -3,7 +3,17 @@
 .password-modal__body { padding: 16px 20px 20px; }
 .password-modal .mantine-PasswordInput-input { min-height: 42px; border-radius: 10px; }
 .password-modal .mantine-Button-root { min-height: 40px; border-radius: 10px; }
+.password-layout { display:grid; grid-template-columns:minmax(0,1.2fr) minmax(0,1fr); gap:24px; align-items:start; }
+.password-fields { min-width:0; }
+.password-fields .mantine-PasswordInput-input { min-height:46px; border-radius:12px; }
+.password-summary { padding:22px; border-radius:16px; background:var(--mantine-primary-color-light); border:1px solid var(--mantine-color-default-border); overflow-wrap:anywhere; }
+.password-summary__icon { display:flex; align-items:center; color:var(--mantine-primary-color-light-color); }
+.password-summary__status { font-size:clamp(26px,4vw,34px); font-weight:750; letter-spacing:-1px; line-height:1.3; margin-top:6px; }
+.password-footer { margin-top:24px; }
 @media (max-width: 480px) {
   .password-modal__body { padding: 14px; }
   .password-modal__header { padding: 16px 14px 10px; }
+  .password-layout { grid-template-columns:minmax(0,1fr); gap:20px; }
+  .password-summary { padding:16px; }
+  .password-summary__icon { display:none; }
 }

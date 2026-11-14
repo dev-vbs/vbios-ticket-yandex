@@ -145,23 +145,25 @@ export default function SecuritySettings() {
         opened={passwordModalOpen}
         onClose={resetPasswordForm}
         title={t('profile.changePassword')}
-        size="sm"
+        size="lg"
         centered
         classNames={{ content: 'password-modal', header: 'password-modal__header', body: 'password-modal__body' }}
       >
-        <Stack gap="sm">
-          <Alert icon={<IconInfoCircle size={17} />} color="blue" variant="light" p="sm">
-            Используйте текущий пароль для подтверждения. После сохранения потребуется войти заново.
-          </Alert>
-          <PasswordInput
+        <Text c="dimmed" size="sm" mb="lg">Введите текущий пароль и задайте новый. После сохранения старые сессии будут завершены для защиты аккаунта.</Text>
+        <div className="password-layout">
+          <Stack gap="md" className="password-fields">
+            <Alert icon={<IconInfoCircle size={17} />} color="blue" variant="light" p="sm">
+              Текущий пароль нужен для подтверждения владельца аккаунта.
+            </Alert>
+            <PasswordInput
             label={t('profile.currentPassword', { defaultValue: 'Текущий пароль' })}
             placeholder={t('profile.currentPasswordPlaceholder', { defaultValue: 'Введите текущий пароль' })}
             value={currentPassword}
             onChange={(e) => setCurrentPassword(e.target.value)}
             autoComplete="current-password"
             required
-          />
-          <PasswordInput
+            />
+            <PasswordInput
             label={t('profile.newPassword')}
             placeholder={t('profile.newPasswordPlaceholder')}
             value={newPassword}
@@ -177,27 +179,28 @@ export default function SecuritySettings() {
             onChange={(e) => setConfirmPassword(e.target.value)}
             autoComplete="new-password"
             error={confirmPassword.length > 0 && confirmPassword !== newPassword ? t('auth.passwordsMismatch') : undefined}
-          />
-          <Group justify="space-between" gap="xs" mt={-2}>
+            />
+            <Group justify="space-between" gap="xs" mt={-2}>
             <Text size="xs" c="dimmed">Надёжность пароля</Text>
             <Text size="xs" c={passwordScore >= 3 ? 'teal' : 'dimmed'}>{passwordScore >= 3 ? 'Хорошая' : 'Минимум 6 символов'}</Text>
-          </Group>
-          <Progress value={passwordScore * 25} color={passwordScore >= 3 ? 'teal' : 'blue'} size="sm" radius="xl" />
-          <Group gap="xs" wrap="wrap">
+            </Group>
+            <Progress value={passwordScore * 25} color={passwordScore >= 3 ? 'teal' : 'blue'} size="sm" radius="xl" />
+            <Group gap="xs" wrap="wrap">
             <Badge leftSection={newPassword.length >= 6 ? <IconCheck size={12} /> : undefined} color={newPassword.length >= 6 ? 'teal' : 'gray'} variant="light">6+ символов</Badge>
             <Badge leftSection={/[A-ZА-Я]/.test(newPassword) ? <IconCheck size={12} /> : undefined} color={/[A-ZА-Я]/.test(newPassword) ? 'teal' : 'gray'} variant="light">Заглавная буква</Badge>
             <Badge leftSection={/\d/.test(newPassword) ? <IconCheck size={12} /> : undefined} color={/\d/.test(newPassword) ? 'teal' : 'gray'} variant="light">Цифра</Badge>
-          </Group>
-          <Divider my="xs" />
-          <Group justify="flex-end">
-            <Button variant="default" onClick={resetPasswordForm} disabled={changingPassword}>
-              {t('common.cancel')}
-            </Button>
-            <Button onClick={handleChangePassword} loading={changingPassword} disabled={currentPassword.length < 1 || newPassword.length < 6 || newPassword !== confirmPassword}>
-              {t('common.save')}
-            </Button>
-          </Group>
-        </Stack>
+            </Group>
+          </Stack>
+          <aside className="password-summary">
+            <div className="password-summary__icon"><IconShieldLock size={24} /></div>
+            <Text size="sm" c="dimmed" mt="md">Новый пароль</Text>
+            <Text className="password-summary__status">{newPassword ? (passwordScore >= 3 ? 'Надёжный' : 'Нужно усилить') : 'Не задан'}</Text>
+            <Divider my="md" />
+            <Text size="xs" c="dimmed" lh={1.6}>После изменения потребуется повторно войти в кабинет на всех устройствах.</Text>
+            <Group gap="xs" mt="md"><Badge color="blue" variant="light">Минимум 6 символов</Badge></Group>
+          </aside>
+        </div>
+        <div className="payment-footer password-footer"><Button variant="default" onClick={resetPasswordForm} disabled={changingPassword}>{t('common.cancel')}</Button><Button size="md" rightSection={<IconLock size={17} />} onClick={handleChangePassword} loading={changingPassword} disabled={currentPassword.length < 1 || newPassword.length < 6 || newPassword !== confirmPassword}>Сохранить пароль</Button></div>
       </Modal>
     </>
   );
