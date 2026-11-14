@@ -221,7 +221,6 @@ export default function Tickets() {
   const [newMessage, setNewMessage] = useState('');
   const [newPriority, setNewPriority] = useState<string>('normal');
   const [newType, setNewType] = useState<string>('other');
-  const [newResponder, setNewResponder] = useState<'ai' | 'human'>('human');
   const [aiAvailable, setAiAvailable] = useState(false);
   const [changingResponder, setChangingResponder] = useState(false);
   const [newServiceId, setNewServiceId] = useState<string | null>(null);
@@ -407,7 +406,7 @@ export default function Tickets() {
       }
       await ticketApi.create({
         subject: newSubject.trim(),
-        responder: newResponder,
+        responder: aiAvailable ? 'ai' : 'human',
         message: newMessage.trim() || 'Прикреплено изображение',
         priority: newPriority as 'low' | 'normal' | 'high' | 'urgent',
         ticket_type: newType as 'service' | 'payment' | 'other',
@@ -425,7 +424,6 @@ export default function Tickets() {
       setNewSubject('');
       setNewMessage('');
       setNewPriority('normal');
-      setNewResponder('human');
       setNewType('other');
       setNewServiceId(null);
       setNewPaymentId(null);
@@ -652,7 +650,7 @@ export default function Tickets() {
       const updated = response.data?.data?.[0];
       if (updated) setSelectedTicket((current) => current?.ticket_id === ticketId ? updated : current);
       const deliveryFailed = value === 'human' && updated?.telegram_error;
-      notifications.show({ message: deliveryFailed ? 'ИИ отключён. Обращение сохранено, но уведомить группу пока не удалось. Попробуйте выбрать сотрудника ещё раз.' : value === 'human' ? 'Обращение передано сотруднику. ИИ больше не отвечает в этом тикете.' : 'Выбран ИИ-помощник. Напишите следующий вопрос.', color: deliveryFailed ? 'yellow' : 'green' });
+      notifications.show({ message: deliveryFailed ? 'ИИ отключён. Обращение сохранено, но уведомить группу пока не удалось. Нажмите «Повторить связь с оператором».' : value === 'human' ? 'Обращение передано сотруднику. ИИ больше не отвечает в этом тикете.' : 'Выбран ИИ-помощник. Напишите следующий вопрос.', color: deliveryFailed ? 'yellow' : 'green' });
     } catch (error) {
       notifications.show({ title: t('common.error'), message: apiErrorMessage(error, 'Не удалось изменить выбор. Если сотрудник уже ответил, продолжайте общение с поддержкой.'), color: 'red' });
     } finally { setChangingResponder(false); }
@@ -781,15 +779,15 @@ export default function Tickets() {
           )}
         </Group>
 
-        {!ticketIsClosed(selectedTicket.status) && <Select
-          label="Кто отвечает на обращение"
-          description={selectedTicket.responder === 'ai' ? 'ИИ помогает с вопросами. Напишите «ОПЕРАТОР» или выберите сотрудника — ИИ перестанет отвечать, а история будет передана поддержке.' : 'Сотрудник отвечает через группу поддержки. Мгновенный ответ не гарантируется.'}
-          value={selectedTicket.responder || null}
-          placeholder="Выберите ИИ или сотрудника"
-          onChange={changeResponder}
-          disabled={changingResponder || sending}
-          data={[{ value: 'human', label: 'Техподдержка — сотрудник' }, { value: 'ai', label: aiAvailable ? 'ИИ-помощник' : 'ИИ-помощник недоступен', disabled: !aiAvailable }]}
-        />}
+        {!ticketIsClosed(selectedTicket.status) && <Group justify="space-between" align="center" gap="sm">
+          <Text size="sm" c="dimmed" style={{ flex: 1 }}>
+            {selectedTicket.responder === 'ai' ? 'Вам отвечает ИИ-помощник. При необходимости подключите сотрудника поддержки.' : 'Обращение у оператора. ИИ отключён, ожидайте ответа сотрудника.'}
+          </Text>
+          {(selectedTicket.responder !== 'human' || selectedTicket.telegram_error) && <Button
+            size="sm" variant="light" leftSection={<IconMessageCircle size={16} />}
+            onClick={() => void changeResponder('human')} loading={changingResponder} disabled={sending}
+          >{selectedTicket.telegram_error ? 'Повторить связь с оператором' : 'Связаться с оператором'}</Button>}
+        </Group>}
         <Divider />
 
         <ScrollArea style={{ flex: 1 }} offsetScrollbars viewportRef={messagesViewportRef}>
@@ -1038,14 +1036,7 @@ export default function Tickets() {
       >
         <Stack gap="md">
           <Text size="sm" c="dimmed">Опишите вопрос и приложите скриншот, если он поможет разобраться.</Text>
-          <Select
-            label="Кто должен ответить"
-            description="ИИ помогает с общими вопросами. Сотрудник проверяет оплату и решает вопросы с услугами."
-            value={newResponder}
-            onChange={(value) => setNewResponder(value === 'ai' ? 'ai' : 'human')}
-            disabled={creating}
-            data={[{ value: 'human', label: 'Техподдержка — сотрудник' }, { value: 'ai', label: aiAvailable ? 'ИИ-помощник' : 'ИИ-помощник недоступен', disabled: !aiAvailable }]}
-          />
+          <Text size="xs" c="dimmed">{aiAvailable ? 'Сначала вам ответит ИИ-помощник. Кнопка «Связаться с оператором» доступна внутри обращения.' : 'Ваше обращение получит сотрудник поддержки.'}</Text>
           <TextInput
             label={t('tickets.subject')}
             placeholder={t('tickets.subjectPlaceholder')}
