@@ -1332,7 +1332,7 @@ sub ticket_main_chat {
             my $created=$ticket->api_create(subject=>$subject,message=>$text,responder=>$operator?'human':'ai');
             $id=$created->{ticket_id};
         }
-        my $answer=$self->dbh->selectrow_hashref("SELECT m.message_id,m.message FROM ticket_ai_jobs j JOIN ticket_messages m ON m.message_id=j.reply_message_id WHERE j.ticket_id=? AND j.status='done' ORDER BY j.source_message_id DESC LIMIT 1",undef,$id);
+        my $answer=$self->dbh->selectrow_hashref("SELECT m.message_id,m.message FROM ticket_ai_jobs j JOIN ticket_messages m ON m.message_id=j.reply_message_id WHERE j.ticket_id=? AND j.status='done' AND j.reply_message_id=(SELECT MAX(message_id) FROM ticket_messages WHERE ticket_id=j.ticket_id) ORDER BY j.source_message_id DESC LIMIT 1",undef,$id);
         my $state=$ticket->_row($id);
         if (!$operator && ($state->{responder}||'') eq 'ai' && $answer) {
             my ($sent)=$self->dbh->selectrow_array('SELECT 1 FROM ticket_telegram_links WHERE profile=? AND chat_id=? AND ticket_id=? AND telegram_message_id=?',undef,$self->profile_name,$chat,$id,-$answer->{message_id});
