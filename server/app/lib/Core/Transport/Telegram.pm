@@ -1312,7 +1312,9 @@ sub process_message {
 sub ticket_main_chat {
     my ($self,$user)=@_;
     my $cfg=cfg('ticket') || {};
-    return 0 unless $cfg->{ai}{main_chat_enabled};
+    return 0 unless ref($cfg->{ai}) eq 'HASH';
+    my $enabled = exists $cfg->{ai}{main_chat_enabled} ? $cfg->{ai}{main_chat_enabled} : $cfg->{ai}{enabled};
+    return 0 unless defined($enabled) && $enabled =~ /^(?:1|true)$/i;
     return 0 if $self->get_callback_query;
     my $msg=$self->message || {};
     my $text=$msg->{text} || '';
@@ -1326,7 +1328,6 @@ sub ticket_main_chat {
     my $result=eval {
         my $id=$row ? $row->{ticket_id} : undef;
         if ($id) {
-            $ticket->api_responder(ticket_id=>$id,responder=>'human') if $operator;
             $ticket->api_message(ticket_id=>$id,message=>$text);
         } else {
             my $created=$ticket->api_create(subject=>$subject,message=>$text,responder=>$operator?'human':'ai');
