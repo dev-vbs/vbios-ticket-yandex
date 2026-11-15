@@ -679,3 +679,133 @@ docker compose config --quiet && docker compose up -d --force-recreate api admin
 8. Проверена резервная копия базы и общего тома, доступно восстановление на отдельном стенде.
 
 Эти проверки нужно выполнить на своей установке: успешная сборка образов не подтверждает внешние права Yandex/Telegram или доступность Timeweb AI.
+
+## Быстрый старт для новичка
+
+Полная установка на Ubuntu 22.04/24.04 LTS.
+
+### 1. DNS и сервер
+
+Создайте записи `pbalka.ru` и `www.pbalka.ru` типа `A` на IP сервера. Рекомендуется 2 vCPU, 4 ГБ RAM и 30 ГБ SSD.
+
+```bash
+sudo apt update
+sudo apt install -y ca-certificates curl git nginx certbot python3-certbot-nginx
+curl -fsSL https://get.docker.com | sh
+sudo usermod -aG docker "$USER"
+newgrp docker
+```
+
+### 2. Скачать проект
+
+```bash
+sudo mkdir -p /opt/shm
+sudo chown -R "$USER":"$USER" /opt/shm
+cd /opt/shm
+git clone https://github.com/dev-vbs/vbios-ticket-yandex.git .
+cp .env.example .env
+```
+
+### 3. Заполнить `.env`
+
+```env
+SHM_REPO=ghcr.io/dev-vbs
+CORE_VERSION=latest
+CLIENT_VERSION=ghcr.io/dev-vbs/vbios-clients:latest
+ADMIN_VERSION=ghcr.io/dev-vbs/vbios-admin:latest
+MYSQL_DATABASE=webface
+MYSQL_USER=webface
+MYSQL_PASS=CHANGE_ME_LONG_PASSWORD
+MYSQL_ROOT_PASS=CHANGE_ME_ANOTHER_LONG_PASSWORD
+MYSQL_HOST=mysql
+MYSQL_PORT=3306
+TZ=Europe/Moscow
+TICKET_S3_ACCESS_KEY=YCA...
+TICKET_S3_SECRET_KEY=YOUR_SECRET_KEY
+```
+
+Используйте длинные случайные пароли. `.env` нельзя публиковать.
+
+### 4. Запуск
+
+```bash
+docker compose pull
+docker compose up -d
+docker compose ps
+```
+
+### 5. Таблицы тикетов и аватаров
+
+```bash
+mkdir -p sql
+cd /opt/shm
+for file in ticket-3.7.0.sql ticket-object-storage.sql ticket-telegram-images.sql ticket-responder.sql user-avatars.sql; do
+  curl -fsSL "https://raw.githubusercontent.com/dev-vbs/vbios-ticket-yandex/main/server/app/sql/$file" -o "sql/$file"
+  docker compose cp "sql/$file" mysql:/tmp/$file
+  docker compose exec mysql sh -lc "mysql -u root -p\"\$MYSQL_ROOT_PASSWORD\" \"\$MYSQL_DATABASE\" < /tmp/$file"
+done
+```
+
+### 6. Yandex Object Storage
+
+Создайте закрытый DNS-совместимый бакет и сервисный аккаунт с правами чтения и загрузки объектов. В конфигурации SHM, ключ `ticket`, укажите:
+
+```json
+{"storage":{"provider":"yandex","bucket":"vbios-ticket-images-2026-48291"}}
+```
+
+Аватары хранятся в `avatars/<user_id>/...`, вложения тикетов — в `tickets/<user_id>/...`. Делать бакет публичным не нужно.
+
+Проверка ключей:
+
+```bash
+docker compose exec core sh -lc 'test -n "$TICKET_S3_ACCESS_KEY" && echo ACCESS_OK || echo ACCESS_MISSING; test -n "$TICKET_S3_SECRET_KEY" && echo SECRET_OK || echo SECRET_MISSING'
+```
+
+### 7. Telegram
+
+Создайте бота через `@BotFather`, добавьте его администратором в закрытую супергруппу с Topics и разрешите отправку сообщений, фото, файлов и управление темами. В конфигурации SHM создайте профиль бота и укажите:
+
+```json
+{"id":-1001234567890,"telegram_profile":"vBios_BOT","forum_topics":1}
+```
+
+После изменения:
+
+```bash
+docker compose up -d --force-recreate core spool
+```
+
+### 8. HTTPS
+
+Проксируйте домен через Nginx на порт клиента и API. Сертификат:
+
+```bash
+sudo certbot --nginx -d pbalka.ru -d www.pbalka.ru
+```
+
+Не открывайте наружу MySQL, Redis и phpMyAdmin.
+
+### 9. Обновление
+
+```bash
+cd /opt/shm
+docker compose pull
+docker compose up -d --force-recreate
+```
+
+Перед обновлением базы:
+
+```bash
+docker compose exec -T mysql sh -lc 'mysqldump -u root -p"$MYSQL_ROOT_PASSWORD" --single-transaction "$MYSQL_DATABASE"' > backup-$(date +%F).sql
+```
+
+### 10. Диагностика
+
+```bash
+docker compose ps
+docker compose logs --since=15m core api spool --tail=300
+docker compose exec api wget -qO- http://127.0.0.1/shm/healthcheck.cgi
+```
+
+Для файлов ищите в логах `403`, `404`, `SignatureDoesNotMatch`, `credentials` и `storage`. При проблемах с frontend очистите данные сайта в браузере и пересоздайте контейнер `client`.
