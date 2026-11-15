@@ -93,10 +93,13 @@ sub _limit {
     my $settings=eval { decode_json($row->{settings}||'{}') } || {};
     my $config=eval { decode_json($row->{config}||'{}') } || {};
     my $global=$self->_cfg;
-    # 0 explicitly means unlimited. Preserve precedence used by the
-    # Remnawave_LOCAL template: user service, tariff, then config.remna.
+    # config.remna is the single source of truth for the cabinet/API.
+    # 0 explicitly means unlimited. Keep per-service values only as a
+    # backwards-compatible fallback when the global option is absent.
     my $value;
-    for my $source ($settings,$config,$global) {
+    my @sources = exists $global->{hwidDeviceLimit} || exists $global->{hwid_device_limit}
+        ? ($global) : ($settings,$config,$global);
+    for my $source (@sources) {
         for my $key (qw(hwidDeviceLimit hwid_device_limit)) {
             if (defined $source->{$key} && "$source->{$key}" =~ /^\d+$/) {
                 $value=$source->{$key}; last;

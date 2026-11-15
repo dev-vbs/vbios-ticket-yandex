@@ -58,7 +58,7 @@ export default function HwidDevices({ serviceId }: { serviceId: number }) {
   };
   return <Paper withBorder p="md" radius="md" className="hwid-panel">
     <Group justify="space-between" wrap="wrap" gap="sm"><div><Text fw={600}>Устройства</Text><Text size="xs" c="dimmed">Управление привязками этой подписки</Text></div><Button size="xs" variant="subtle" loading={loading} disabled={deleting} onClick={load} leftSection={<IconRefresh size={15} />}>Обновить</Button></Group>
-    {!loading && !error && <Badge mt="sm" variant="light">Подключено: {devices.length}{limit !== null && limit > 0 ? ` · лимит ${limit}` : ''}</Badge>}
+    {!loading && !error && <Badge mt="sm" variant="light">Подключено: {devices.length}{limit !== null ? (limit > 0 ? ` · лимит ${limit}` : ' · без ограничений') : ''}</Badge>}
     <Stack mt="md" gap="sm">
       {loading ? <Group justify="center" py="md"><Loader size="sm" /><Text size="sm">Загружаем устройства…</Text></Group> : error ? <Alert color="orange">{error}</Alert> : !devices.length ? <Text size="sm" c="dimmed">Пока нет привязанных устройств. Они появятся после подключения через поддерживаемое приложение.</Text> : devices.map((device, index) => <div className="hwid-device" key={device.hwid}>
         <IconDeviceMobile className="hwid-device-icon" size={23} />
