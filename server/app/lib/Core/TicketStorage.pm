@@ -39,12 +39,14 @@ sub decode_image {
 }
 
 sub key {
-    my ($self,$uid,$ext)=@_;
+    my ($self,$uid,$ext,$prefix)=@_;
+    $prefix ||= 'tickets';
+    die 'Invalid object prefix' unless $prefix eq 'tickets' || $prefix eq 'avatars';
     die 'Invalid owner' unless $uid =~ /\A[1-9][0-9]*\z/;
     open my $random,'<:raw','/dev/urandom' or die 'Secure random source unavailable';
     read($random,my $nonce,24)==24 or die 'Secure random read failed';
     close $random;
-    return 'tickets/'.$uid.'/'.unpack('H*',$nonce).'.'.$ext;
+    return $prefix.'/'.$uid.'/'.unpack('H*',$nonce).'.'.$ext;
 }
 
 sub signed_headers {
@@ -72,7 +74,7 @@ sub signed_headers {
 
 sub request {
     my ($self,$method,$bucket,$key,$body,$mime)=@_;
-    die 'Invalid object key' unless $key =~ /\Atickets\/[1-9][0-9]*\/[a-f0-9]{48}\.(?:jpg|png|webp|gif)\z/;
+    die 'Invalid object key' unless $key =~ /\A(?:tickets|avatars)\/[1-9][0-9]*\/[a-f0-9]{48}\.(?:jpg|png|webp|gif)\z/;
     die 'Invalid bucket' unless $bucket =~ /\A[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]\z/;
     my $c=$self->{config};
     # Match AWS CLI virtual-host addressing for DNS-compatible bucket names.
@@ -100,7 +102,7 @@ sub request {
 # The browser can display it without downloading base64 through a SHM worker.
 sub download_url {
     my ($self,$bucket,$key,$timestamp)=@_;
-    die 'Invalid object key' unless $key =~ /\Atickets\/[1-9][0-9]*\/[a-f0-9]{48}\.(?:jpg|png|webp|gif)\z/;
+    die 'Invalid object key' unless $key =~ /\A(?:tickets|avatars)\/[1-9][0-9]*\/[a-f0-9]{48}\.(?:jpg|png|webp|gif)\z/;
     die 'Invalid bucket' unless $bucket =~ /\A[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]\z/;
     require URI::Escape;
     $timestamp ||= strftime('%Y%m%dT%H%M%SZ',gmtime(time));
