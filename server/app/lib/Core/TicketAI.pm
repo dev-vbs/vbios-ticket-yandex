@@ -26,7 +26,7 @@ sub process_queued {
     my ($class)=@_;
     my $cfg=get_service('config');
     my $db=$cfg->dbh_auto_commit;
-    my $row=$db->selectrow_hashref("SELECT j.source_message_id,j.ticket_id,t.user_id,t.status AS ticket_status FROM ticket_ai_jobs j JOIN tickets t ON t.ticket_id=j.ticket_id WHERE j.status='queued' ORDER BY j.created LIMIT 1");
+    my $row=$db->selectrow_hashref("SELECT j.source_message_id,j.ticket_id,t.user_id,t.status AS ticket_status FROM ticket_ai_jobs j JOIN tickets t ON t.ticket_id=j.ticket_id WHERE j.status='queued' AND j.created <= NOW() ORDER BY j.created LIMIT 1");
     return unless $row;
     my ($responder)=$db->selectrow_array('SELECT responder FROM ticket_preferences WHERE ticket_id=?',undef,$row->{ticket_id});
     if (($row->{ticket_status}||'') eq 'closed' || ($row->{ticket_status}||'') eq 'archived' || ($responder||'') eq 'human') {
@@ -38,7 +38,11 @@ sub process_queued {
         my $error = "$@" || 'AI processing failed';
         $error =~ s/[\r\n]+/ /g;
         $error = substr($error, 0, 240);
-        $db->do("UPDATE ticket_ai_jobs SET status='error',error=? WHERE source_message_id=? AND status='queued'", undef, $error, $row->{source_message_id});
+        if ($error =~ /provider_http_429/) {
+            $db->do("UPDATE ticket_ai_jobs SET status='queued',error=?,created=DATE_ADD(NOW(), INTERVAL 15 SECOND) WHERE source_message_id=?", undef, 'AI provider rate limit; retry scheduled', $row->{source_message_id});
+        } else {
+            $db->do("UPDATE ticket_ai_jobs SET status='error',error=? WHERE source_message_id=? AND status='queued'", undef, $error, $row->{source_message_id});
+        }
         warn "Ticket AI job $row->{source_message_id} failed: $error\n";
     };
 }
@@ -105,6 +109,7 @@ sub reply {
         $stage='provider_request';
         my $response=$ua->request($request);
         unless ($response->is_success) {
+            die 'provider_http_429 detail=rate_limited' if $response->code == 429;
             my $detail = eval { $json->decode($response->content)->{error}{message} } || '';
             $detail = '' if ref($detail);
             $detail = substr($response->content,0,2000) unless length($detail);
