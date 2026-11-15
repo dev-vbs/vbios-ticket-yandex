@@ -302,7 +302,10 @@ sub telegram_sync {
             join("\n\n",map {($_->{is_admin}?'Поддержка / ИИ: ':'Пользователь: ').substr($_->{message},0,500)} reverse @$history);
     }
     $text = substr($text, 0, 4000);
-    $self->_telegram_owner_avatar($tg, $chat, $thread, $id, $r->{user_id}, $display) if $is_first_message;
+    # Handoff notifications are also a new visible context in the topic. Send
+    # the owner's avatar there too, so operator messages never lose identity.
+    $self->_telegram_owner_avatar($tg, $chat, $thread, $id, $r->{user_id}, $display)
+        if $is_first_message || $handoff;
     my $keyboard = { inline_keyboard => [] };
     if (defined $cfg->{admin_user_url_template} && $cfg->{admin_user_url_template} =~ m{^https://[^\s]+$} && $cfg->{admin_user_url_template} =~ /\{user_id\}/) {
         my $url = $cfg->{admin_user_url_template};
