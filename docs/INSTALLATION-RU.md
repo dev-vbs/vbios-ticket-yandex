@@ -664,3 +664,63 @@ docker compose up -d --force-recreate
 ```
 
 Базу данных откатывайте только из проверенного дампа и после остановки приложений.
+
+## 29. Как установить или заменить prompt ИИ
+
+В репозитории уже находится файл `ticket-ai-prompt.txt`. Он содержит инструкции ИИ-помощника, правила безопасности, контакты vBios и порядок ответа пользователю.
+
+Скопируйте prompt в общий volume контейнера `core`:
+
+```bash
+cd /opt/shm
+
+docker compose cp ./ticket-ai-prompt.txt core:/app/data/ticket-ai-prompt.txt
+
+docker compose exec --user root core chmod 644 /app/data/ticket-ai-prompt.txt
+```
+
+Проверьте файл:
+
+```bash
+docker compose exec core sh -lc '
+test -s /app/data/ticket-ai-prompt.txt && echo PROMPT_OK || echo PROMPT_MISSING
+wc -c /app/data/ticket-ai-prompt.txt
+'
+```
+
+`/app/data` подключён к volume `shm-data`, поэтому prompt сохраняется после перезапуска контейнера. `spool` использует тот же volume.
+
+Перезапустите обработчики ИИ:
+
+```bash
+docker compose restart core spool
+```
+
+Если изменялись переменные `.env`, используйте полный recreate:
+
+```bash
+docker compose up -d --force-recreate core spool
+```
+
+Проверьте prompt в обоих контейнерах:
+
+```bash
+for service in core spool; do
+  echo "--- $service ---"
+  docker compose exec "$service" sh -lc \
+    'test -s /app/data/ticket-ai-prompt.txt && echo PROMPT_OK || echo PROMPT_MISSING'
+done
+```
+
+После этого отправьте новое сообщение в тикет и проверьте очередь:
+
+```bash
+docker compose exec mysql mysql -u root -p webface -e "
+SELECT source_message_id,ticket_id,status,error,reply_message_id
+FROM ticket_ai_jobs
+ORDER BY source_message_id DESC
+LIMIT 10;
+"
+```
+
+Если prompt не должен попадать в Git, замените файл на сервере вручную, но после каждого обновления контейнера повторяйте копирование командой выше.
