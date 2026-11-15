@@ -5,7 +5,14 @@ use Core::Base;
 use Core::System::ServiceManager qw(get_service);
 use Core::Utils qw(decode_json now);
 
-sub _cfg { get_service('config')->data_by_name('remna') || {} }
+sub _cfg {
+    my $config = get_service('config');
+    # Remnawave_LOCAL is the production profile used by the service template.
+    # Keep remna as a backwards-compatible fallback for older installations.
+    return $config->data_by_name('Remnawave_LOCAL')
+        || $config->data_by_name('remna')
+        || {};
+}
 sub _transport { get_service('Transport::Http') }
 sub found_rows { 1 }
 sub _request {
