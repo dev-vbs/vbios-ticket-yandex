@@ -809,3 +809,137 @@ docker compose exec api wget -qO- http://127.0.0.1/shm/healthcheck.cgi
 ```
 
 Для файлов ищите в логах `403`, `404`, `SignatureDoesNotMatch`, `credentials` и `storage`. При проблемах с frontend очистите данные сайта в браузере и пересоздайте контейнер `client`.
+
+## Аватары пользователей и изображения тикетов
+
+### Как это работает
+
+- пользователь загружает фото в личном кабинете;
+- файл сохраняется в закрытом Yandex Object Storage;
+- аватар хранится в папке `avatars/<user_id>/`;
+- изображения тикетов хранятся отдельно в `tickets/<user_id>/`;
+- в кабинете отображается пользовательская фотография;
+- если фотографии нет, используется стандартный аватар Icons8;
+- в Telegram-теме аватар отправляется отдельной фотографией с подписью `🖼 Аватар пользователя`;
+- удаление аватара выполняется кнопкой `Удалить` в профиле.
+
+Прямой fallback-аватар:
+
+```text
+https://img.icons8.com/fluency/96/user-male-circle.png
+```
+
+Ссылка `https://icons8.ru/icons/set/no-avatar` является страницей каталога. Telegram и браузеру нужен именно прямой URL изображения.
+
+### Таблица аватаров
+
+```sql
+CREATE TABLE IF NOT EXISTS user_avatars (
+  user_id INT NOT NULL PRIMARY KEY,
+  bucket VARCHAR(63) NOT NULL,
+  object_key VARCHAR(255) NOT NULL,
+  mime_type VARCHAR(100) NOT NULL,
+  size INT NOT NULL,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_user_avatar_object (bucket, object_key),
+  CONSTRAINT fk_user_avatar_user
+    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+```
+
+Если таблицы ещё нет:
+
+```bash
+cd /opt/shm
+curl -fsSL https://raw.githubusercontent.com/dev-vbs/vbios-ticket-yandex/main/server/app/sql/user-avatars.sql -o /tmp/user-avatars.sql
+docker compose cp /tmp/user-avatars.sql mysql:/tmp/user-avatars.sql
+docker compose exec mysql sh -lc 'mysql -u root -p"$MYSQL_ROOT_PASSWORD" "$MYSQL_DATABASE" < /tmp/user-avatars.sql'
+```
+
+### Проверка аватара
+
+```sql
+SELECT user_id, bucket, object_key, mime_type, size
+FROM user_avatars;
+```
+
+Корректный путь выглядит так:
+
+```text
+avatars/2/9c8b7eee31e096dff2a062aa209ccbaec4e9b1c3121a3e0f.jpg
+```
+
+### Если аватар не отображается
+
+```bash
+cd /opt/shm
+docker compose pull core spool api client
+docker compose up -d --force-recreate core spool api client
+docker compose logs --since=10m core api --tail=300
+```
+
+Ищите ошибки `403`, `404`, `SignatureDoesNotMatch`, `credentials`, `sendPhoto` и `thread not found`.
+
+Если Telegram-тема была удалена, сбросьте старую привязку тикета:
+
+```sql
+UPDATE tickets
+SET telegram_chat_id = NULL,
+    telegram_thread_id = NULL,
+    telegram_error = NULL
+WHERE ticket_id = 13;
+```
+
+После нового сообщения SHM создаст тему заново.
+
+## Полная последовательность установки
+
+```bash
+sudo apt update
+sudo apt install -y ca-certificates curl git nginx certbot python3-certbot-nginx
+curl -fsSL https://get.docker.com | sh
+sudo usermod -aG docker "$USER"
+newgrp docker
+sudo mkdir -p /opt/shm
+sudo chown -R "$USER":"$USER" /opt/shm
+cd /opt/shm
+git clone https://github.com/dev-vbs/vbios-ticket-yandex.git .
+cp .env.example .env
+nano .env
+docker compose pull
+docker compose up -d
+docker compose ps
+```
+
+После запуска обязательно настройте в SHM:
+
+1. администратора;
+2. услуги и тарифы;
+3. платёжные системы;
+4. Telegram-профиль;
+5. конфигурацию `ticket`;
+6. Object Storage;
+7. HTTPS через Nginx.
+
+## Безопасность production
+
+- не делайте бакет Object Storage публичным;
+- не помещайте S3-ключи в frontend;
+- не публикуйте `.env` и дампы базы;
+- закройте MySQL, Redis и phpMyAdmin от внешнего доступа;
+- используйте HTTPS;
+- регулярно делайте `mysqldump`;
+- проверяйте восстановление резервных копий;
+- выдавайте Telegram-боту только необходимые права.
+
+## Обновление после изменений GitHub
+
+```bash
+cd /opt/shm
+git pull origin main
+docker compose pull
+docker compose up -d --force-recreate
+```
+
+Если опубликованный образ ещё не содержит последний коммит, дождитесь завершения GitHub Actions `Build and publish vBios images`, затем повторите `docker compose pull`.
