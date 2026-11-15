@@ -229,15 +229,14 @@ sub _telegram_owner_avatar {
     my $row = eval { $self->dbh->selectrow_hashref(
         'SELECT bucket,object_key,mime_type FROM user_avatars WHERE user_id=?', undef, $user_id
     ) };
-    return unless $row && $row->{bucket} && $row->{object_key};
     my $ok = eval {
-        require Core::TicketStorage;
-        my $cfg = get_service('config')->data_by_name('ticket') || {};
-        my $storage_cfg = $cfg->{storage} || {};
-        my $storage = Core::TicketStorage->new($storage_cfg);
-        my ($ext) = ($row->{mime_type} || '') =~ m{image/(jpeg|png|webp|gif)}i;
-        $ext = lc($ext || 'jpeg'); $ext = 'jpg' if $ext eq 'jpeg';
-        my $photo_url = $storage->download_url($row->{bucket}, $row->{object_key});
+        my $photo_url = 'https://pbalka.ru/favicon.jpg';
+        if ($row && $row->{bucket} && $row->{object_key}) {
+            require Core::TicketStorage;
+            my $cfg = get_service('config')->data_by_name('ticket') || {};
+            my $storage = Core::TicketStorage->new($cfg->{storage} || {});
+            $photo_url = $storage->download_url($row->{bucket}, $row->{object_key});
+        }
         my $response = $tg->http('sendPhoto', data => {
             chat_id => $chat,
             (defined $thread ? (message_thread_id => $thread) : ()),
