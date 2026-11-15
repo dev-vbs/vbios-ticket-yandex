@@ -111,8 +111,29 @@ sub api_hwid_list {
     }
     return $result;
 }
-sub _reset_count { my ($self,$uid,$usi)=@_; my $day=(localtime)[5]+1900 . sprintf('%02d',(localtime)[4]+1) . sprintf('%02d',(localtime)[3]); return $self->cache->increment('remna-hwid-'.$uid.'-'.$usi.'-'.$day,86400) }
+sub _reset_count {
+    my ($self,$uid,$usi)=@_;
+    my @date=localtime;
+    my $day=sprintf('%04d%02d%02d',$date[5]+1900,$date[4]+1,$date[3]);
+    my $key='remna-hwid-resets-v2-'.$uid.'-'.$usi.'-'.$day;
+    $self->{hwid_reset_key}=$key;
+    my $count=$self->cache->increment($key,86400);
+    die 'HWID reset counter unavailable' unless defined $count;
+    return $count;
+}
+sub _reset_limit {
+    my ($self,$row)=@_;
+    my $settings=decode_json($row->{settings}||'{}') || {};
+    my $config=decode_json($row->{config}||'{}') || {};
+    my $value=$settings->{hwid_reset_daily_limit} // $config->{hwid_reset_daily_limit} // $self->_cfg->{hwid_reset_daily_limit} // 3;
+    return $value =~ /^[1-9][0-9]*$/ ? int($value) : 3;
+}
+sub _refund_reset {
+    my $self=shift;
+    my $key=delete $self->{hwid_reset_key};
+    eval { $self->cache->redis->decr($key) } if $key;
+}
 sub _api_error { my ($self,$error)=@_; $error ||= 'unknown request error'; $error =~ s/[\r\n]+/ /g; get_service('report')->status(400); get_service('report')->add_error('HWID: '.substr($error,0,500)); return undef }
-sub api_hwid_delete { my ($self,%a)=@_; my $result; my $ok=eval { my $row=$self->_owned_or_error($a{user_service_id}); die 'hwid is required' unless defined $a{hwid} && length $a{hwid}; my $count=$self->_reset_count($self->user_id,$row->{user_service_id}); die 'daily HWID limit exceeded' if $count > $self->_limit($row); my $r=$self->_request(path=>'/api/hwid/devices/delete',method=>'post',content=>{userId=>$self->_remna_id($row),hwid=>$a{hwid}}); $result={ok=>1,data=>$r}; 1 }; return $ok ? $result : $self->_api_error($@) }
-sub api_hwid_reset { my ($self,%a)=@_; my $result; my $ok=eval { my $row=$self->_owned_or_error($a{user_service_id}); my $list=$self->api_hwid_list(user_service_id=>$row->{user_service_id}) or die 'unable to read HWID devices'; my $devices=$list->{devices}; $devices=[] unless ref($devices) eq 'ARRAY'; my $n=scalar @$devices; if (!$n) { $result={ok=>1,deleted=>0}; } else { my $count=$self->_reset_count($self->user_id,$row->{user_service_id}); die 'daily HWID limit exceeded' if $count+$n-1 > $self->_limit($row); my $r=$self->_request(path=>'/api/hwid/devices/delete-all',method=>'post',content=>{userId=>$self->_remna_id($row)}); $result={ok=>1,deleted=>$n,data=>$r}; } 1 }; return $ok ? $result : $self->_api_error($@) }
+sub api_hwid_delete { my ($self,%a)=@_; my $result; my $ok=eval { my $row=$self->_owned_or_error($a{user_service_id}); die 'hwid is required' unless defined $a{hwid} && length $a{hwid}; my $count=$self->_reset_count($self->user_id,$row->{user_service_id}); die 'daily HWID limit exceeded' if $count > $self->_reset_limit($row); my $r=$self->_request(path=>'/api/hwid/devices/delete',method=>'post',content=>{userId=>$self->_remna_id($row),hwid=>$a{hwid}}); $result={ok=>1,data=>$r}; 1 }; my $failure=$@; if ($ok) { delete $self->{hwid_reset_key}; } else { $self->_refund_reset; } return $ok ? $result : $self->_api_error($failure) }
+sub api_hwid_reset { my ($self,%a)=@_; my $result; my $ok=eval { my $row=$self->_owned_or_error($a{user_service_id}); my $list=$self->api_hwid_list(user_service_id=>$row->{user_service_id}) or die 'unable to read HWID devices'; my $devices=$list->{devices}; $devices=[] unless ref($devices) eq 'ARRAY'; my $n=scalar @$devices; if (!$n) { $result={ok=>1,deleted=>0}; } else { my $count=$self->_reset_count($self->user_id,$row->{user_service_id}); die 'daily HWID limit exceeded' if $count > $self->_reset_limit($row); my $r=$self->_request(path=>'/api/hwid/devices/delete-all',method=>'post',content=>{userId=>$self->_remna_id($row)}); $result={ok=>1,deleted=>$n,data=>$r}; } 1 }; my $failure=$@; if ($ok) { delete $self->{hwid_reset_key}; } else { $self->_refund_reset; } return $ok ? $result : $self->_api_error($failure) }
 1;

@@ -48,7 +48,12 @@ export default function HwidDevices({ serviceId }: { serviceId: number }) {
       if (!payload(response.data).ok) throw new Error('Удаление не подтверждено');
       setSelected(null); load();
       notifications.show({ color: 'green', message: 'Привязка устройства удалена. Оно может зарегистрироваться повторно при следующем подключении.' });
-    } catch { notifications.show({ color: 'red', message: 'Не удалось удалить устройство. Возможно, достигнут дневной лимит сбросов. Повторите позже или обратитесь в поддержку.' }); }
+    } catch (error) {
+      const body = (error as { response?: { data?: any } })?.response?.data;
+      const detail = body?.error || body?.errors?.[0]?.message || body?.errors?.[0];
+      const message = typeof detail === 'string' ? detail.replace(/ at \/app\/[^\n]+/g, '') : 'API не подтвердил удаление устройства. Обратитесь в поддержку.';
+      notifications.show({ color: 'red', title: 'Не удалось сбросить HWID', message });
+    }
     finally { setDeleting(false); }
   };
   return <Paper withBorder p="md" radius="md" className="hwid-panel">
