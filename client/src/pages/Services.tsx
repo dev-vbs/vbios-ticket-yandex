@@ -170,8 +170,8 @@ function ServiceDetail({ service, onDelete, onChangeTariff }: ServiceDetailProps
   const [stopping, setStopping] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [confirmStop, setConfirmStop] = useState(false);
-  const [confirmHwidReset, setConfirmHwidReset] = useState(false);
-  const [resettingHwid, setResettingHwid] = useState(false);
+
+
   const [downloading, setDownloading] = useState(false);
   const { t, i18n } = useTranslation();
   const clipboard = useClipboard({ timeout: 1000 });
@@ -183,19 +183,6 @@ function ServiceDetail({ service, onDelete, onChangeTariff }: ServiceDetailProps
   const payAmount = forecastTotal ?? 0;
   const [paySystemsLoading, setPaySystemsLoading] = useState(false);
   const [paying, setPaying] = useState(false);
-
-  const handleHwidReset = async () => {
-    setResettingHwid(true);
-    try {
-      await userApi.resetHwid(service.user_service_id);
-      notifications.show({ title: 'Устройства сброшены', message: 'Теперь можно подключить новое устройство.', color: 'green' });
-      setConfirmHwidReset(false);
-      setConnectionReload((value) => value + 1);
-    } catch (error) {
-      const message = (error as { response?: { data?: { error?: string } } })?.response?.data?.error || 'Не удалось сбросить устройства. Проверьте лимит сбросов.';
-      notifications.show({ title: 'Ошибка сброса HWID', message, color: 'red' });
-    } finally { setResettingHwid(false); }
-  };
 
   const downloadConfig = async () => {
     if (!storageData) return;
@@ -593,10 +580,6 @@ function ServiceDetail({ service, onDelete, onChangeTariff }: ServiceDetailProps
                   {(!isProxy || showProxyQr) && <Button leftSection={<IconQrcode size={17} />} variant="light" disabled={isProxy ? !subscriptionUrl : !storageData} onClick={() => setQrModalOpen(true)}>{t('services.qrCode')}</Button>}
                   {isProxy ? <Button leftSection={<IconDeviceMobileCog size={17} />} disabled={!subscriptionUrl} onClick={() => urlSchema ? handleOpenUrlSchema() : handleConfigure()}>{t('services.openInApp', { defaultValue: 'Установить' })}</Button> : <Button leftSection={<IconDownload size={17} />} disabled={!storageData} onClick={downloadConfig} loading={downloading}>{t('services.downloadConfig')}</Button>}
                 </Group>
-                {isProxy && <HwidDevices key={service.user_service_id} serviceId={service.user_service_id} />}
-                {isProxy && <Button variant="subtle" color="orange" leftSection={<IconRefresh size={17} />} onClick={() => setConfirmHwidReset(true)}>
-                  Сбросить устройства
-                </Button>}
 
                 {isProxy && subscriptionUrl && (
                   <AppDownloadBlock type="proxy" />
@@ -628,6 +611,7 @@ function ServiceDetail({ service, onDelete, onChangeTariff }: ServiceDetailProps
           </Tabs.Panel>
         )}
       </Tabs>
+      {isProxy && <HwidDevices key={service.user_service_id} serviceId={service.user_service_id} />}
       {isNotPaid && (
         <Paper withBorder p="md" radius="md" mt="md">
           <Stack gap="sm">
@@ -732,16 +716,6 @@ function ServiceDetail({ service, onDelete, onChangeTariff }: ServiceDetailProps
         confirmLabel={t('services.stop')}
         confirmColor="orange"
         loading={stopping}
-      />
-      <ConfirmModal
-        opened={confirmHwidReset}
-        onClose={() => setConfirmHwidReset(false)}
-        onConfirm={handleHwidReset}
-        title="Сбросить устройства?"
-        message="Все привязанные устройства этой услуги будут удалены. После этого можно будет подключить новое устройство."
-        confirmLabel="Сбросить"
-        confirmColor="orange"
-        loading={resettingHwid}
       />
 
       <ConfirmModal

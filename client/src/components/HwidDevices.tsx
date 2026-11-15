@@ -73,7 +73,7 @@ export default function HwidDevices({ serviceId }: { serviceId: number }) {
     finally { setDeleting(false); }
   };
   return <Paper withBorder p="md" radius="md" className="hwid-panel">
-    <Group justify="space-between" wrap="wrap" gap="sm"><div><Text fw={600}>Центр устройств</Text><Text size="xs" c="dimmed">Устройства, подключения и трафик подписки</Text></div><Button size="xs" variant="subtle" loading={loading || statsLoading} disabled={deleting} onClick={load} leftSection={<IconRefresh size={15} />}>Обновить</Button></Group>
+    <Group className="hwid-panel-header" justify="space-between" wrap="wrap" gap="sm"><div><Group gap="xs"><IconDeviceMobile size={22} /><Text component="h2" className="hwid-panel-title" fw={650}>Центр устройств</Text></Group><Text size="sm" c="dimmed" mt={6}>Просматривайте подключённые устройства и расход трафика. Чтобы освободить место для нового устройства, сбросьте его HWID-привязку.</Text></div><Button size="xs" variant="light" loading={loading || statsLoading} disabled={deleting} onClick={load} leftSection={<IconRefresh size={15} />}>Обновить</Button></Group>
     {statsLoading ? <Text mt="sm" size="xs" c="dimmed">Загружаем статистику…</Text> : statsError ? <Alert mt="sm" color="orange">Статистика Remnawave недоступна. Список устройств загружается отдельно.</Alert> : stats && <>
       <div className="hwid-stats">
         <div><Text size="xs" c="dimmed">Трафик за текущий период</Text><Text fw={600}>{bytes(stats.used_bytes)}</Text></div>

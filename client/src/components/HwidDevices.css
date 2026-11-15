@@ -8,3 +8,15 @@
 .hwid-identifier { margin-top: 4px; font-family: monospace; }
 .hwid-device-remove { flex-shrink: 0; min-height: 44px; }
 @media (max-width: 480px) { .hwid-device { flex-wrap: wrap; align-items: flex-start; } .hwid-device-copy { flex-basis: calc(100% - 36px); } .hwid-device-remove { width: 100%; } }
+/* Standalone account card: same restrained surfaces as the payment form. */
+.hwid-panel { padding:clamp(16px,3vw,24px)!important; border-radius:16px!important; }
+.hwid-panel-header { align-items:flex-start; padding-bottom:16px; border-bottom:1px solid var(--mantine-color-default-border); }
+.hwid-panel-header>div { flex:1; min-width:200px; }
+.hwid-panel-title { margin:0; font-size:18px; line-height:1.4; }
+.hwid-stats { grid-template-columns:repeat(3,minmax(0,1fr)); background:var(--mantine-color-default-hover); }
+.hwid-device { background:var(--mantine-color-body); }
+.hwid-device-remove:focus-visible { outline:2px solid var(--mantine-primary-color-filled); outline-offset:3px; }
+.hwid-identifier { font-size:10px; line-height:1.6; }
+@media(max-width:900px){ .hwid-stats{grid-template-columns:repeat(2,minmax(0,1fr))} }
+@media(max-width:600px){ .hwid-panel-header{flex-direction:column;align-items:stretch} .hwid-panel-header>div{min-width:0} .hwid-panel-header .mantine-Button-root{width:100%;min-height:44px} .hwid-stats{gap:12px;padding:12px} .hwid-device{flex-wrap:wrap;align-items:flex-start} .hwid-device-copy{flex-basis:calc(100% - 36px)} .hwid-device-remove{width:100%} }
+@media(max-width:360px){.hwid-stats{grid-template-columns:1fr}}
