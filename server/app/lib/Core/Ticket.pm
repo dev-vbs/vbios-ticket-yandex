@@ -237,13 +237,11 @@ sub _telegram_owner_avatar {
         my $storage = Core::TicketStorage->new($storage_cfg);
         my ($ext) = ($row->{mime_type} || '') =~ m{image/(jpeg|png|webp|gif)}i;
         $ext = lc($ext || 'jpeg'); $ext = 'jpg' if $ext eq 'jpeg';
-        my $caption = '👤 ' . ($display || 'Пользователь') . " · ID $user_id\n📩 Тикет #$ticket_id";
         my $photo_url = $storage->download_url($row->{bucket}, $row->{object_key});
         my $response = $tg->http('sendPhoto', data => {
             chat_id => $chat,
             (defined $thread ? (message_thread_id => $thread) : ()),
             photo => $photo_url,
-            caption => substr($caption, 0, 1024),
         });
         my $body = eval { $response->decoded_content } || '';
         my $result = eval { decode_json($body) } || {};
