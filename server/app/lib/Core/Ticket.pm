@@ -230,7 +230,8 @@ sub _telegram_owner_avatar {
         'SELECT bucket,object_key,mime_type FROM user_avatars WHERE user_id=?', undef, $user_id
     ) };
     my $ok = eval {
-        my $photo_url = 'https://pbalka.ru/favicon.jpg';
+        # Telegram needs a direct image URL, not the Icons8 catalog HTML page.
+        my $photo_url = 'https://img.icons8.com/fluency/96/user-male-circle.png';
         if ($row && $row->{bucket} && $row->{object_key}) {
             require Core::TicketStorage;
             my $cfg = get_service('config')->data_by_name('ticket') || {};
