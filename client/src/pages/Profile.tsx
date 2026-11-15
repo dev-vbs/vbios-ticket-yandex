@@ -4,7 +4,7 @@ import axios from 'axios';
 import { useAuthOptions } from '../hooks/useAuthOptions';
 import { useState, useEffect, useCallback } from 'react';
 import { Card, Text, Stack, Group, Divider, Grid, Button, TextInput, Tooltip, ActionIcon, Avatar, Title, Modal, Loader, Center, Collapse, Alert, Skeleton, useMantineColorScheme, FileButton } from '@mantine/core';
-import { IconUser, IconPhone, IconCopy, IconCheck, IconBrandTelegram, IconCreditCard, IconChevronDown, IconChevronUp, IconMail, IconAlertCircle, IconEdit, IconCamera } from '@tabler/icons-react';
+import { IconUser, IconPhone, IconCopy, IconCheck, IconBrandTelegram, IconCreditCard, IconChevronDown, IconChevronUp, IconMail, IconAlertCircle, IconEdit, IconCamera, IconTrash } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 import { useClipboard } from '@mantine/hooks';
 import { useTranslation } from 'react-i18next';
@@ -102,6 +102,10 @@ export default function Profile() {
     if (!['image/jpeg','image/png','image/webp','image/gif'].includes(file.type) || file.size > 5 * 1024 * 1024) { notifications.show({ title: t('common.error'), message: 'Выберите JPEG, PNG, WebP или GIF размером до 5 МБ', color: 'red' }); return; }
     setAvatarUploading(true);
     try { const encoded = await new Promise<string>((resolve, reject) => { const reader=new FileReader(); reader.onload=()=>resolve(String(reader.result).split(',')[1] || ''); reader.onerror=()=>reject(new Error('read')); reader.readAsDataURL(file); }); const response=await userApi.uploadAvatar({ name:file.name, mime_type:file.type, data:encoded }); const raw=response.data?.data; const item=Array.isArray(raw)?raw[0]:raw; const data=item?.data && typeof item.data === 'object' ? item.data : item; const inline=data?.data && data?.mime_type ? `data:${data.mime_type};base64,${data.data}` : null; setAvatarUrl(inline || data?.url || null); notifications.show({ title:t('common.success'), message:'Фотография профиля обновлена', color:'green' }); } catch { notifications.show({ title:t('common.error'), message:'Не удалось загрузить фотографию', color:'red' }); } finally { setAvatarUploading(false); }
+  };
+  const deleteAvatar = async () => {
+    try { await userApi.deleteAvatar(); setAvatarUrl(null); notifications.show({ title: t('common.success'), message: 'Аватарка удалена', color: 'green' }); }
+    catch { notifications.show({ title: t('common.error'), message: 'Не удалось удалить аватарку', color: 'red' }); }
   };
 
   useEffect(() => {
@@ -535,6 +539,7 @@ export default function Profile() {
               <FileButton onChange={uploadAvatar} accept="image/jpeg,image/png,image/webp,image/gif">
                 {(props) => <Button {...props} size="xs" variant="light" leftSection={<IconCamera size={14} />} loading={avatarUploading}>Фото профиля</Button>}
               </FileButton>
+              {avatarUrl && <Button size="xs" variant="subtle" color="red" leftSection={<IconTrash size={14} />} onClick={() => void deleteAvatar()}>Удалить</Button>}
               <div>
                 <Text fw={500} size="lg">{profile.full_name || profile.login || t('profile.user')}</Text>
                 <Text size="sm" c="cyan">{t('profile.id')}: {profile.user_id}
