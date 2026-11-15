@@ -575,7 +575,7 @@ function ServiceDetail({ service, onDelete, onChangeTariff }: ServiceDetailProps
 
                 <Group grow align="stretch">
                   {(!isProxy || showProxyQr) && <Button leftSection={<IconQrcode size={17} />} variant="light" disabled={isProxy ? !subscriptionUrl : !storageData} onClick={() => setQrModalOpen(true)}>{t('services.qrCode')}</Button>}
-                  {isProxy ? <Button leftSection={<IconDeviceMobileCog size={17} />} disabled={!subscriptionUrl} onClick={() => urlSchema ? handleOpenUrlSchema() : handleConfigure()}>{t('services.openInApp', { defaultValue: 'Открыть в приложении' })}</Button> : <Button leftSection={<IconDownload size={17} />} disabled={!storageData} onClick={downloadConfig} loading={downloading}>{t('services.downloadConfig')}</Button>}
+                  {isProxy ? <Button leftSection={<IconDeviceMobileCog size={17} />} disabled={!subscriptionUrl} onClick={() => urlSchema ? handleOpenUrlSchema() : handleConfigure()}>{t('services.openInApp', { defaultValue: 'Установить' })}</Button> : <Button leftSection={<IconDownload size={17} />} disabled={!storageData} onClick={downloadConfig} loading={downloading}>{t('services.downloadConfig')}</Button>}
                 </Group>
 
                 {isProxy && subscriptionUrl && (
