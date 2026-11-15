@@ -345,8 +345,18 @@ sub telegram_close {
         });
         my $body = eval { $response->decoded_content } || '';
         my $result = eval { decode_json($body) } || {};
-        die 'Telegram topic deletion failed: ' . ($result->{description} || 'no response') unless $result->{ok};
-        $self->dbh->do('UPDATE tickets SET telegram_error=NULL WHERE ticket_id=?', undef, $id);
+        unless ($result->{ok}) {
+            my $description = $result->{description} || 'no response';
+            # Telegram returns TOPIC_ID_INVALID when the topic was already
+            # removed manually or by a previous cleanup worker. Treat it as
+            # idempotent success and forget the stale remote identifiers.
+            if ($description =~ /TOPIC_ID_INVALID|message thread not found/i) {
+                $self->dbh->do('UPDATE tickets SET telegram_chat_id=NULL,telegram_thread_id=NULL,telegram_error=NULL WHERE ticket_id=?', undef, $id);
+                return 1;
+            }
+            die 'Telegram topic deletion failed: ' . $description;
+        }
+        $self->dbh->do('UPDATE tickets SET telegram_chat_id=NULL,telegram_thread_id=NULL,telegram_error=NULL WHERE ticket_id=?', undef, $id);
         1;
     } or $error = $@ || 'Telegram topic deletion failed';
     if ($error) {
