@@ -306,7 +306,7 @@ sub telegram_sync {
     # the owner's avatar there too, so operator messages never lose identity.
     my $is_handoff_notice = $handoff || $text =~ /Пользователь выбрал сотрудника поддержки/;
     $self->_telegram_owner_avatar($tg, $chat, $thread, $id, $r->{user_id}, $display)
-        if $is_first_message || $is_handoff_notice;
+        if $is_first_message || $is_handoff_notice || $m->{is_admin} == 0;
     my $keyboard = { inline_keyboard => [] };
     if (defined $cfg->{admin_user_url_template} && $cfg->{admin_user_url_template} =~ m{^https://[^\s]+$} && $cfg->{admin_user_url_template} =~ /\{user_id\}/) {
         my $url = $cfg->{admin_user_url_template};
