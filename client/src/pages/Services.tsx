@@ -462,6 +462,8 @@ function ServiceDetail({ service, onDelete, onChangeTariff }: ServiceDetailProps
             )}
           </Stack>
         </section>
+      {isProxy && <HwidDevices key={service.user_service_id} serviceId={service.user_service_id} />}
+
 
         { service.status === 'ACTIVE' && isVpnOrProxy && (
           <details className="service-technical-details" open={activeTab === 'config'} onToggle={event => setActiveTab(event.currentTarget.open ? 'config' : 'info')}><summary>Ссылка подписки, QR-код и параметры подключения</summary>
@@ -550,7 +552,7 @@ function ServiceDetail({ service, onDelete, onChangeTariff }: ServiceDetailProps
         )}
       </div>
       <PayModal opened={paymentOpen} onClose={() => setPaymentOpen(false)} initialAmount={payAmount > 0 ? payAmount : service.service.cost} />
-      {isProxy && <HwidDevices key={service.user_service_id} serviceId={service.user_service_id} />}
+
       {isNotPaid && <Text size="sm" c="dimmed">{forecastLoading ? 'Рассчитываем доплату…' : forecastTotal !== null ? 'Доплата по услуге: ' + forecastTotal.toFixed(2) + ' ₽' : 'Доплата пока неизвестна. Проверьте расчёт перед оплатой.'}</Text>}
 
       {canChange && (
