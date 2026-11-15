@@ -1326,6 +1326,9 @@ sub process_message {
         return {};
     }
 
+    $self->send_user_avatar($user, $self->message->{chat}{id})
+        if $user && ($cmd eq '/start');
+
     if ($user && !$user->is_blocked && $self->ticket_main_chat($user)) {
         return {};
     }
@@ -1540,6 +1543,25 @@ sub ticket_copy_support_image {
         reply_markup=>{inline_keyboard=>[[{text=>'↩️ Ответить',callback_data=>'ticket_reply '.$ticket_id}]]},
     });
     return Core::TicketTelegramMedia->result($response);
+}
+
+sub send_user_avatar {
+    my ($self, $user, $chat) = @_;
+    return unless $user && $chat;
+    my $avatar = eval { $user->api_avatar } || {};
+    my $raw = $avatar->{data};
+    $raw = $raw->[0] if ref($raw) eq 'ARRAY';
+    $raw = $raw->{data} if ref($raw) eq 'HASH' && ref($raw->{data}) eq 'HASH';
+    return unless ref($raw) eq 'HASH' && $raw->{data} && $raw->{mime_type};
+    require MIME::Base64;
+    my $bytes = eval { MIME::Base64::decode_base64($raw->{data}) } || return;
+    my ($ext) = ($raw->{mime_type} =~ m{image/(jpeg|png|webp|gif)}i);
+    $ext = lc($ext || 'jpeg'); $ext = 'jpg' if $ext eq 'jpeg';
+    eval {
+        $self->uploadPhoto($bytes, filename => "avatar.$ext",
+            chat_id => $chat, caption => '👤 Ваш аватар профиля');
+        1;
+    } or logger->error('Telegram avatar delivery failed');
 }
 
 # Message-to-ticket binding is server-side: never trust quoted text or ticket ID alone.
