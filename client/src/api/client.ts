@@ -64,7 +64,7 @@ export const auth = {
     return { otpRequired: false };
   },
 
-  getCurrentUser: () => api.get('/user'),
+  getCurrentUser: () => api.get('/user', { timeout: 15000 }),
 
   logout: async () => {
     await api.delete('/user/auth');

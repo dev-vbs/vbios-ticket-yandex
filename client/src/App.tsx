@@ -1,9 +1,8 @@
-import NotificationsPage from './pages/NotificationsPage';
-import HelpPage from './pages/HelpPage';
 import '@mantine/core/styles.css';
 import { BalancePage, OperationsPage } from './pages/AccountSections';
 import '@mantine/notifications/styles.css';
-import { useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
+import { isAxiosError } from 'axios';
 import { MantineProvider, Group, Text, Button, Modal, TextInput, Stack, DirectionProvider, Center, Loader, Box, localStorageColorSchemeManager } from '@mantine/core';
 import { Notifications } from '@mantine/notifications';
 import { useHotkeys } from '@mantine/hooks';
@@ -30,9 +29,11 @@ const colorSchemeManager = localStorageColorSchemeManager({ key: 'vbios-color-sc
 parseAndSaveSessionId();
 parseAndSavePartnerId();
 
-import Services from './pages/Services';
-import Profile from './pages/Profile';
-import Tickets from './pages/Tickets.tsx';
+const Services = lazy(() => import('./pages/Services'));
+const Profile = lazy(() => import('./pages/Profile'));
+const Tickets = lazy(() => import('./pages/Tickets'));
+const NotificationsPage = lazy(() => import('./pages/NotificationsPage'));
+const HelpPage = lazy(() => import('./pages/HelpPage'));
 import Login from './pages/Login';
 import NotFound from './pages/NotFound';
 import AddToHomeScreen from './pages/AddToHomeScreen';
@@ -75,6 +76,7 @@ function AppContent() {
   const [withdrawHistoryOpen, setWithdrawHistoryOpen] = useState(false);
   const [payModalOpen, setPayModalOpen] = useState(false);
   const [versionOpen, setVersionOpen] = useState(false);
+  const [authError, setAuthError] = useState(false);
 
 
   useEffect(() => {
@@ -113,14 +115,16 @@ function AppContent() {
         const responseData = response.data.data;
         const userData: any = Array.isArray(responseData) ? responseData[0] : responseData;
         setUser(userData);
-      } catch {
+      } catch (error) {
         if (!navigator.onLine) {
           try {
             const cachedUser = JSON.parse(localStorage.getItem('shm_offline_user_v1') || 'null');
             if (cachedUser) setUser(cachedUser);
           } catch { /* offline cache is optional */ }
-        } else {
+        } else if (isAxiosError(error) && error.response?.status === 401) {
           removeCookie();
+        } else {
+          setAuthError(true);
         }
       } finally {
         setIsLoading(false);
@@ -158,6 +162,10 @@ function AppContent() {
         <Loader size="lg" />
       </Center>
     );
+  }
+
+  if (authError && !isAuthenticated) {
+    return <Center mih="100vh" p="lg"><Stack maw={400} align="center" gap="md"><Text fw={600}>Не удалось связаться с сервером</Text><Text size="sm" c="dimmed" ta="center">Проверьте интернет и повторите загрузку. Ваша сессия сохранена.</Text><Button onClick={() => window.location.reload()}>Повторить</Button></Stack></Center>;
   }
 
   if (!isAuthenticated) {
@@ -251,7 +259,7 @@ function AppContent() {
       {verifyRequiredModal}
       {versionModal}
       <CabinetLayout>
-        <Routes>
+        <Suspense fallback={<Center mih={240} role="status"><Stack align="center" gap="sm"><Loader size="sm" /><Text size="sm" c="dimmed">Загружаем страницу…</Text></Stack></Center>}><Routes>
           <Route path="/" element={<Dashboard />} />
           <Route path="/services" element={<Services />} />
               <Route path="/services/:serviceId" element={<Services />} />
@@ -259,7 +267,7 @@ function AppContent() {
           <Route path="/tickets" element={<Tickets />} /><Route path="/balance" element={<BalancePage />} /><Route path="/operations" element={<OperationsPage />} /><Route path="/notifications" element={<NotificationsPage />} />
           <Route path="/help" element={<HelpPage />} />
           <Route path="*" element={<NotFound />} />
-        </Routes>
+        </Routes></Suspense>
       </CabinetLayout>
       <PayHistoryModal opened={payHistoryOpen} onClose={() => setPayHistoryOpen(false)} />
       <WithdrawHistoryModal opened={withdrawHistoryOpen} onClose={() => setWithdrawHistoryOpen(false)} />

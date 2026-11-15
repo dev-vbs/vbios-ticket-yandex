@@ -28,13 +28,14 @@ export default function ConfirmModal({
   const { t } = useTranslation();
 
   return (
-    <Modal opened={opened} onClose={onClose} title={title || t('confirm.title')} centered size="sm">
+    <Modal opened={opened} onClose={onClose} title={title || t('confirm.title')} centered size="sm"
+      closeOnClickOutside={!loading} closeOnEscape={!loading} withCloseButton={!loading}>
       <Stack gap="md">
         <Group gap="sm" align="flex-start">
           <IconAlertTriangle size={24} color="var(--mantine-color-orange-6)" />
           <Text size="sm" style={{ flex: 1 }}>{message}</Text>
         </Group>
-        <Group justify="flex-end" gap="sm">
+        <Group className="cabinet-confirm-actions" justify="flex-end" gap="sm">
           <Button variant="default" onClick={onClose} disabled={loading}>
             {cancelLabel || t('common.cancel')}
           </Button>

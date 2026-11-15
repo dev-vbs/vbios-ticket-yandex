@@ -70,3 +70,24 @@
 .vpn-cabinet .services-overview__header > .mantine-Group-root { width: 100%; gap: 8px; }
 .vpn-cabinet .services-overview__header > .mantine-Group-root > button { flex: 1; min-width: 0; }
 }
+
+/* Consistent interaction and responsive spacing across cabinet pages. */
+.vpn-cabinet .cabinet-main { min-width:0; }
+.vpn-cabinet .cabinet-main>div,.vpn-cabinet .cabinet-main>section { min-width:0; }
+.vpn-cabinet :where(a,button,input,textarea,select,[role="tab"]):focus-visible { outline:2px solid var(--ui-accent); outline-offset:3px; }
+.vpn-cabinet .mantine-InputWrapper-label { font-weight:600; font-size:13px; }
+.vpn-cabinet .mantine-InputWrapper-description { line-height:1.5; }
+.vpn-cabinet .mantine-Alert-message { overflow-wrap:anywhere; }
+.vpn-cabinet .mantine-Title-root { overflow-wrap:anywhere; }
+.vpn-cabinet .hwid-panel { background:var(--ui-surface); border-color:var(--ui-border); }
+.vpn-cabinet .hwid-device { background:var(--ui-surface-soft); border-color:var(--ui-border); }
+@media(max-width:768px){
+  .vpn-cabinet .mantine-Input-input { font-size:16px; }
+  .vpn-cabinet .mantine-Button-root { min-height:44px; }
+  .vpn-cabinet .mantine-ActionIcon-root { min-width:40px; min-height:40px; }
+  .cabinet-confirm-actions { display:grid; grid-template-columns:1fr 1fr; }
+  .cabinet-confirm-actions .mantine-Button-root { width:100%; min-height:44px; }
+}
+@media(prefers-reduced-motion:reduce){
+  .vpn-cabinet *, .vpn-cabinet *::before, .vpn-cabinet *::after { animation-duration:.01ms!important; animation-iteration-count:1!important; transition-duration:.01ms!important; scroll-behavior:auto!important; }
+}
