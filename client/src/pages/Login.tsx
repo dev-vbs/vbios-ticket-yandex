@@ -524,7 +524,7 @@ export default function Login() {
           )}
           <div className="auth-intro">
             <span className="auth-intro-icon"><IconSparkles size={16} /></span>
-            <Text className="auth-kicker" size="xs" fw={700} tt="uppercase">{config.APP_NAME} account</Text>
+            <Text className="auth-kicker" size="xs" fw={700} tt="uppercase">{config.APP_NAME}</Text>
           </div>
           <Title order={3} className="auth-heading" ta="center">
               {mode === 'login' ? t('auth.loginTitle') : t('auth.registerTitle')}
