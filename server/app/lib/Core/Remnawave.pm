@@ -6,12 +6,24 @@ use Core::System::ServiceManager qw(get_service);
 use Core::Utils qw(decode_json now);
 
 sub _cfg {
-    my $config = get_service('config');
-    # Remnawave_LOCAL is the production profile used by the service template.
-    # Keep remna as a backwards-compatible fallback for older installations.
-    return $config->data_by_name('Remnawave_LOCAL')
-        || $config->data_by_name('remna')
-        || {};
+    my $self = shift;
+    return $self->{hwid_config} || get_service('config')->data_by_name('remna') || {};
+}
+sub _configure_service {
+    my ($self, $row) = @_;
+    my $settings = decode_json($row->{settings} || '{}') || {};
+    my $cfg = get_service('config')->data_by_name('remna') || {};
+    my $server_settings = {};
+    if ($settings->{server_id}) {
+        my $server = $self->dbh->selectrow_hashref('SELECT settings FROM servers WHERE server_id=?', undef, $settings->{server_id});
+        die 'Service server not found' unless $server;
+        $server_settings = decode_json($server->{settings} || '{}') || {};
+    }
+    $self->{hwid_config} = { %$cfg };
+    # Match Remnawave_LOCAL: server settings override config.remna.
+    for my $key (qw(url api_token name_prefix)) {
+        $self->{hwid_config}{$key} = $server_settings->{$key} if $server_settings->{$key};
+    }
 }
 sub _transport { get_service('Transport::Http') }
 sub found_rows { 1 }
@@ -22,7 +34,8 @@ sub _request {
     my $base=$cfg->{url}; $base =~ s{/+$}{};
     my $method=lc($a{method} || 'get');
     my %request=(url=>$base.$a{path}, method=>$method,
-        headers=>{Authorization=>'Bearer '.$cfg->{api_token},Accept=>'application/json'});
+        headers=>{Authorization=>'Bearer '.$cfg->{api_token},Accept=>'application/json',
+            ($base =~ m{^http:} ? ('X-Forwarded-For'=>'127.0.0.1','X-Forwarded-Proto'=>'https') : ())});
     $request{content_type}='application/json; charset=utf-8' if $method ne 'get';
     $request{content}=$a{content} if exists $a{content} && $method ne 'get';
     my $resp=$self->_transport->http(%request);
@@ -46,7 +59,7 @@ sub _owned_or_error {
     die 'user_service_id is required' unless defined $usi && "$usi" =~ /^\d+$/ && $usi > 0;
     my $uid=$self->user_id;
     my $row=$self->_owned($uid,int($usi));
-    return $row if $row;
+    if ($row) { $self->_configure_service($row); return $row; }
     my ($owner)=$self->dbh->selectrow_array('SELECT user_id FROM user_services WHERE user_service_id=?',undef,int($usi));
     die 'service not found (user_service_id='.int($usi).', session_user_id='.(defined $uid ? $uid : 'NULL').', owner_user_id='.(defined $owner ? $owner : 'NULL').')';
 }
@@ -56,7 +69,9 @@ sub _remna_id {
     my $prefix=$cfg->{storage_prefix} || 'vpn_mrzb_';
     # Remnawave HWID endpoints require the numeric Remnawave user id. Resolve by
     # the SHM generated username first; storage may contain a subscription id.
-    my $username_prefix=$cfg->{username_prefix} || 'vBios_us_';
+    my $stored=eval { $self->srv('storage')->read(name=>$prefix.$row->{user_service_id}) } || {};
+    return int($stored->{id}) if defined($stored->{id}) && $stored->{id} =~ /^[1-9][0-9]*$/;
+    my $username_prefix=$cfg->{name_prefix} || $cfg->{username_prefix} || 'vBios_us_';
     my $resolved=eval { $self->_request(path=>'/api/users/by-username/'.$username_prefix.$row->{user_service_id}) } || {};
     my $resolved_payload=$resolved->{response} || $resolved->{data} || $resolved;
     my $resolved_id=ref($resolved_payload) eq 'HASH' ? ($resolved_payload->{id} || $resolved_payload->{user}{id}) : undef;
