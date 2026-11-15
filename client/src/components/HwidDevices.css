@@ -1,4 +1,7 @@
 .hwid-panel { min-width: 0; }
+.hwid-stats { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; margin-top:16px; padding:14px; border-radius:12px; background:var(--mantine-color-default-hover); }
+.hwid-stats>div { min-width:0; overflow-wrap:anywhere; }
+@media(max-width:480px) { .hwid-stats { grid-template-columns:1fr; } }
 .hwid-device { display: flex; align-items: center; gap: 12px; padding: 12px; border: 1px solid var(--mantine-color-default-border); border-radius: 12px; }
 .hwid-device-icon { flex-shrink: 0; color: var(--mantine-primary-color-filled); }
 .hwid-device-copy { flex: 1; min-width: 0; overflow-wrap: anywhere; }

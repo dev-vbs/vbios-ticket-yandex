@@ -508,6 +508,9 @@ state $routes //= {
 '/user/service/hwid/reset' => {
     POST => { controller => 'Remnawave', method => 'api_hwid_reset', params => { user_service_id => { type => 'integer', required => 1, min => 1 } } },
 },
+'/user/service/connection-stats' => {
+    GET => { controller => 'Remnawave', method => 'api_connection_stats', params => { user_service_id => { type => 'integer', required => 1, min => 1 } } },
+},
 '/user/withdraw' => {
     swagger => { tags => 'Пользователи' },
     GET => {

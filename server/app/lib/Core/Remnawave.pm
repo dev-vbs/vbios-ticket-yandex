@@ -131,6 +131,26 @@ sub api_hwid_list {
     }
     return $result;
 }
+sub api_connection_stats {
+    my ($self,%a)=@_;
+    my $result;
+    my $ok=eval {
+        my $row=$self->_owned_or_error($a{user_service_id});
+        my $response=$self->_request(path=>'/api/users/'.$self->_remna_id($row));
+        my $user=$response->{response} || $response->{data} || $response;
+        die 'Invalid user statistics response' unless ref($user) eq 'HASH';
+        my $traffic=ref($user->{userTraffic}) eq 'HASH' ? $user->{userTraffic} : $user;
+        # Explicit allowlist: never expose subscription URLs, tokens or other users.
+        $result={used_bytes=>$traffic->{usedTrafficBytes},
+            lifetime_bytes=>$traffic->{lifetimeUsedTrafficBytes},
+            limit_bytes=>$user->{trafficLimitBytes},
+            reset_strategy=>$user->{trafficLimitStrategy},
+            online_at=>$traffic->{onlineAt}, first_connected_at=>$traffic->{firstConnectedAt},
+            last_subscription_at=>$user->{subLastOpenedAt}};
+        1;
+    };
+    return $ok ? $result : $self->_api_error($@);
+}
 sub _reset_count {
     my ($self,$uid,$usi)=@_;
     my @date=localtime;
