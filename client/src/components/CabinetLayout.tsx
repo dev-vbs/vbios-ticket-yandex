@@ -37,7 +37,8 @@ export function CabinetLayout({ children }: { children: ReactNode }) {
     void userApi.getAvatar().then((response) => {
       if (cancelled) return;
       const raw = response.data?.data;
-      const data = Array.isArray(raw) ? raw[0] : raw;
+      const item = Array.isArray(raw) ? raw[0] : raw;
+      const data = item?.data && typeof item.data === 'object' ? item.data : item;
       const inline = data?.data && data?.mime_type ? `data:${data.mime_type};base64,${data.data}` : null;
       setAvatarUrl(inline || data?.url || null);
     }).catch(() => { /* Telegram photo/initial remains the fallback. */ });

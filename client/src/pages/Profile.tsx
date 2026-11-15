@@ -95,13 +95,13 @@ export default function Profile() {
     setProfileEmail(storeEmail);
   }, [storeEmail]);
 
-  useEffect(() => { userApi.getAvatar().then((response) => { const raw=response.data?.data; const data=Array.isArray(raw)?raw[0]:raw; const inline=data?.data && data?.mime_type ? `data:${data.mime_type};base64,${data.data}` : null; setAvatarUrl(inline || data?.url || null); }).catch(() => setAvatarUrl(null)); }, [setAvatarUrl]);
+  useEffect(() => { userApi.getAvatar().then((response) => { const raw=response.data?.data; const item=Array.isArray(raw)?raw[0]:raw; const data=item?.data && typeof item.data === 'object' ? item.data : item; const inline=data?.data && data?.mime_type ? `data:${data.mime_type};base64,${data.data}` : null; setAvatarUrl(inline || data?.url || null); }).catch(() => setAvatarUrl(null)); }, [setAvatarUrl]);
 
   const uploadAvatar = async (file: File | null) => {
     if (!file) return;
     if (!['image/jpeg','image/png','image/webp','image/gif'].includes(file.type) || file.size > 5 * 1024 * 1024) { notifications.show({ title: t('common.error'), message: 'Выберите JPEG, PNG, WebP или GIF размером до 5 МБ', color: 'red' }); return; }
     setAvatarUploading(true);
-    try { const encoded = await new Promise<string>((resolve, reject) => { const reader=new FileReader(); reader.onload=()=>resolve(String(reader.result).split(',')[1] || ''); reader.onerror=()=>reject(new Error('read')); reader.readAsDataURL(file); }); const response=await userApi.uploadAvatar({ name:file.name, mime_type:file.type, data:encoded }); const raw=response.data?.data; const data=Array.isArray(raw)?raw[0]:raw; const inline=data?.data && data?.mime_type ? `data:${data.mime_type};base64,${data.data}` : null; setAvatarUrl(inline || data?.url || null); notifications.show({ title:t('common.success'), message:'Фотография профиля обновлена', color:'green' }); } catch { notifications.show({ title:t('common.error'), message:'Не удалось загрузить фотографию', color:'red' }); } finally { setAvatarUploading(false); }
+    try { const encoded = await new Promise<string>((resolve, reject) => { const reader=new FileReader(); reader.onload=()=>resolve(String(reader.result).split(',')[1] || ''); reader.onerror=()=>reject(new Error('read')); reader.readAsDataURL(file); }); const response=await userApi.uploadAvatar({ name:file.name, mime_type:file.type, data:encoded }); const raw=response.data?.data; const item=Array.isArray(raw)?raw[0]:raw; const data=item?.data && typeof item.data === 'object' ? item.data : item; const inline=data?.data && data?.mime_type ? `data:${data.mime_type};base64,${data.data}` : null; setAvatarUrl(inline || data?.url || null); notifications.show({ title:t('common.success'), message:'Фотография профиля обновлена', color:'green' }); } catch { notifications.show({ title:t('common.error'), message:'Не удалось загрузить фотографию', color:'red' }); } finally { setAvatarUploading(false); }
   };
 
   useEffect(() => {
