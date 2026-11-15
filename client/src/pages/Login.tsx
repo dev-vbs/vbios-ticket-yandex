@@ -518,22 +518,13 @@ export default function Login() {
               <ThemeToggle />
               <LanguageSwitcher />
           </Group>
-            <Group className="auth-brand" gap="sm" align="center" justify="center">
-              {config.LOGO_URL && (
-                <img
-                  src={config.LOGO_URL}
-                  alt=""
-                  style={{ height: 40, width: 40, objectFit: 'contain', flexShrink: 0 }}
-                />
-              )}
-              <Title order={2} ta="center">{config.APP_NAME}</Title>
-            </Group>
+            {config.LOGO_URL && <Group className="auth-brand" justify="center"><img src={config.LOGO_URL} alt="" style={{ height: 40, width: 40, objectFit: 'contain', flexShrink: 0 }} /></Group>}
           {config.APP_DESCRIPTION && (
             <Text size="sm" c="dimmed" ta="center" style={{ flex: 'auto' }}>{config.APP_DESCRIPTION}</Text>
           )}
           <div className="auth-intro">
             <span className="auth-intro-icon"><IconSparkles size={16} /></span>
-            <Text className="auth-kicker" size="xs" fw={700} tt="uppercase">vBios account</Text>
+            <Text className="auth-kicker" size="xs" fw={700} tt="uppercase">{config.APP_NAME} account</Text>
           </div>
           <Title order={3} className="auth-heading" ta="center">
               {mode === 'login' ? t('auth.loginTitle') : t('auth.registerTitle')}
