@@ -88,7 +88,24 @@ sub _remna_id {
     die 'Remnawave numeric user id is not found for this service' unless defined $id && "$id" =~ /^\d+$/ && $id > 0;
     return int($id);
 }
-sub _limit { my ($self,$row)=@_; my $settings=eval { decode_json($row->{settings}||'{}') } || {}; my $config=eval { decode_json($row->{config}||'{}') } || {}; return int($settings->{hwidDeviceLimit} || $settings->{hwid_device_limit} || $config->{hwidDeviceLimit} || $config->{hwid_device_limit} || 3) }
+sub _limit {
+    my ($self,$row)=@_;
+    my $settings=eval { decode_json($row->{settings}||'{}') } || {};
+    my $config=eval { decode_json($row->{config}||'{}') } || {};
+    my $global=$self->_cfg;
+    # 0 explicitly means unlimited. Preserve precedence used by the
+    # Remnawave_LOCAL template: user service, tariff, then config.remna.
+    my $value;
+    for my $source ($settings,$config,$global) {
+        for my $key (qw(hwidDeviceLimit hwid_device_limit)) {
+            if (defined $source->{$key} && "$source->{$key}" =~ /^\d+$/) {
+                $value=$source->{$key}; last;
+            }
+        }
+        last if defined $value;
+    }
+    return defined $value ? int($value) : 0;
+}
 sub api_hwid_list {
     my ($self,%a)=@_;
     my $result;
