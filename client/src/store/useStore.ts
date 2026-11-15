@@ -4,6 +4,8 @@ import { api } from '../api/client';
 import { notifications } from '@mantine/notifications';
 import { clearOfflineCabinet } from '../lib/offlineConnection';
 
+export const DEFAULT_AVATAR_URL = 'https://img.icons8.com/fluency/96/user-male-circle.png';
+
 interface User {
   user_id: number;
   login: string;

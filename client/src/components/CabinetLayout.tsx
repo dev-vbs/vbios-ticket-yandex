@@ -4,7 +4,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { Avatar, Menu } from '@mantine/core';
 import { IconHeadset, IconLogout, IconShieldLock, IconSettings, IconLayoutDashboard, IconWallet, IconReceipt, IconBell, IconChevronDown, IconUser, IconHelpCircle } from '@tabler/icons-react';
 import { config } from '../config';
-import { useStore } from '../store/useStore';
+import { DEFAULT_AVATAR_URL, useStore } from '../store/useStore';
 import { userApi } from '../api/client';
 import { ThemeToggle } from './ThemeToggle';
 import LanguageSwitcher from './LanguageSwitcher';
@@ -63,7 +63,7 @@ export function CabinetLayout({ children }: { children: ReactNode }) {
       <Link to="/" className="vpn-brand" aria-label={`${config.APP_NAME} — главная`}><span className="vpn-brand__symbol"><IconShieldLock size={21} /></span>{config.APP_NAME}</Link>
       <div className="vpn-header__actions"><span className="vpn-language"><LanguageSwitcher /></span><ThemeToggle />
         <Menu position="bottom-end" shadow="md" width={240}>
-          <Menu.Target><button type="button" className="vpn-account-trigger" aria-label="Меню аккаунта"><Avatar className="vpn-avatar" size={34} radius="xl" color="blue" src={avatarUrl || telegramPhoto || undefined}>{(user?.full_name || user?.login || 'U').charAt(0).toUpperCase()}</Avatar><span className="vpn-account-name">{user?.full_name || user?.login || 'Мой аккаунт'}</span><IconChevronDown size={15} /></button></Menu.Target>
+          <Menu.Target><button type="button" className="vpn-account-trigger" aria-label="Меню аккаунта"><Avatar className="vpn-avatar" size={34} radius="xl" color="blue" src={avatarUrl || telegramPhoto || DEFAULT_AVATAR_URL}>{(user?.full_name || user?.login || 'U').charAt(0).toUpperCase()}</Avatar><span className="vpn-account-name">{user?.full_name || user?.login || 'Мой аккаунт'}</span><IconChevronDown size={15} /></button></Menu.Target>
           <Menu.Dropdown>
             <Menu.Label>Аккаунт #{user?.user_id}</Menu.Label>
             <Menu.Item component={Link} to="/profile" leftSection={<IconSettings size={17} />}>Профиль и безопасность</Menu.Item>

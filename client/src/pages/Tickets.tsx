@@ -36,7 +36,7 @@ import {
   IconTrash,
 } from '@tabler/icons-react';
 import { ticketApi, userApi, type TicketItem, type TicketMedia } from '../api/client';
-import { useStore } from '../store/useStore';
+import { DEFAULT_AVATAR_URL, useStore } from '../store/useStore';
 import TicketImageViewer from '../components/TicketImageViewer';
 
 function MediaPreview({ media, onPreview, onDownload }: { media: TicketMedia; onPreview: (m: TicketMedia, url: string) => void; onDownload: (m: TicketMedia) => void }) {
@@ -831,7 +831,7 @@ export default function Tickets() {
                   }}
                 >
                   <Group gap={6} mb={6}>
-                    <Avatar size={24} radius="xl" color={isAdmin ? 'gray' : 'blue'} src={isAdmin ? undefined : (avatarUrl || telegramPhoto || undefined)}>
+                    <Avatar size={24} radius="xl" color={isAdmin ? 'gray' : 'blue'} src={isAdmin ? undefined : (avatarUrl || telegramPhoto || DEFAULT_AVATAR_URL)}>
                       {isAdmin ? <IconMessageCircle size={14} /> : (user?.full_name || user?.login || 'Вы').charAt(0).toUpperCase()}
                     </Avatar>
                     <Text size="xs" fw={600}>{isAdmin ? t('tickets.supportAuthor', { defaultValue: 'Поддержка' }) : t('tickets.youAuthor', { defaultValue: 'Вы' })}</Text><Text size="xs" c="dimmed">{formatDate(message.created)}</Text>

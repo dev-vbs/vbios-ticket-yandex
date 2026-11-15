@@ -13,7 +13,7 @@ import { encodePartnerIdBase64url } from '../api/cookie';
 import PayModal from '../components/PayModal';
 
 import SecuritySettings from '../components/security/SecuritySettings';
-import { useStore } from '../store/useStore';
+import { DEFAULT_AVATAR_URL, useStore } from '../store/useStore';
 import { config } from '../config';
 import { hasTelegramWidget } from '../constants/webapp';
 import './Profile.css';
@@ -528,7 +528,7 @@ export default function Profile() {
                 size={56}
                 radius="xl"
                 color="blue"
-                src={avatarUrl || telegramPhoto || undefined}
+                src={avatarUrl || telegramPhoto || DEFAULT_AVATAR_URL}
               >
                 {profile.full_name?.charAt(0) || profile.login?.charAt(0)?.toUpperCase() || '?'}
               </Avatar>
