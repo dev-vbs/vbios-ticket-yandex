@@ -11,6 +11,7 @@ import QrModal from '../components/QrModal';
 import AppDownloadBlock from '../components/AppDownloadBlock';
 import OrderServiceModal from '../components/OrderServiceModal';
 import ConfirmModal from '../components/ConfirmModal';
+import HwidDevices from '../components/HwidDevices';
 import { config } from '../config';
 import { useStore } from '../store/useStore';
 import { isTelegramWebApp } from '../constants/webapp';
@@ -592,6 +593,7 @@ function ServiceDetail({ service, onDelete, onChangeTariff }: ServiceDetailProps
                   {(!isProxy || showProxyQr) && <Button leftSection={<IconQrcode size={17} />} variant="light" disabled={isProxy ? !subscriptionUrl : !storageData} onClick={() => setQrModalOpen(true)}>{t('services.qrCode')}</Button>}
                   {isProxy ? <Button leftSection={<IconDeviceMobileCog size={17} />} disabled={!subscriptionUrl} onClick={() => urlSchema ? handleOpenUrlSchema() : handleConfigure()}>{t('services.openInApp', { defaultValue: 'Установить' })}</Button> : <Button leftSection={<IconDownload size={17} />} disabled={!storageData} onClick={downloadConfig} loading={downloading}>{t('services.downloadConfig')}</Button>}
                 </Group>
+                {isProxy && <HwidDevices key={service.user_service_id} serviceId={service.user_service_id} />}
                 {isProxy && <Button variant="subtle" color="orange" leftSection={<IconRefresh size={17} />} onClick={() => setConfirmHwidReset(true)}>
                   Сбросить устройства
                 </Button>}
