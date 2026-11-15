@@ -1,12 +1,13 @@
 import DataLoadStatus from '../components/DataLoadStatus';
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
-import { Card, Timeline, Text, Stack, Group, Badge, Button, Divider, ActionIcon, Loader, Center, Paper, Title, Tabs, Code, Tooltip, Accordion, Box, Select, NumberInput, Pagination, Alert, TextInput, Skeleton } from '@mantine/core';
-import { IconQrcode, IconCopy, IconCheck, IconDownload, IconRefresh, IconTrash, IconPlus, IconPlayerStop, IconExchange, IconCreditCard, IconWallet, IconDeviceMobileCog, IconArrowLeft, IconArrowRight, IconSearch, IconCalendarTime, IconWifi, IconWifiOff } from '@tabler/icons-react';
+import { Card, Timeline, Text, Stack, Group, Badge, Button, Divider, ActionIcon, Loader, Center, Paper, Title, Code, Tooltip, Accordion, Box, Pagination, Alert, TextInput, Skeleton } from '@mantine/core';
+import { IconQrcode, IconCopy, IconCheck, IconDownload, IconRefresh, IconTrash, IconPlus, IconPlayerStop, IconExchange, IconWallet, IconDeviceMobileCog, IconArrowLeft, IconArrowRight, IconSearch, IconCalendarTime, IconWifi, IconWifiOff } from '@tabler/icons-react';
 import { useDisclosure, useClipboard } from '@mantine/hooks';
 import { useTranslation } from 'react-i18next';
 import { api, servicesApi, storageApi, userApi } from '../api/client';
 import { notifications } from '@mantine/notifications';
+import PayModal from '../components/PayModal';
 import QrModal from '../components/QrModal';
 import AppDownloadBlock from '../components/AppDownloadBlock';
 import OrderServiceModal from '../components/OrderServiceModal';
@@ -27,13 +28,6 @@ interface ForecastItem {
   user_service_id: string;
 }
 
-interface PaySystem {
-  name: string;
-  shm_url: string;
-  internal?: number;
-  recurring?: number;
-  weight?: number;
-}
 
 interface ServiceInfo {
   category: string;
@@ -164,6 +158,7 @@ function ServiceDetail({ service, onDelete, onChangeTariff }: ServiceDetailProps
   const [connectionReload, setConnectionReload] = useState(0);
   const [isOnline, setIsOnline] = useState(() => navigator.onLine);
   const [lastConnectionUpdate, setLastConnectionUpdate] = useState<number | null>(null);
+  const [paymentOpen, setPaymentOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<string | null>('info');
   const [qrModalOpen, setQrModalOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -178,11 +173,7 @@ function ServiceDetail({ service, onDelete, onChangeTariff }: ServiceDetailProps
 
   const [forecastTotal, setForecastTotal] = useState<number | null>(null);
   const [forecastLoading, setForecastLoading] = useState(false);
-  const [paySystems, setPaySystems] = useState<PaySystem[]>([]);
-  const [selectedPaySystem, setSelectedPaySystem] = useState<string | null>(null);
   const payAmount = forecastTotal ?? 0;
-  const [paySystemsLoading, setPaySystemsLoading] = useState(false);
-  const [paying, setPaying] = useState(false);
 
   const downloadConfig = async () => {
     if (!storageData) return;
@@ -206,8 +197,8 @@ function ServiceDetail({ service, onDelete, onChangeTariff }: ServiceDetailProps
   const canDelete = config.ALLOW_SERVICE_DELETE === 'true' && ['BLOCK', 'NOT PAID', 'ERROR'].includes(service.status);
   const canStop = config.ALLOW_SERVICE_BLOCKED === 'true' && service.status === 'ACTIVE';
   const canChange = config.ALLOW_SERVICE_CHANGE === 'true' && ['BLOCK', 'ACTIVE'].includes(service.status);
-  const isExpired = !!service.expire && new Date(service.expire).getTime() <= Date.now();
   const isNotPaid = service.status === 'NOT PAID';
+  const needsRenewal = Boolean(service.expire && Date.parse(service.expire) <= Date.now()) || service.status === 'BLOCK';
 
   useEffect(() => {
     if (!isNotPaid) return;
@@ -234,56 +225,6 @@ function ServiceDetail({ service, onDelete, onChangeTariff }: ServiceDetailProps
     };
     fetchForecast();
   }, [service.user_service_id, isNotPaid]);
-
-  const loadPaySystems = async () => {
-    if (paySystems.length > 0) return;
-    setPaySystemsLoading(true);
-    try {
-      const response = await userApi.getPaySystems();
-      const data: PaySystem[] = response.data.data || [];
-      const sorted = data.sort((a, b) => (b.weight || 0) - (a.weight || 0));
-      setPaySystems(sorted);
-      if (sorted.length > 0) {
-        setSelectedPaySystem(sorted[0].shm_url);
-      }
-    } catch {
-    } finally {
-      setPaySystemsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    if (isNotPaid && forecastTotal !== null && forecastTotal > 0) {
-      loadPaySystems();
-    }
-  }, [isNotPaid, forecastTotal]);
-
-  const handlePay = async () => {
-    const paySystem = paySystems.find(ps => ps.shm_url === selectedPaySystem);
-    if (!paySystem || payAmount <= 0) return;
-    setPaying(true);
-    try {
-      if (paySystem.internal || paySystem.recurring) {
-        const response = await fetch(paySystem.shm_url + payAmount, {
-          method: 'GET',
-          credentials: 'include',
-        });
-        if (response.status === 200 || response.status === 204) {
-          notifications.show({ title: t('common.success'), message: t('payments.paymentSuccess'), color: 'green' });
-          onDelete?.();
-        } else {
-          const data = await response.json().catch(() => ({}));
-          notifications.show({ title: t('common.error'), message: data.msg_ru || data.msg || t('payments.paymentError'), color: 'red' });
-        }
-      } else {
-        window.open(paySystem.shm_url + payAmount, '_blank');
-      }
-    } catch {
-      notifications.show({ title: t('common.error'), message: t('payments.paymentError'), color: 'red' });
-    } finally {
-      setPaying(false);
-    }
-  };
 
   const handleDelete = async () => {
     setDeleting(true);
@@ -465,13 +406,9 @@ function ServiceDetail({ service, onDelete, onChangeTariff }: ServiceDetailProps
 
   return (
     <Stack gap="md">
-      <Tabs value={activeTab} onChange={setActiveTab} variant="pills" radius="md" styles={{ list: { gap: 8, padding: 6, background: 'var(--mantine-color-default-hover)', borderRadius: 14 }, tab: { flex: 1, minHeight: 44, fontWeight: 600 }, panel: { paddingTop: 24 } }}>
-        <Tabs.List>
-          <Tabs.Tab value="info">{t('services.info')}</Tabs.Tab>
-          {isVpnOrProxy && service.status === 'ACTIVE' && <Tabs.Tab value="config">{t('services.connection')}</Tabs.Tab>}
-        </Tabs.List>
+      <div>
+        <section>
 
-        <Tabs.Panel value="info" pt="md">
           <Stack gap="xs">
             <Paper withBorder radius="lg" p="lg">
               <Stack gap="md">
@@ -493,6 +430,7 @@ function ServiceDetail({ service, onDelete, onChangeTariff }: ServiceDetailProps
                     </Group>
                   </>
                 )}
+                {needsRenewal ? <Button fullWidth onClick={() => setPaymentOpen(true)}>Продлить</Button> : service.status === 'ACTIVE' && isVpnOrProxy ? <Button fullWidth onClick={() => setActiveTab('config')}>Подключить</Button> : isNotPaid ? <Button fullWidth onClick={() => setPaymentOpen(true)}>Оплатить</Button> : null}
               </Stack>
             </Paper>
             {service.next && (
@@ -523,10 +461,10 @@ function ServiceDetail({ service, onDelete, onChangeTariff }: ServiceDetailProps
               </>
             )}
           </Stack>
-        </Tabs.Panel>
+        </section>
 
         { service.status === 'ACTIVE' && isVpnOrProxy && (
-          <Tabs.Panel value="config" pt="md">
+          <details className="service-technical-details" open={activeTab === 'config'} onToggle={event => setActiveTab(event.currentTarget.open ? 'config' : 'info')}><summary>Ссылка подписки, QR-код и параметры подключения</summary>
             <Paper withBorder p="lg" radius="md" className="service-connection-card">
               <Stack gap="md">
                 <Group justify="space-between" align="flex-start">
@@ -608,65 +546,12 @@ function ServiceDetail({ service, onDelete, onChangeTariff }: ServiceDetailProps
               </Stack>
             </Paper>
             <QrModal opened={qrModalOpen} onClose={() => setQrModalOpen(false)} data={isVpn ? (storageData || '') : (subscriptionUrl || '')} title={isVpn ? t('services.vpnQrTitle') : t('services.subscriptionQrTitle')} onDownload={isVpn ? downloadConfig : undefined} />
-          </Tabs.Panel>
+          </details>
         )}
-      </Tabs>
+      </div>
+      <PayModal opened={paymentOpen} onClose={() => setPaymentOpen(false)} initialAmount={payAmount > 0 ? payAmount : service.service.cost} />
       {isProxy && <HwidDevices key={service.user_service_id} serviceId={service.user_service_id} />}
-      {isNotPaid && (
-        <Paper withBorder p="md" radius="md" mt="md">
-          <Stack gap="sm">
-            {forecastLoading ? (
-              <Group justify="center" py="xs">
-                <Loader size="sm" />
-                <Text size="sm">{t('common.loading')}</Text>
-              </Group>
-            ) : forecastTotal !== null && forecastTotal > 0 ? (
-              <>
-                <Group justify="space-between">
-                  <Group gap="xs">
-                    <IconWallet size={18} />
-                    <Text fw={500}>{t('services.amountToPay')}</Text>
-                  </Group>
-                  <Text fw={700} size="lg" c="red">{forecastTotal.toFixed(2)} {t('common.currency')}</Text>
-                </Group>
-                {paySystemsLoading ? (
-                  <Group justify="center" py="xs">
-                    <Loader size="sm" />
-                  </Group>
-                ) : paySystems.length > 0 ? (
-                  <>
-                    <Select
-                      label={t('payments.paymentSystem')}
-                      data={paySystems.map(ps => ({ value: ps.shm_url, label: ps.name }))}
-                      value={selectedPaySystem}
-                      onChange={setSelectedPaySystem}
-                      size="sm"
-                    />
-                    <NumberInput
-                      label={t('payments.amount')}
-                      value={payAmount}
-                      readOnly
-                      hideControls
-                      decimalScale={2}
-                      suffix=" ₽"
-                      size="sm"
-                    />
-                    <Button
-                      fullWidth
-                      leftSection={<IconCreditCard size={18} />}
-                      onClick={handlePay}
-                      loading={paying}
-                      disabled={!selectedPaySystem}
-                    >
-                      {isExpired ? `Пополнить для продления на ${payAmount.toFixed(2)} ${t('common.currency')}` : t('services.payService', { amount: payAmount })}
-                    </Button>
-                  </>
-                ) : null}
-              </>
-            ) : <Text size="sm" c="dimmed">{forecastTotal === 0 ? "Доплата по этой услуге не требуется." : "Не удалось получить сумму по этой услуге. Обновите страницу и попробуйте снова."}</Text>}
-          </Stack>
-        </Paper>
-      )}
+      {isNotPaid && <Text size="sm" c="dimmed">{forecastLoading ? 'Рассчитываем доплату…' : forecastTotal !== null ? 'Доплата по услуге: ' + forecastTotal.toFixed(2) + ' ₽' : 'Доплата пока неизвестна. Проверьте расчёт перед оплатой.'}</Text>}
 
       {canChange && (
         <Button

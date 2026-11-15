@@ -1,4 +1,4 @@
-import axios from 'axios';
+import axios, { type AxiosResponse } from 'axios';
 import { getCookie, setCookie, removeCookie, extendCookie, getPartnerCookie, removePartnerCookie } from './cookie';
 import { config } from '../config';
 
@@ -45,6 +45,16 @@ api.interceptors.response.use(
   }
 );
 
+// Share concurrent identical reads only; mutations and settled reads are never cached.
+const pendingReads = new Map<string, Promise<AxiosResponse<any>>>();
+function readOnce(url: string, options?: Parameters<typeof api.get>[1]) {
+  const key = url + JSON.stringify(options?.params ?? {});
+  const existing = pendingReads.get(key);
+  if (existing) return existing;
+  const request = api.get(url, options).finally(() => { pendingReads.delete(key); });
+  pendingReads.set(key, request);
+  return request;
+}
 export const auth = {
   login: async (username: string, password: string, otpToken?: string) => {
     const response = await api.post('/user/auth', {
@@ -172,7 +182,7 @@ export const userApi = {
   resetPassword: (params: { login?: string; email?: string }) => api.post('/user/passwd/reset', params),
   verifyResetToken: (token: string) => api.get('/user/passwd/reset/verify', { params: { token } }),
   resetPasswordWithToken: (token: string, password: string) => api.post('/user/passwd/reset/verify', { token, password }),
-  getServices: () => api.get('/user/service', { params: { limit: 1000 } }),
+  getServices: () => readOnce('/user/service', { params: { limit: 1000 } }),
   getHwid: (userServiceId: number | string) => api.get('/user/service/hwid', { params: { user_service_id: Number(userServiceId) } }),
   deleteHwid: (userServiceId: number | string, hwid: string) => api.delete('/user/service/hwid', { params: { user_service_id: Number(userServiceId), hwid } }),
   resetHwid: (userServiceId: number | string) => api.post('/user/service/hwid/reset', { user_service_id: Number(userServiceId) }),
@@ -187,7 +197,7 @@ export const userApi = {
     const { filter, ...rest } = params || {};
     return api.get('/user/pay', { params: { ...rest, ...(filter ? { filter: JSON.stringify(filter) } : {}) } });
   },
-  getPaySystems: () => api.get('/user/pay/paysystems'),
+  getPaySystems: () => readOnce('/user/pay/paysystems'),
   getForecast: () => api.get('/user/pay/forecast'),
   deleteAutopayment: (paySystem: string) => api.delete('/user/autopayment', { params: { pay_system: paySystem } }),
   getWithdrawals: (params?: { limit?: number; offset?: number; sort_field?: string; sort_direction?: string; filter?: Record<string, unknown> }) => {
@@ -251,8 +261,10 @@ export const ticketApi = {
     api.post<{ data: TicketMessage }>(`/user/ticket/${ticketId}`, data),
   close: (ticketId: number | string) =>
     api.delete<{ data: TicketItem }>(`/user/ticket/${ticketId}`),
-  uploadMedia: (data: { name: string; data: string; mime_type?: string }) =>
-    api.put<{ data: TicketMedia }>('/user/ticket/media', data),
+  uploadMedia: (data: { name: string; data: string; mime_type?: string }, onProgress?: (percent: number) => void) =>
+    api.put<{ data: TicketMedia }>('/user/ticket/media', data, { onUploadProgress: event => {
+      if (event.total) onProgress?.(Math.round(event.loaded / event.total * 100));
+    } }),
   mediaSource: async (id: number, fallback = false): Promise<{ url: string; temporary: boolean }> => {
     if (fallback) {
       const response = await ticketApi.downloadMedia(id);

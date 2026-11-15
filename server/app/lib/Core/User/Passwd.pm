@@ -77,10 +77,22 @@ sub passwd {
 
     $_->set_password( $args{password} ) for @logins;
 
-    get_service('sessions')->delete_user_sessions( user_id => $user->user_id );
-
     $user->set( password => $user->make_password( $args{password} ) );
-    return scalar $user->get;
+    # Re-read persisted credentials before acknowledging the change or revoking sessions.
+    my $saved = $user->reload;
+    unless ( $saved && $user->verify_password($args{password}, $saved->{password}, $user->get_login) ) {
+        $report->add_error('PASSWORD_SAVE_NOT_CONFIRMED');
+        return undef;
+    }
+    for my $login (@logins) {
+        $login->reload;
+        unless ( $user->verify_password($args{password}, $login->get_password, $login->get_login) ) {
+            $report->add_error('PASSWORD_SAVE_NOT_CONFIRMED');
+            return undef;
+        }
+    }
+    get_service('sessions')->delete_user_sessions( user_id => $user->user_id );
+    return { %{ scalar $user->get }, password_changed => 1 };
 }
 
 sub set_new_passwd {

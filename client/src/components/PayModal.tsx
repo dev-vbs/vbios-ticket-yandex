@@ -1,10 +1,13 @@
 import './PayModal.css';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Modal, Stack, Group, Button, Text, NumberInput, Select, Loader, ActionIcon, Badge, Card, Alert, ScrollArea } from '@mantine/core';
 import { IconX, IconArrowRight, IconWallet } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
+import { useStore } from '../store/useStore';
 import { userApi } from '../api/client';
+import { actionError } from '../lib/actionError';
+import { Link } from 'react-router-dom';
 import ConfirmModal from './ConfirmModal';
 
 interface PaySystem {
@@ -34,6 +37,33 @@ export default function PayModal({ opened, onClose, initialAmount }: PayModalPro
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [autopaymentToDelete, setAutopaymentToDelete] = useState<{ paysystem: string; name: string } | null>(null);
   const [processing, setProcessing] = useState(false);
+  const accountId = useStore(state => state.user?.user_id);
+  const pendingKey = `shm_pending_payment_${accountId}`;
+  const checking = useRef(false);
+  const [paymentState, setPaymentState] = useState<'idle' | 'checking' | 'unconfirmed'>('idle');
+  const [checkError, setCheckError] = useState('');
+  useEffect(() => {
+    try { if (localStorage.getItem(pendingKey)) { setPaymentState('unconfirmed'); setCheckError('Есть незавершённая проверка оплаты. Проверьте историю перед новым платежом.'); } } catch { /* optional storage */ }
+  }, [pendingKey]);
+  const markPending = () => { try { localStorage.setItem(pendingKey, String(Date.now())); } catch { /* optional storage */ } };
+  const clearPending = () => { try { localStorage.removeItem(pendingKey); } catch { /* optional storage */ } setPaymentState('idle'); };
+  const checkPayment = async () => {
+    if (checking.current) return;
+    checking.current = true;
+    setPaymentState('checking'); setCheckError('');
+    try {
+      const response = await userApi.getPayments({ limit: 10, sort_field: 'date', sort_direction: 'desc' });
+      if (!Array.isArray(response.data?.data)) throw new Error('Сервер вернул некорректную историю платежей.');
+      setCheckError('Откройте историю операций и проверьте зачисление. Платёжный шлюз не передаёт кабинету идентификатор этой попытки, поэтому её результат нельзя подтвердить автоматически. Не оплачивайте повторно до проверки.');
+    } catch (error) { setCheckError(actionError(error, 'Не удалось проверить платежи.')); }
+    finally { checking.current = false; setPaymentState('unconfirmed'); }
+  };
+  useEffect(() => {
+    if (paymentState === 'idle') return;
+    const onReturn = () => { if (document.visibilityState === 'visible') void checkPayment(); };
+    window.addEventListener('focus', onReturn);
+    return () => window.removeEventListener('focus', onReturn);
+  }, [paymentState === 'idle']);
 
   useEffect(() => {
     if (opened && initialAmount !== undefined) {
@@ -104,7 +134,7 @@ export default function PayModal({ opened, onClose, initialAmount }: PayModalPro
   const selectedMethod = paySystems.find(ps => ps.shm_url === selectedPaySystem);
   const money = (value: number) => new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 2 }).format(value);
   const handlePay = async () => {
-    if (!validAmount || processing || loading || loadError) return;
+    if (!validAmount || processing || loading || loadError || paymentState !== 'idle') return;
     const paySystem = paySystems.find(ps => ps.shm_url === selectedPaySystem);
     if (!paySystem) {
       notifications.show({
@@ -117,6 +147,7 @@ export default function PayModal({ opened, onClose, initialAmount }: PayModalPro
 
     if (paySystem.internal || paySystem.recurring) {
       setProcessing(true);
+      markPending();
       try {
         const response = await fetch(paySystem.shm_url + payAmount, {
           method: 'GET',
@@ -126,10 +157,10 @@ export default function PayModal({ opened, onClose, initialAmount }: PayModalPro
         if (response.status === 200 || response.status === 204) {
           notifications.show({
             title: t('common.success'),
-            message: t('payments.paymentSuccess'),
+            message: 'Запрос принят. Зачисление ещё не подтверждено; проверьте историю операций.',
             color: 'cyan',
           });
-          onClose();
+          void checkPayment();
         } else {
           const data = await response.json().catch(() => ({}));
           notifications.show({
@@ -139,17 +170,21 @@ export default function PayModal({ opened, onClose, initialAmount }: PayModalPro
           });
         }
       } catch {
+        setPaymentState('unconfirmed');
+        setCheckError('Ответ платёжного сервера не получен. Проверьте историю до повторной оплаты.');
         notifications.show({
           title: t('common.error'),
-          message: t('payments.paymentError'),
+          message: 'Ответ сервера не получен. Результат оплаты неизвестен.',
           color: 'red',
         });
       } finally {
         setProcessing(false);
       }
     } else {
-      window.open(paySystem.shm_url + payAmount, '_blank');
-      onClose();
+      const paymentWindow = window.open(paySystem.shm_url + payAmount, '_blank');
+      if (!paymentWindow) { setPaymentState('unconfirmed'); setCheckError('Браузер заблокировал платёжную вкладку. Разрешите всплывающие окна.'); return; }
+      setPaymentState('unconfirmed');
+      setCheckError('После оплаты вернитесь сюда для проверки. Не запускайте второй платёж до подтверждения первого.');
     }
   };
 
@@ -163,6 +198,7 @@ export default function PayModal({ opened, onClose, initialAmount }: PayModalPro
         closeOnClickOutside={!processing} closeOnEscape={!processing} withCloseButton={!processing}
         classNames={{ content: 'payment-modal', header: 'payment-modal__header', body: 'payment-modal__body' }}>
         <Text c="dimmed" size="sm" mb="lg">Укажите сумму и выберите способ оплаты. Деньги поступят на баланс личного кабинета.</Text>
+        {paymentState !== 'idle' && <Alert mb="md" color="yellow" title={paymentState === 'checking' ? 'Платёж проверяется' : 'Зачисление не подтверждено'}><Text size="sm">{checkError}</Text><Group mt="sm"><Button size="xs" onClick={() => void checkPayment()} loading={paymentState === 'checking'}>Проверить</Button><Button size="xs" component={Link} to="/operations" onClick={onClose} variant="light">История платежей</Button><Button size="xs" variant="subtle" onClick={clearPending}>Начать другую оплату</Button></Group></Alert>}
         <div className="payment-layout">
           <Stack gap="lg" className="payment-fields">
             <section>
@@ -187,7 +223,7 @@ export default function PayModal({ opened, onClose, initialAmount }: PayModalPro
             <Text size="xs" c="dimmed" mt="sm">Если предусмотрена комиссия, её размер указан на странице оплаты.</Text>
           </aside>
         </div>
-        <div className="payment-footer"><Button variant="default" onClick={onClose} disabled={processing}>Отмена</Button><Button size="md" rightSection={<IconArrowRight size={18}/>} onClick={handlePay} disabled={!validAmount || !selectedPaySystem || loading || loadError} loading={processing}>{validAmount ? `Пополнить на ${money(amount)} ₽` : 'Укажите сумму'}</Button></div>
+        <div className="payment-footer"><Button variant="default" onClick={onClose} disabled={processing}>Отмена</Button><Button size="md" rightSection={<IconArrowRight size={18}/>} onClick={handlePay} disabled={paymentState !== 'idle' || !validAmount || !selectedPaySystem || loading || loadError} loading={processing}>{validAmount ? `Пополнить на ${money(amount)} ₽` : 'Укажите сумму'}</Button></div>
       </Modal>
 
       <ConfirmModal

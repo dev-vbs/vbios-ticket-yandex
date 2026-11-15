@@ -12,6 +12,7 @@ import {
   FileButton,
   Group,
   Loader,
+  Progress,
   Modal,
   ScrollArea,
   Select,
@@ -205,6 +206,7 @@ function formatDate(value?: string): string {
 }
 
 function apiErrorMessage(error: unknown, fallback: string): string {
+  if ((error as any)?.isAxiosError && !(error as any)?.response) return 'Ответ сервера не получен. Обновите обращение перед повторной отправкой: сообщение могло быть принято.';
   const data = (error as { response?: { data?: { error?: unknown; errors?: unknown } } })?.response?.data;
   if (typeof data?.error === 'string' && data.error.trim()) return data.error;
   if (Array.isArray(data?.errors)) {
@@ -256,6 +258,8 @@ export default function Tickets() {
   const [ticketOpen, setTicketOpen] = useState(false);
   const [ticketLoading, setTicketLoading] = useState(false);
   const [sending, setSending] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const uploadedFiles = useRef(new WeakMap<File, number>());
   const [closing, setClosing] = useState(false);
   const [mediaPreview, setMediaPreview] = useState<{ media: TicketMedia; url: string } | null>(null);
   const [replyMessage, setReplyMessage] = useState('');
@@ -394,6 +398,7 @@ export default function Tickets() {
   };
 
   const createTicket = async () => {
+    if (creating) return;
     if (!newSubject.trim() || (!newMessage.trim() && newFiles.length === 0)) {
       notifications.show({
         title: t('common.error'),
@@ -412,22 +417,26 @@ export default function Tickets() {
       return;
     }
 
+    setUploadProgress(0);
     setCreating(true);
     try {
       const mediaIds: number[] = [];
       for (const file of newFiles) {
+        const cached = uploadedFiles.current.get(file);
+        if (cached) { mediaIds.push(cached); continue; }
         const base64 = await toBase64(file);
         const response = await ticketApi.uploadMedia({
           name: file.name,
           mime_type: file.type || 'application/octet-stream',
           data: base64,
-        });
+        }, setUploadProgress);
         const raw = response.data?.data;
         const media = Array.isArray(raw) ? raw[0] : raw;
         if (!media?.id) throw new Error('Не удалось сохранить изображение');
+        uploadedFiles.current.set(file, media.id);
         mediaIds.push(media.id);
       }
-      await ticketApi.create({
+      const createdResponse = await ticketApi.create({
         subject: newSubject.trim(),
         responder: aiAvailable ? 'ai' : 'human',
         message: newMessage.trim() || 'Прикреплено изображение',
@@ -437,10 +446,21 @@ export default function Tickets() {
         ...(mediaIds.length > 0 ? { media_ids: mediaIds } : {}),
       });
 
+      let creationVerified = false;
+      try {
+        const raw = createdResponse.data?.data;
+        const created = Array.isArray(raw) ? raw[0] : raw;
+        if (created?.ticket_id) {
+          const check = await ticketApi.get(created.ticket_id);
+          const body = check.data?.data;
+          const saved = Array.isArray(body) ? body[0] : body;
+          creationVerified = Number(saved?.ticket_id) === Number(created.ticket_id);
+        }
+      } catch { /* Accepted write must not be retried because its read-back failed. */ }
       notifications.show({
-        title: t('common.success'),
-        message: t('tickets.ticketCreated'),
-        color: 'green',
+        title: creationVerified ? t('common.success') : 'Запрос принят',
+        message: creationVerified ? t('tickets.ticketCreated') : 'Не удалось подтвердить обращение повторным чтением. Проверьте список перед повторным созданием.',
+        color: creationVerified ? 'green' : 'orange',
       });
 
       setCreateOpen(false);
@@ -572,7 +592,7 @@ export default function Tickets() {
   };
 
   const sendMessage = async () => {
-    if (!selectedTicket) return;
+    if (!selectedTicket || sending) return;
     if (!replyMessage.trim() && replyFiles.length === 0) {
       notifications.show({
         title: t('common.error'),
@@ -591,19 +611,23 @@ export default function Tickets() {
       return;
     }
 
+    setUploadProgress(0);
     setSending(true);
     try {
       const mediaIds: number[] = [];
       for (const file of replyFiles) {
+        const cached = uploadedFiles.current.get(file);
+        if (cached) { mediaIds.push(cached); continue; }
         const base64 = await toBase64(file);
         const response = await ticketApi.uploadMedia({
           name: file.name,
           mime_type: file.type || 'application/octet-stream',
           data: base64,
-        });
+        }, setUploadProgress);
         const raw = response.data?.data;
         const media = Array.isArray(raw) ? raw[0] : raw;
         if (!media?.id) throw new Error('Не удалось сохранить изображение');
+        uploadedFiles.current.set(file, media.id);
         mediaIds.push(media.id);
       }
 
@@ -615,13 +639,15 @@ export default function Tickets() {
       setReplyMessage('');
       setReplyFiles([]);
 
-      const response = await ticketApi.get(selectedTicket.ticket_id);
-      const data = response.data?.data;
-      if (Array.isArray(data) && data.length > 0) {
+      try {
+        const response = await ticketApi.get(selectedTicket.ticket_id);
+        const data = response.data?.data;
+        if (!Array.isArray(data) || !data.length) throw new Error('Invalid ticket');
         setSelectedTicket(data[0]);
+        await loadTickets();
+      } catch {
+        notifications.show({ color: 'orange', message: 'Сервер принял сообщение, но обновить переписку не удалось. Обновите обращение перед повторной отправкой.' });
       }
-
-      await loadTickets();
     } catch (error) {
       notifications.show({
         title: t('common.error'),
@@ -861,6 +887,7 @@ export default function Tickets() {
           <Text size="sm" c="dimmed" ta="center" py="xs">{t('tickets.ticketClosedNote')}</Text>
         ) : (
           <Stack gap="xs" className="ticket-reply-box">
+            {sending && replyFiles.length > 0 && <Progress value={uploadProgress} aria-label="Передача вложения" />}
             {replyFiles.length > 0 && (
               <div className="ticket-pending-files" aria-label="Выбранные изображения">
                 {replyFiles.map((file, index) => (
@@ -1034,7 +1061,8 @@ export default function Tickets() {
 
       <Modal
         opened={createOpen}
-        onClose={() => setCreateOpen(false)}
+        onClose={() => { if (!creating) setCreateOpen(false); }}
+        closeOnClickOutside={!creating} closeOnEscape={!creating} withCloseButton={!creating}
         title={<Group gap="sm" wrap="nowrap"><ThemeIcon size="lg" radius="md" variant="light"><IconMessageCircle size={20} /></ThemeIcon><Text component="span" fw={700}>{t('tickets.createTicket')}</Text></Group>}
         classNames={{ content: 'ticket-create', header: 'ticket-create__header' }}
         radius="lg"
@@ -1043,6 +1071,7 @@ export default function Tickets() {
       >
         <Stack gap="md">
           <Text size="sm" c="dimmed">Опишите вопрос и приложите скриншот, если он поможет разобраться.</Text>
+          {(creating || sending) && <Progress value={uploadProgress} aria-label="Передача вложения" />}
           <Text size="xs" c="dimmed">{aiAvailable ? 'Сначала вам ответит ИИ-помощник. Кнопка «Связаться с оператором» доступна внутри обращения.' : 'Ваше обращение получит сотрудник поддержки.'}</Text>
           <div className="ticket-create-layout">
           <Stack gap="md" className="ticket-create-fields">
@@ -1145,7 +1174,7 @@ export default function Tickets() {
           />
 
           <Stack gap="xs" className="ticket-create__attachments">
-            <Group gap="xs"><IconPaperclip size={17} /><Text size="sm" fw={600}>Вложения</Text>{newFiles.length > 0 && <Badge size="xs" variant="light">{newFiles.length}</Badge>}</Group>
+            {creating && <Progress value={uploadProgress} aria-label="Передача вложения" />}<Group gap="xs"><IconPaperclip size={17} /><Text size="sm" fw={600}>Вложения</Text>{newFiles.length > 0 && <Badge size="xs" variant="light">{newFiles.length}</Badge>}</Group>
             <Text size="xs" c="dimmed">JPEG, PNG, WebP или GIF — до 5 МБ на изображение.</Text>
             {newFiles.length > 0 && <div className="ticket-pending-files">{newFiles.map((file, index) => <PendingFilePreview key={`${file.name}_${index}`} file={file} onRemove={() => removeNewFile(index)} />)}</div>}
             <FileButton onChange={onPickNewFiles} accept={IMAGE_ACCEPT} multiple>

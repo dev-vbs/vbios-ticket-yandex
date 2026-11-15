@@ -20,3 +20,4 @@
 @media(max-width:900px){ .hwid-stats{grid-template-columns:repeat(2,minmax(0,1fr))} }
 @media(max-width:600px){ .hwid-panel-header{flex-direction:column;align-items:stretch} .hwid-panel-header>div{min-width:0} .hwid-panel-header .mantine-Button-root{width:100%;min-height:44px} .hwid-stats{gap:12px;padding:12px} .hwid-device{flex-wrap:wrap;align-items:flex-start} .hwid-device-copy{flex-basis:calc(100% - 36px)} .hwid-device-remove{width:100%} }
 @media(max-width:360px){.hwid-stats{grid-template-columns:1fr}}
+.hwid-details{margin-top:8px}.hwid-details summary{cursor:pointer;font-size:12px;color:var(--mantine-primary-color-filled);padding:6px 0}.hwid-details summary:focus-visible{outline:2px solid var(--mantine-primary-color-filled)}

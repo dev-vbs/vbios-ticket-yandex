@@ -11,6 +11,7 @@ import PasswordAuthSettings from './PasswordAuthSettings';
 import { useTelegramWebApp } from '../../hooks/useTelegramWebApp';
 import { config } from '../../config';
 import './SecuritySettings.css';
+import { actionError } from '../../lib/actionError';
 
 const otpEnabled = config.OTP_ENABLE === 'true';
 const passkeyEnabled = config.PASSKEY_AUTH_DISABLED === 'false' && config.PASSKEY_ENABLE === 'true';
@@ -27,6 +28,7 @@ export default function SecuritySettings() {
   const isMobile = useMediaQuery('(max-width: 768px)');
 
   const handleChangePassword = async () => {
+    if (changingPassword) return;
     if (newPassword.length < 6 || newPassword !== confirmPassword) {
       notifications.show({
         title: t('common.error'),
@@ -39,7 +41,10 @@ export default function SecuritySettings() {
     }
     try {
       setChangingPassword(true);
-      await userApi.changePassword(newPassword, currentPassword);
+      const response = await userApi.changePassword(newPassword, currentPassword);
+      const raw = response.data?.data ?? response.data;
+      const result = Array.isArray(raw) ? raw[0] : raw;
+      if (!result?.password_changed) throw new Error('Сервер не подтвердил сохранение пароля. Проверьте вход с новым паролем перед повтором.');
       setPasswordModalOpen(false);
       setCurrentPassword('');
       setNewPassword('');
@@ -49,10 +54,10 @@ export default function SecuritySettings() {
         message: t('profile.passwordChanged'),
         color: 'green',
       });
-    } catch {
+    } catch (error) {
       notifications.show({
         title: t('common.error'),
-        message: t('profile.passwordChangeError'),
+        message: actionError(error, t('profile.passwordChangeError')),
         color: 'red',
       });
     } finally {
@@ -143,7 +148,8 @@ export default function SecuritySettings() {
 
       <Modal
         opened={passwordModalOpen}
-        onClose={resetPasswordForm}
+        onClose={() => { if (!changingPassword) resetPasswordForm(); }}
+          closeOnClickOutside={!changingPassword} closeOnEscape={!changingPassword} withCloseButton={!changingPassword}
         title={t('profile.changePassword')}
         size="lg"
         centered
