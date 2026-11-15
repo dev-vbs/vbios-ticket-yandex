@@ -652,6 +652,39 @@ sub sendMessage {
     );
 }
 
+# Bot API 10.4 methods. Keep these thin wrappers so callers can use the new
+# Telegram primitives while the common HTTP client continues to handle JSON,
+# retries and authentication consistently.
+sub sendWidget {
+    my $self = shift;
+    my %args = @_;
+    return $self->http('sendWidget', data => \%args);
+}
+
+sub sendSharedWidget {
+    my $self = shift;
+    my %args = @_;
+    return $self->http('sendSharedWidget', data => \%args);
+}
+
+sub answerWidgetQuery {
+    my $self = shift;
+    my %args = @_;
+    return $self->http('answerWidgetQuery', data => \%args);
+}
+
+sub editMessageWidgetData {
+    my $self = shift;
+    my %args = @_;
+    return $self->http('editMessageWidgetData', data => \%args);
+}
+
+sub editSharedWidgetData {
+    my $self = shift;
+    my %args = @_;
+    return $self->http('editSharedWidgetData', data => \%args);
+}
+
 sub deleteMessage {
     my $self = shift;
     my %args = (
@@ -2454,6 +2487,8 @@ sub set_webhook {
             'message',
             'inline_query',
             'callback_query',
+            'widget_query',
+            'shared_widget_query',
             'pre_checkout_query',
             'my_chat_member',
         ]
