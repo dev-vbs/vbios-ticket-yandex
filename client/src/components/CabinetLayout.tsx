@@ -38,7 +38,8 @@ export function CabinetLayout({ children }: { children: ReactNode }) {
       if (cancelled) return;
       const raw = response.data?.data;
       const data = Array.isArray(raw) ? raw[0] : raw;
-      setAvatarUrl(data?.url || (data?.data && data?.mime_type ? `data:${data.mime_type};base64,${data.data}` : null));
+      const inline = data?.data && data?.mime_type ? `data:${data.mime_type};base64,${data.data}` : null;
+      setAvatarUrl(inline || data?.url || null);
     }).catch(() => { /* Telegram photo/initial remains the fallback. */ });
     return () => { cancelled = true; };
   }, [user?.user_id, setAvatarUrl]);
