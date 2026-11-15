@@ -75,7 +75,16 @@ export const useStore = create<AppState>((set) => ({
     }
     set({ telegramPhoto: photo });
   },
-  setAvatarUrl: (photo) => { if (photo) localStorage.setItem('shm_avatar_url', photo); else localStorage.removeItem('shm_avatar_url'); set({ avatarUrl: photo }); },
+  setAvatarUrl: (photo) => {
+    // A Base64 avatar can be large and some browsers/private modes reject
+    // localStorage writes. The in-memory state must still update so the
+    // profile, header and tickets render the image in the current session.
+    try {
+      if (photo) localStorage.setItem('shm_avatar_url', photo);
+      else localStorage.removeItem('shm_avatar_url');
+    } catch { /* keep the image in Zustand state */ }
+    set({ avatarUrl: photo });
+  },
   setHasNewTicketMessages: (hasNew) => set({ hasNewTicketMessages: hasNew }),
   setLastTicketCheck: (timestamp) => {
     localStorage.setItem('shm_last_ticket_check', String(timestamp));
