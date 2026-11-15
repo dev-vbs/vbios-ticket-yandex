@@ -5,6 +5,7 @@ import { Avatar, Menu } from '@mantine/core';
 import { IconHeadset, IconLogout, IconShieldLock, IconSettings, IconLayoutDashboard, IconWallet, IconReceipt, IconBell, IconChevronDown, IconUser, IconHelpCircle } from '@tabler/icons-react';
 import { config } from '../config';
 import { useStore } from '../store/useStore';
+import { userApi } from '../api/client';
 import { ThemeToggle } from './ThemeToggle';
 import LanguageSwitcher from './LanguageSwitcher';
 import { LegalLinks } from './LegalLinks';
@@ -24,10 +25,23 @@ const mobileItems = [desktopItems[0], desktopItems[1], desktopItems[2], desktopI
 
 export function CabinetLayout({ children }: { children: ReactNode }) {
   const location = useLocation();
-  const { user, avatarUrl, telegramPhoto, logout, hasNewTicketMessages } = useStore();
+  const { user, avatarUrl, telegramPhoto, setAvatarUrl, logout, hasNewTicketMessages } = useStore();
   const push = usePushNotifications();
   const main = useRef<HTMLElement>(null);
   const previousPath = useRef(location.pathname);
+  // Keep the profile photo available in every cabinet view (including the
+  // header and tickets) without requiring the user to open Profile first.
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+    void userApi.getAvatar().then((response) => {
+      if (cancelled) return;
+      const raw = response.data?.data;
+      const data = Array.isArray(raw) ? raw[0] : raw;
+      setAvatarUrl(data?.url || null);
+    }).catch(() => { /* Telegram photo/initial remains the fallback. */ });
+    return () => { cancelled = true; };
+  }, [user?.user_id, setAvatarUrl]);
   useEffect(() => {
     if (previousPath.current !== location.pathname) {
       previousPath.current = location.pathname;
