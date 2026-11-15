@@ -235,16 +235,16 @@ sub _telegram_owner_avatar {
         my $cfg = get_service('config')->data_by_name('ticket') || {};
         my $storage_cfg = $cfg->{storage} || {};
         my $storage = Core::TicketStorage->new($storage_cfg);
-        my $bytes = $storage->request('GET', $row->{bucket}, $row->{object_key});
         my ($ext) = ($row->{mime_type} || '') =~ m{image/(jpeg|png|webp|gif)}i;
         $ext = lc($ext || 'jpeg'); $ext = 'jpg' if $ext eq 'jpeg';
         my $caption = '👤 ' . ($display || 'Пользователь') . " · ID $user_id\n📩 Тикет #$ticket_id";
-        my $response = $tg->uploadPhoto($bytes,
-            filename => "avatar.$ext",
+        my $photo_url = $storage->download_url($row->{bucket}, $row->{object_key});
+        my $response = $tg->http('sendPhoto', data => {
             chat_id => $chat,
             (defined $thread ? (message_thread_id => $thread) : ()),
+            photo => $photo_url,
             caption => substr($caption, 0, 1024),
-        );
+        });
         my $body = eval { $response->decoded_content } || '';
         my $result = eval { decode_json($body) } || {};
         die 'avatar upload rejected' unless $result->{ok};
