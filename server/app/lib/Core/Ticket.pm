@@ -242,6 +242,7 @@ sub _telegram_owner_avatar {
             chat_id => $chat,
             (defined $thread ? (message_thread_id => $thread) : ()),
             photo => $photo_url,
+            caption => '🖼 Аватар пользователя',
         });
         my $body = eval { $response->decoded_content } || '';
         my $result = eval { decode_json($body) } || {};

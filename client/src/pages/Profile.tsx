@@ -545,8 +545,9 @@ export default function Profile() {
                 { profile.discount && profile.discount > 0 ? ( <Text size="xm" style={{ color: colorScheme === 'dark' ? '#4ade80' : '#16a34a' }}>{t('profile.discount')}: {profile.discount}%</Text>) : undefined}
               </div>
             </Group>
-            {!avatarUrl && !telegramPhoto && <Alert mt="md" color="cyan" variant="light" title="Добавьте фотографию профиля">
-              Персональная аватарка будет отображаться в кабинете и в обращениях поддержки.
+            {!avatarUrl && !telegramPhoto && <Alert mt="md" color="cyan" variant="light" title="Добавьте аватарку">
+              Персональная фотография поможет сотрудникам быстрее узнать ваше обращение. Она будет показана в личном кабинете и в Telegram-теме поддержки.
+              <Text size="xs" c="dimmed" mt={5}>JPG, PNG, WebP или GIF · до 5 МБ</Text>
               <FileButton onChange={uploadAvatar} accept="image/jpeg,image/png,image/webp,image/gif">
                 {(props) => <Button {...props} mt="sm" size="xs" variant="light" leftSection={<IconCamera size={14} />} loading={avatarUploading}>Загрузить аватарку</Button>}
               </FileButton>
