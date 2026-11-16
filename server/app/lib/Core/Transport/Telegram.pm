@@ -997,8 +997,6 @@ sub telegram_oidc_exchange_code {
         @_,
     );
 
-    $args{profile} ||= 'telegram_bot';
-
     for my $required ( qw(code redirect_uri) ) {
         unless ( defined $args{$required} && $args{$required} ne '' ) {
             report->error("Telegram OIDC $required is required");
@@ -1021,10 +1019,6 @@ sub telegram_oidc_exchange_code {
         code => $args{code},
         redirect_uri => $args{redirect_uri},
         client_id => $client_id,
-        # Telegram accepts client_secret_post as well as HTTP Basic. Sending
-        # the secret in the form keeps the exchange compatible with proxies
-        # that strip Authorization headers and with Telegram's Web Login docs.
-        client_secret => $client_secret,
     );
     $form{code_verifier} = $args{code_verifier} if defined $args{code_verifier} && $args{code_verifier} ne '';
 
@@ -1032,12 +1026,15 @@ sub telegram_oidc_exchange_code {
         uri_escape($_) . '=' . uri_escape( defined $form{$_} ? $form{$_} : '' )
     } sort keys %form;
 
+    my $credentials = encode_base64("$client_id:$client_secret", '');
+
     my $response = $self->http_transport->http(
         method => 'post',
         url => $self->telegram_oauth_server . '/token',
         content_type => 'application/x-www-form-urlencoded',
         headers => {
             Accept => 'application/json',
+            Authorization => "Basic $credentials",
         },
         content => $content,
     );
@@ -1051,12 +1048,8 @@ sub telegram_oidc_exchange_code {
     }
 
     my $json = decode_json( $response->decoded_content );
-    # Some gateways wrap OAuth data in `data`; accept that shape without
-    # relaxing verification of the JWT itself.
-    $json = $json->{data} if ref($json) eq 'HASH' && ref($json->{data}) eq 'HASH';
     unless ( ref $json eq 'HASH' && $json->{id_token} ) {
-        my $hint = ref($json) eq 'HASH' && $json->{access_token} ? ' (access_token-only response; проверьте scope=openid и Client ID/Secret Telegram)' : '';
-        report->error('Telegram OIDC token response has no id_token' . $hint);
+        report->error('Telegram OIDC token response has no id_token');
         return undef;
     }
 
@@ -1109,27 +1102,12 @@ sub verify_telegram_oidc_id_token {
         @_,
     );
 
-    $args{profile} ||= 'telegram_bot';
-
     my $id_token = $args{id_token};
     return undef unless $id_token;
 
     my ($header_b64) = split /\./, $id_token;
     my $header = decode_json( decode_base64url( $header_b64 ) ) || {};
-    unless (ref($header) eq 'HASH') {
-        report->error('Telegram OIDC id_token has invalid header');
-        return undef;
-    }
     my $kid = $header->{kid};
-    my $alg = $header->{alg} || '';
-    # Fixed asymmetric allowlist from Telegram's OIDC metadata. Never accept
-    # `none`, HMAC, or a key URL supplied by the token itself.
-    my %key_types = (RS256 => ['RSA', ''], ES256 => ['EC', 'P-256'],
-        EdDSA => ['OKP', 'Ed25519'], ES256K => ['EC', 'secp256k1']);
-    unless (!ref($alg) && exists $key_types{$alg}) {
-        report->error('Telegram OIDC id_token has unsupported signing algorithm');
-        return undef;
-    }
 
     my $client_id = $self->telegram_oidc_client_id( profile => $args{profile} );
     unless ( $client_id ) {
@@ -1138,19 +1116,11 @@ sub verify_telegram_oidc_id_token {
     }
 
     my $jwks = $self->telegram_oidc_jwks;
-    if (defined($kid) && !ref($kid) && !grep { ref($_) eq 'HASH' && ($_->{kid} || '') eq $kid } @{ $jwks || [] }) {
-        $jwks = $self->telegram_oidc_jwks(refresh => 1);
-    }
-    my @keys = grep {
-        ref($_) eq 'HASH'
-            && (!defined($kid) || (!ref($kid) && ($_->{kid} || '') eq $kid))
-            && (!$_->{alg} || $_->{alg} eq $alg)
-            && (!$_->{use} || $_->{use} eq 'sig')
-            && ($_->{kty} || '') eq $key_types{$alg}[0]
-            && (!$key_types{$alg}[1] || ($_->{crv} || '') eq $key_types{$alg}[1])
-    } @{ $jwks || [] };
+    my @keys = grep { ref $_ eq 'HASH' && ( !$kid || ( $_->{kid} || '' ) eq $kid ) } @{ $jwks || [] };
+    @keys = @{ $jwks || [] } unless @keys;
 
     my $claims;
+    my $verify_failure = 'signature_mismatch';
     for my $jwk ( @keys ) {
         next unless ref $jwk eq 'HASH';
 
@@ -1159,15 +1129,23 @@ sub verify_telegram_oidc_id_token {
             $decoded = jwt_decode(
                 token => $id_token,
                 key => $jwk,
-                accepted_alg => [$alg],
+                accepted_alg => ['RS256'],
                 verify_exp => 0,
                 verify_iat => 0,
-                # Telegram tokens do not have to contain nbf; validate it if
-                # present, but do not make the optional claim mandatory.
                 verify_nbf => 0,
             );
             1;
         };
+
+        unless ($ok) {
+            # Log a fixed classification only: library errors can contain
+            # token material or claims and must not be returned verbatim.
+            my $failure = $@ || '';
+            $verify_failure = $failure =~ /Can't locate|not installed/i ? 'missing_crypto_dependency'
+                : $failure =~ /unsupported|unknown.*alg|invalid.*key|import.*key/i ? 'unsupported_key_or_algorithm'
+                : $failure =~ /nbf|iat|exp.*claim/i ? 'token_time_claim'
+                : 'signature_mismatch';
+        }
 
         if ( $ok ) {
             $claims = $decoded;
@@ -1175,26 +1153,8 @@ sub verify_telegram_oidc_id_token {
         }
     }
 
-    # A key can rotate while the one-hour JWKS cache is warm. Retry once with
-    # a fresh document, still using the same algorithm and key restrictions.
-    if (!$claims) {
-        my $fresh = $self->telegram_oidc_jwks(refresh => 1);
-        my @fresh_keys = grep {
-            ref($_) eq 'HASH'
-                && (!defined($kid) || (!ref($kid) && ($_->{kid} || '') eq $kid))
-                && (!$_->{alg} || $_->{alg} eq $alg)
-                && (!$_->{use} || $_->{use} eq 'sig')
-                && ($_->{kty} || '') eq $key_types{$alg}[0]
-                && (!$key_types{$alg}[1] || ($_->{crv} || '') eq $key_types{$alg}[1])
-        } @{ $fresh || [] };
-        for my $jwk (@fresh_keys) {
-            my $ok = eval { $claims = jwt_decode(token => $id_token, key => $jwk, accepted_alg => [$alg], verify_exp => 0, verify_iat => 0, verify_nbf => 0); 1 };
-            last if $ok && ref($claims) eq 'HASH';
-            $claims = undef;
-        }
-    }
-
     unless ( ref $claims eq 'HASH' ) {
+        logger->error('Telegram OIDC verification failed: ' . $verify_failure . '; matching_keys=' . scalar(@keys));
         report->error('Telegram OIDC id_token signature verification failed');
         return undef;
     }
