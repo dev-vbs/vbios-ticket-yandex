@@ -2220,7 +2220,12 @@ sub web_auth {
 
         # OIDC sub is a separate identifier and must never be used as a Bot
         # API user/chat id. Only the signed profile claim proves this value.
+        # Telegram documents `id` for the profile scope. Keep aliases for
+        # older Telegram Login responses, but never fall back to OIDC `sub`:
+        # `sub` is not the Bot API user/chat id.
         my $telegram_id = $claims->{id};
+        $telegram_id = $claims->{user_id} if !defined($telegram_id);
+        $telegram_id = $claims->{telegram_id} if !defined($telegram_id);
         unless (defined($telegram_id) && !ref($telegram_id)
             && "$telegram_id" =~ /\A[1-9][0-9]{0,15}\z/
             && $telegram_id <= 4503599627370495) {
