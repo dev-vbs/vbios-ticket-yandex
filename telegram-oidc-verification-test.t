@@ -21,7 +21,9 @@ use Test::More;
       my %args = @_;
       push @attempts, $args{key}{kid};
       die 'signature mismatch' unless $args{key}{valid};
-      die 'unexpected algorithms' unless join(',', @{$args{accepted_alg}}) eq 'RS256,ES256,ES256K,EdDSA';
+      die 'unexpected algorithms' unless join(',', @{$args{accepted_alg}}) eq 'RS256';
+      die 'nbf presence must not be required' if $args{verify_nbf};
+      die 'unsupported algorithm' unless $header->{alg} eq 'RS256';
       return $claims;
   }
 }
@@ -42,16 +44,16 @@ sub reset_case {
 sub verify { $tg->verify_telegram_oidc_id_token(id_token => 'header.payload.signature', nonce => 'nonce') }
 reset_case();
 is(verify()->{id}, 42, 'verified profile is returned');
-is_deeply(\@OidcVerifier::requests, [0], 'valid cached key needs no refresh');
+is_deeply(\@OidcVerifier::requests, [undef], 'uses working transport key request');
 reset_case();
 $OidcVerifier::keys = [{kid => 'old', valid => 1}];
-ok(verify(), 'rotated signing key is fetched');
-is_deeply(\@OidcVerifier::requests, [0,1], 'one forced JWKS refresh');
-is_deeply(\@OidcVerifier::attempts, ['new'], 'unrelated kid is never used');
+ok(verify(), 'working transport tries available key when kid is absent');
+is_deeply(\@OidcVerifier::requests, [undef], 'single key request matches supplied transport');
+is_deeply(\@OidcVerifier::attempts, ['old'], 'available key still requires signature verification');
 for my $alg ('none', '') {
     reset_case(); $OidcVerifier::header->{alg} = $alg;
     ok(!verify(), 'openid-only or unsafe algorithm is rejected');
-    is(scalar @OidcVerifier::requests, 0, 'no key request for unsupported algorithm');
+    ok($OidcVerifier::report->{error}, 'rejection reports an error');
 }
 for my $claim ('iss', 'aud', 'exp', 'nonce') {
     reset_case(); $OidcVerifier::claims->{$claim} = $claim eq 'exp' ? time-10 : 'wrong';

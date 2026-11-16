@@ -1107,21 +1107,13 @@ sub verify_telegram_oidc_id_token {
     my $id_token = $args{id_token};
     return undef unless $id_token;
 
-    my @parts = split /\./, $id_token, -1;
-    my $header = @parts == 3 ? eval { decode_json(decode_base64url($parts[0])) } : undef;
+    my ($header_b64) = split /\./, $id_token;
+    my $header = eval { decode_json( decode_base64url( $header_b64 ) ) };
     unless (ref $header eq 'HASH') {
         report->error('Telegram OIDC id_token is malformed');
         return undef;
     }
     my $kid = $header->{kid};
-    my $alg = $header->{alg} || '';
-    # Accept every algorithm advertised by Telegram. The signed claims are
-    # still validated below; profile.id is required before an account is used.
-    my %allowed_alg = map { $_ => 1 } qw(RS256 ES256 ES256K EdDSA);
-    unless ($allowed_alg{$alg}) {
-        report->error('Telegram OIDC id_token has unsupported signing algorithm');
-        return undef;
-    }
 
     my $client_id = $self->telegram_oidc_client_id( profile => $args{profile} );
     unless ( $client_id ) {
@@ -1129,44 +1121,35 @@ sub verify_telegram_oidc_id_token {
         return undef;
     }
 
+    my $jwks = $self->telegram_oidc_jwks;
+    my @keys = grep { ref $_ eq 'HASH' && ( !$kid || ( $_->{kid} || '' ) eq $kid ) } @{ $jwks || [] };
+    @keys = @{ $jwks || [] } unless @keys;
+
     my $claims;
-    my $matching_keys = 0;
-    # Retry once with fresh keys when Telegram rotates its signing key.
-    for my $refresh (0, 1) {
-        my $jwks = $self->telegram_oidc_jwks(refresh => $refresh);
-        my @compatible = grep {
-            ref $_ eq 'HASH'
-                && (!$_->{alg} || $_->{alg} eq $alg)
-        } @{ $jwks || [] };
-        my @keys = defined($kid)
-            ? grep { ($_->{kid} || '') eq $kid } @compatible
-            : @compatible;
-        # Some Telegram responses have omitted/changed kid during key
-        # rotation. The algorithm and cryptographic signature still decide;
-        # try every compatible public key instead of failing before verify.
-        @keys = @compatible unless @keys;
-        $matching_keys = scalar @keys;
-        for my $jwk (@keys) {
-            my $decoded = eval {
-                jwt_decode(
-                    token => $id_token,
-                    key => $jwk,
-                    accepted_alg => [qw(RS256 ES256 ES256K EdDSA)],
-                    verify_exp => 0,
-                    verify_iat => 0,
-                    verify_nbf => 1,
-                );
-            };
-            if (ref $decoded eq 'HASH') {
-                $claims = $decoded;
-                last;
-            }
+    for my $jwk ( @keys ) {
+        next unless ref $jwk eq 'HASH';
+
+        my $decoded;
+        my $ok = eval {
+            $decoded = jwt_decode(
+                token => $id_token,
+                key => $jwk,
+                accepted_alg => ['RS256'],
+                verify_exp => 0,
+                verify_iat => 0,
+                verify_nbf => 0,
+            );
+            1;
+        };
+
+        if ( $ok ) {
+            $claims = $decoded;
+            last;
         }
-        last if $claims;
     }
 
     unless ( ref $claims eq 'HASH' ) {
-        report->error('Telegram OIDC id_token signature verification failed (matching_keys=' . $matching_keys . ')');
+        report->error('Telegram OIDC id_token signature verification failed');
         return undef;
     }
 
@@ -1188,6 +1171,14 @@ sub verify_telegram_oidc_id_token {
     }
 
     my $now = time;
+    # Telegram normally omits nbf. Validate it only when it is supplied;
+    # Crypt::JWT verify_nbf=1 requires its presence as well.
+    if (exists $claims->{nbf}
+        && (!defined $claims->{nbf} || ref $claims->{nbf}
+            || $claims->{nbf} !~ /\A[0-9]+\z/ || $claims->{nbf} > $now)) {
+        report->error('Telegram OIDC id_token is not active yet');
+        return undef;
+    }
     if ( !$claims->{exp} || $claims->{exp} < $now ) {
         report->error('Telegram OIDC id_token is expired');
         return undef;
