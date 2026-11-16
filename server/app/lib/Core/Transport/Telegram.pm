@@ -1075,6 +1075,10 @@ sub telegram_oidc_jwks {
     my $response = $self->http_transport->http(
         method => 'get',
         url => $self->telegram_oauth_server . '/.well-known/jwks.json',
+        # Preserve response bytes: generic text conversion can leave a stale
+        # Content-Encoding header and cause decoded_content to decode twice.
+        binary => 1,
+        headers => { Accept => 'application/json', 'Accept-Encoding' => 'identity' },
     );
     unless ( $response->is_success ) {
         report->error('Telegram OIDC jwks request failed');
