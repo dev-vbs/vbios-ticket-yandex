@@ -1108,6 +1108,12 @@ sub verify_telegram_oidc_id_token {
     my ($header_b64) = split /\./, $id_token;
     my $header = decode_json( decode_base64url( $header_b64 ) ) || {};
     my $kid = $header->{kid};
+    my $alg = $header->{alg} || '';
+    my %allowed_alg = map { $_ => 1 } qw(RS256 ES256 ES256K EdDSA);
+    unless (!$header->{alg} || $allowed_alg{$alg}) {
+        report->error('Telegram OIDC id_token has unsupported signing algorithm');
+        return undef;
+    }
 
     my $client_id = $self->telegram_oidc_client_id( profile => $args{profile} );
     unless ( $client_id ) {
@@ -1120,7 +1126,6 @@ sub verify_telegram_oidc_id_token {
     @keys = @{ $jwks || [] } unless @keys;
 
     my $claims;
-    my $verify_failure = 'signature_mismatch';
     for my $jwk ( @keys ) {
         next unless ref $jwk eq 'HASH';
 
@@ -1129,23 +1134,13 @@ sub verify_telegram_oidc_id_token {
             $decoded = jwt_decode(
                 token => $id_token,
                 key => $jwk,
-                accepted_alg => ['RS256'],
+                accepted_alg => [qw(RS256 ES256 ES256K EdDSA)],
                 verify_exp => 0,
                 verify_iat => 0,
                 verify_nbf => 0,
             );
             1;
         };
-
-        unless ($ok) {
-            # Log a fixed classification only: library errors can contain
-            # token material or claims and must not be returned verbatim.
-            my $failure = $@ || '';
-            $verify_failure = $failure =~ /Can't locate|not installed/i ? 'missing_crypto_dependency'
-                : $failure =~ /unsupported|unknown.*alg|invalid.*key|import.*key/i ? 'unsupported_key_or_algorithm'
-                : $failure =~ /nbf|iat|exp.*claim/i ? 'token_time_claim'
-                : 'signature_mismatch';
-        }
 
         if ( $ok ) {
             $claims = $decoded;
@@ -1154,7 +1149,6 @@ sub verify_telegram_oidc_id_token {
     }
 
     unless ( ref $claims eq 'HASH' ) {
-        logger->error('Telegram OIDC verification failed: ' . $verify_failure . '; matching_keys=' . scalar(@keys));
         report->error('Telegram OIDC id_token signature verification failed');
         return undef;
     }
