@@ -104,6 +104,12 @@ state $routes //= {
         swagger => { summary => 'Приложения и инструкции для подключения' },
     },
 },
+'/system/main' => {
+    GET => {
+        params => {}, skip_check_auth => 1, controller => 'Config', method => 'api_data_by_main',
+        swagger => { summary => 'Публичное содержимое стартовой страницы' },
+    },
+},
 '/user/captcha' => {
     swagger => { tags => 'Капча' },
     GET => {

@@ -124,6 +124,30 @@ sub all_data_by_name {
 
 sub api_data_by_company { shift->data_by_name('company') };
 
+# This endpoint is anonymous. Never return the raw configuration object.
+sub api_data_by_main {
+    my $self = shift;
+    my $cfg = $self->data_by_name('main');
+    $cfg = {} unless ref($cfg) eq 'HASH';
+    my %public;
+    for my $field (qw(name description logo_url support_url intro title accent_title primary_button login_button secondary_button compatibility visual_caption benefits_title benefits_description connection_title faq_title faq_description nav_benefits nav_connection nav_questions support_label login_title register_title)) {
+        $public{$field} = $cfg->{$field} if defined($cfg->{$field}) && !ref($cfg->{$field});
+    }
+    for my $field (qw(visual_steps benefits steps faq documents)) {
+        next unless ref($cfg->{$field}) eq 'ARRAY';
+        my @items;
+        for my $item (@{$cfg->{$field}}) {
+            next unless ref($item) eq 'HASH';
+            my %entry = map { defined($item->{$_}) && !ref($item->{$_}) ? ($_ => $item->{$_}) : () }
+                ($field eq 'documents' ? qw(label url) : qw(title description));
+            push @items, \%entry;
+            last if @items >= 20;
+        }
+        $public{$field} = \@items;
+    }
+    return \%public;
+}
+
 sub api_data_by_apps {
     my $self = shift;
     my $cfg = $self->data_by_name('apps') || {};
