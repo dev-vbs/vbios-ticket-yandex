@@ -138,3 +138,4 @@
  .vpn-cabinet .ticket-operator-row .mantine-Button-root { width:auto; font-size:12px; }
  .vpn-cabinet .ticket-operator-row .mantine-Text-root { width:auto; }
 }
+.ticket-message-link{color:var(--mantine-primary-color-4);text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:2px;overflow-wrap:anywhere}.ticket-message-link:hover{color:var(--mantine-primary-color-3)}

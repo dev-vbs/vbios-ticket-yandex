@@ -40,6 +40,22 @@ import { ticketApi, userApi, type TicketItem, type TicketMedia } from '../api/cl
 import { DEFAULT_AVATAR_URL, useStore } from '../store/useStore';
 import TicketImageViewer from '../components/TicketImageViewer';
 
+const ticketUrlPattern = /(https?:\/\/[^\s<]+|www\.[^\s<]+)/gi;
+function TicketMessageText({ value }: { value: string }) {
+  const parts = value.split(ticketUrlPattern);
+  return <>
+    {parts.map((part, index) => {
+      if (!/^https?:\/\//i.test(part) && !/^www\./i.test(part)) return <span key={index}>{part}</span>;
+      const href = /^https?:\/\//i.test(part) ? part : `https://${part}`;
+      // Keep punctuation outside the link while preserving the original text.
+      const match = href.match(/([),.;!?]+)$/);
+      const cleanHref = match ? href.slice(0, -match[1].length) : href;
+      const punctuation = match?.[1] || '';
+      return <span key={index}><a href={cleanHref} target="_blank" rel="noopener noreferrer" className="ticket-message-link">{cleanHref}</a>{punctuation}</span>;
+    })}
+  </>;
+}
+
 function MediaPreview({ media, onPreview, onDownload }: { media: TicketMedia; onPreview: (m: TicketMedia, url: string) => void; onDownload: (m: TicketMedia) => void }) {
   const [objectUrl, setObjectUrl] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
@@ -885,7 +901,7 @@ export default function Tickets() {
                     <Text size="xs" fw={600}>{isAdmin ? t('tickets.supportAuthor', { defaultValue: 'Поддержка' }) : t('tickets.youAuthor', { defaultValue: 'Вы' })}</Text><Text size="xs" c="dimmed">{formatDate(message.created)}</Text>
                   </Group>
 
-                  <Text size="sm" style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{message.message}</Text>
+                  <Text size="sm" style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}><TicketMessageText value={message.message || ''} /></Text>
 
                   {message.media && message.media.length > 0 && (
                     <Stack gap={6} mt="sm">
