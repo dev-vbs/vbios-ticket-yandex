@@ -1162,7 +1162,9 @@ sub verify_telegram_oidc_id_token {
                 accepted_alg => [$alg],
                 verify_exp => 0,
                 verify_iat => 0,
-                verify_nbf => 1,
+                # Telegram tokens do not have to contain nbf; validate it if
+                # present, but do not make the optional claim mandatory.
+                verify_nbf => 0,
             );
             1;
         };
@@ -1186,7 +1188,7 @@ sub verify_telegram_oidc_id_token {
                 && (!$key_types{$alg}[1] || ($_->{crv} || '') eq $key_types{$alg}[1])
         } @{ $fresh || [] };
         for my $jwk (@fresh_keys) {
-            my $ok = eval { $claims = jwt_decode(token => $id_token, key => $jwk, accepted_alg => [$alg], verify_exp => 0, verify_iat => 0, verify_nbf => 1); 1 };
+            my $ok = eval { $claims = jwt_decode(token => $id_token, key => $jwk, accepted_alg => [$alg], verify_exp => 0, verify_iat => 0, verify_nbf => 0); 1 };
             last if $ok && ref($claims) eq 'HASH';
             $claims = undef;
         }
