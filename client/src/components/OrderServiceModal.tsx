@@ -406,7 +406,7 @@ export default function OrderServiceModal({
             {t('order.backToList')}
           </Button>
 
-          <Paper withBorder p="md" radius="md">
+          <Paper withBorder p="md" radius="md" className="experience-order-panel">
             <Stack gap="sm">
               <Group justify="space-between">
                 <Text fw={700} size="lg">{selectedService.name}</Text>
@@ -420,7 +420,7 @@ export default function OrderServiceModal({
                 </Text>
               )}
 
-              <Group justify="space-between" mt="md">
+              <Group justify="space-between" mt="md" className="experience-order-facts">
                 <div>
                   <Text size="sm" c="dimmed">{t('services.cost')}</Text>
                   <Group gap="xs" align="baseline">
@@ -449,8 +449,8 @@ export default function OrderServiceModal({
             </Stack>
           </Paper>
 
-          {deviceLimit(selectedService) != null && <Paper withBorder p="md" radius="md"><Text size="sm" c="dimmed">Разрешено устройств</Text><Text fw={700}>{deviceLimit(selectedService)}</Text></Paper>}
-          <Paper withBorder p="md" radius="md"><Text size="sm" c="dimmed">{isChangeMode ? 'Стоимость выбранного тарифа' : 'Итого за тариф'}</Text><Text fw={750} size="xl">{Number.isFinite(getEffectiveCost(selectedService)) ? `${Number.isFinite(getEffectiveCost(selectedService)) ? `${getEffectiveCost(selectedService)} ₽` : "Цена не получена"}` : 'Цена не получена'}</Text><Text size="xs" c="dimmed">{isChangeMode ? 'Перерасчёт при смене выполняет биллинг.' : 'Пополнение баланса ниже — отдельный платёж для оплаты тарифа.'}</Text></Paper>
+          {deviceLimit(selectedService) != null && <Paper withBorder p="md" radius="md" className="experience-order-panel"><Text size="sm" c="dimmed">Разрешено устройств</Text><Text fw={700}>{deviceLimit(selectedService)}</Text></Paper>}
+          <Paper withBorder p="md" radius="md" className="experience-order-panel"><Text size="sm" c="dimmed">{isChangeMode ? 'Стоимость выбранного тарифа' : 'Итого за тариф'}</Text><Text fw={750} size="xl">{Number.isFinite(getEffectiveCost(selectedService)) ? `${getEffectiveCost(selectedService)} ₽` : 'Цена не получена'}</Text><Text size="xs" c="dimmed">{isChangeMode ? 'Перерасчёт при смене выполняет биллинг.' : 'Оплата списывается с баланса. Если средств не хватает, пополните его ниже.'}</Text></Paper>
           {!isChangeMode && (!balanceReady || balanceError) ? <Alert color="yellow" title="Баланс не получен"><Button variant="light" onClick={() => void fetchUserBalance()}>Повторить</Button></Alert> : isChangeMode ? (
             <Stack gap="sm">
               {config.ALLOW_SERVICE_CHANGE_FORCE === 'false' && canDeferChange && (
@@ -506,7 +506,7 @@ export default function OrderServiceModal({
                 </Button>
               ) : (
                 <>
-                  <Paper withBorder p="md" radius="md">
+                  <Paper withBorder p="md" radius="md" className="experience-order-panel">
                     <Stack gap="md">
                       <Text fw={500}>{t('order.topUpBalance')}</Text>
 
@@ -585,10 +585,10 @@ export default function OrderServiceModal({
                   >
                     <Group justify="space-between">
                       <div>
-                        <Text fw={500}>{service.name}</Text>
+                        <Text fw={650} size="md" style={{ overflowWrap: 'anywhere' }}>{service.name}</Text>
                         {deviceLimit(service) != null && <Badge variant="light" mt="xs">Устройств: {deviceLimit(service)}</Badge>}
                         {service.descr && (
-                          <Text size="sm" c="dimmed" lineClamp={3}>
+                          <Text size="sm" c="dimmed" lineClamp={2}>
                             {service.descr}
                           </Text>
                         )}
@@ -599,7 +599,7 @@ export default function OrderServiceModal({
                             {service.cost} ₽
                           </Text>
                         )}
-                        <Text fw={600} color={service.cost > getEffectiveCost(service) ? 'green' : undefined}>
+                        <Text fw={750} size="lg" color={service.cost > getEffectiveCost(service) ? 'green' : undefined}>
                           {Number.isFinite(getEffectiveCost(service)) ? `${getEffectiveCost(service)} ₽` : "Цена не получена"}
                         </Text>
                         <Text size="xs" c="dimmed">
