@@ -1081,8 +1081,13 @@ sub telegram_oidc_jwks {
         return [];
     }
 
-    my $json = decode_json( $response->decoded_content ) || {};
-    my $keys = $json->{keys};
+    my $json = eval { $response->json_content };
+    if (ref($json) ne 'HASH') {
+        # Telegram may omit Content-Type through a proxy. Parse the body
+        # directly as JSON instead of rejecting a valid JWKS response.
+        $json = eval { decode_json($response->decoded_content) };
+    }
+    my $keys = ref($json) eq 'HASH' ? $json->{keys} : undef;
 
     unless ( ref $keys eq 'ARRAY' && @$keys ) {
         report->error('Telegram OIDC jwks response is invalid');
