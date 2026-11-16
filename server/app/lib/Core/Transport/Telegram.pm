@@ -1065,6 +1065,7 @@ sub telegram_oidc_exchange_code {
 
 sub telegram_oidc_jwks {
     my $self = shift;
+    my %args = @_;
 
     state $cache = {
         fetched_at => 0,
@@ -1072,7 +1073,7 @@ sub telegram_oidc_jwks {
     };
 
     my $ttl = 3600;
-    if ( time - $cache->{fetched_at} < $ttl && ref $cache->{keys} eq 'ARRAY' && @{ $cache->{keys} } ) {
+    if ( !$args{refresh} && time - $cache->{fetched_at} < $ttl && ref $cache->{keys} eq 'ARRAY' && @{ $cache->{keys} } ) {
         return $cache->{keys};
     }
 
@@ -1115,7 +1116,20 @@ sub verify_telegram_oidc_id_token {
 
     my ($header_b64) = split /\./, $id_token;
     my $header = decode_json( decode_base64url( $header_b64 ) ) || {};
+    unless (ref($header) eq 'HASH') {
+        report->error('Telegram OIDC id_token has invalid header');
+        return undef;
+    }
     my $kid = $header->{kid};
+    my $alg = $header->{alg} || '';
+    # Fixed asymmetric allowlist from Telegram's OIDC metadata. Never accept
+    # `none`, HMAC, or a key URL supplied by the token itself.
+    my %key_types = (RS256 => ['RSA', ''], ES256 => ['EC', 'P-256'],
+        EdDSA => ['OKP', 'Ed25519'], ES256K => ['EC', 'secp256k1']);
+    unless (!ref($alg) && exists $key_types{$alg}) {
+        report->error('Telegram OIDC id_token has unsupported signing algorithm');
+        return undef;
+    }
 
     my $client_id = $self->telegram_oidc_client_id( profile => $args{profile} );
     unless ( $client_id ) {
@@ -1124,8 +1138,17 @@ sub verify_telegram_oidc_id_token {
     }
 
     my $jwks = $self->telegram_oidc_jwks;
-    my @keys = grep { ref $_ eq 'HASH' && ( !$kid || ( $_->{kid} || '' ) eq $kid ) } @{ $jwks || [] };
-    @keys = @{ $jwks || [] } unless @keys;
+    if (defined($kid) && !ref($kid) && !grep { ref($_) eq 'HASH' && ($_->{kid} || '') eq $kid } @{ $jwks || [] }) {
+        $jwks = $self->telegram_oidc_jwks(refresh => 1);
+    }
+    my @keys = grep {
+        ref($_) eq 'HASH'
+            && (!defined($kid) || (!ref($kid) && ($_->{kid} || '') eq $kid))
+            && (!$_->{alg} || $_->{alg} eq $alg)
+            && (!$_->{use} || $_->{use} eq 'sig')
+            && ($_->{kty} || '') eq $key_types{$alg}[0]
+            && (!$key_types{$alg}[1] || ($_->{crv} || '') eq $key_types{$alg}[1])
+    } @{ $jwks || [] };
 
     my $claims;
     for my $jwk ( @keys ) {
@@ -1136,10 +1159,10 @@ sub verify_telegram_oidc_id_token {
             $decoded = jwt_decode(
                 token => $id_token,
                 key => $jwk,
-                accepted_alg => ['RS256'],
+                accepted_alg => [$alg],
                 verify_exp => 0,
                 verify_iat => 0,
-                verify_nbf => 0,
+                verify_nbf => 1,
             );
             1;
         };
@@ -1147,6 +1170,25 @@ sub verify_telegram_oidc_id_token {
         if ( $ok ) {
             $claims = $decoded;
             last;
+        }
+    }
+
+    # A key can rotate while the one-hour JWKS cache is warm. Retry once with
+    # a fresh document, still using the same algorithm and key restrictions.
+    if (!$claims) {
+        my $fresh = $self->telegram_oidc_jwks(refresh => 1);
+        my @fresh_keys = grep {
+            ref($_) eq 'HASH'
+                && (!defined($kid) || (!ref($kid) && ($_->{kid} || '') eq $kid))
+                && (!$_->{alg} || $_->{alg} eq $alg)
+                && (!$_->{use} || $_->{use} eq 'sig')
+                && ($_->{kty} || '') eq $key_types{$alg}[0]
+                && (!$key_types{$alg}[1] || ($_->{crv} || '') eq $key_types{$alg}[1])
+        } @{ $fresh || [] };
+        for my $jwk (@fresh_keys) {
+            my $ok = eval { $claims = jwt_decode(token => $id_token, key => $jwk, accepted_alg => [$alg], verify_exp => 0, verify_iat => 0, verify_nbf => 1); 1 };
+            last if $ok && ref($claims) eq 'HASH';
+            $claims = undef;
         }
     }
 
