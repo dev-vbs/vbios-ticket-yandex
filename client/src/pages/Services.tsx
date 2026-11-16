@@ -1,7 +1,7 @@
 import DataLoadStatus from '../components/DataLoadStatus';
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
-import { Card, Timeline, Text, Stack, Group, Badge, Button, Divider, ActionIcon, Loader, Center, Paper, Title, Code, Tooltip, Accordion, Box, Pagination, Alert, TextInput, Skeleton } from '@mantine/core';
+import { Card, Timeline, Text, Stack, Group, Badge, Button, Divider, ActionIcon, Loader, Center, Paper, Title, Menu, Code, Tooltip, Accordion, Box, Pagination, Alert, TextInput, Skeleton } from '@mantine/core';
 import { IconQrcode, IconCopy, IconCheck, IconDownload, IconRefresh, IconTrash, IconPlus, IconPlayerStop, IconExchange, IconWallet, IconDeviceMobileCog, IconArrowLeft, IconArrowRight, IconSearch, IconCalendarTime, IconWifi, IconWifiOff } from '@tabler/icons-react';
 import { useDisclosure, useClipboard } from '@mantine/hooks';
 import { useTranslation } from 'react-i18next';
@@ -339,7 +339,6 @@ function ServiceDetail({ service, onDelete, onChangeTariff }: ServiceDetailProps
       setConnectionStatus('loading');
       setSubscriptionUrl(null);
       setStorageData(null);
-      setActiveTab('config');
       const offlineConnection = readOfflineConnection(service.user_service_id, category);
       if (!navigator.onLine && offlineConnection) {
         if (category === 'proxy') setSubscriptionUrl(offlineConnection.value); else setStorageData(offlineConnection.value);
@@ -410,11 +409,11 @@ function ServiceDetail({ service, onDelete, onChangeTariff }: ServiceDetailProps
         <section>
 
           <Stack gap="xs">
-            <Paper withBorder radius="lg" p="lg">
+            <Paper withBorder radius="lg" p="lg" className="service-primary-card">
               <Stack gap="md">
                 <Group justify="space-between" gap="md">
-                  <Text size="sm" c="dimmed">{t('services.status')}</Text>
-                  <Badge color={statusColor} variant="light" size="lg" radius="sm">{statusLabel}</Badge>
+                  <Text fw={650} size="xl">{service.service.name}</Text>
+                  <Badge color={statusColor} variant="light" size="sm" radius="sm">{statusLabel}</Badge>
                 </Group>
                 <Divider />
                 <Group justify="space-between" gap="md" align="center">
@@ -490,7 +489,7 @@ function ServiceDetail({ service, onDelete, onChangeTariff }: ServiceDetailProps
 
                 {isProxy && showProxySubscription && subscriptionUrl && (
                   <Paper withBorder p="sm" radius="sm" bg="var(--mantine-color-default-hover)">
-                    <Text size="xs" fw={700} tt="uppercase" c="dimmed" mb={6}>{t('services.subscriptionLink')}</Text>
+                    <Text size="xs" fw={700} tt="none" c="dimmed" mb={6}>{t('services.subscriptionLink')}</Text>
                     <Group wrap="nowrap">
                       <Code style={{ flex: 1, wordBreak: 'break-all', whiteSpace: 'normal' }}>{subscriptionUrl}</Code>
                       <Tooltip label={clipboard.copied ? t('common.copied') : t('common.copy')}>
@@ -555,44 +554,11 @@ function ServiceDetail({ service, onDelete, onChangeTariff }: ServiceDetailProps
 
       {isNotPaid && <Text size="sm" c="dimmed">{forecastLoading ? 'Рассчитываем доплату…' : forecastTotal !== null ? 'Доплата по услуге: ' + forecastTotal.toFixed(2) + ' ₽' : 'Доплата пока неизвестна. Проверьте расчёт перед оплатой.'}</Text>}
 
-      {canChange && (
-        <Button
-          color="blue"
-          variant="light"
-          leftSection={<IconExchange size={16} />}
-          onClick={() => onChangeTariff?.(service)}
-          mt="md"
-          fullWidth
-        >
-          {t('services.changeService')}
-        </Button>
-      )}
-
-      {canStop && (
-        <Button
-          color="orange"
-          variant="light"
-          leftSection={<IconPlayerStop size={16} />}
-          onClick={() => setConfirmStop(true)}
-          mt="md"
-          fullWidth
-        >
-          {t('services.stopService')}
-        </Button>
-      )}
-
-      {canDelete && (
-        <Button
-          color="red"
-          variant="light"
-          leftSection={<IconTrash size={16} />}
-          onClick={() => setConfirmDelete(true)}
-          mt="md"
-          fullWidth
-        >
-          {t('services.deleteService')}
-        </Button>
-      )}
+      {(canChange || canStop || canDelete) && <Menu position="bottom-end" withinPortal><Menu.Target><Button variant="default" style={{alignSelf:'flex-end'}}>Ещё ···</Button></Menu.Target><Menu.Dropdown>
+        {canChange && <Menu.Item leftSection={<IconExchange size={16}/>} onClick={() => onChangeTariff?.(service)}>{t('services.changeService')}</Menu.Item>}
+        {canStop && <Menu.Item leftSection={<IconPlayerStop size={16}/>} onClick={() => setConfirmStop(true)}>{t('services.stopService')}</Menu.Item>}
+        {canDelete && <Menu.Item color="red" leftSection={<IconTrash size={16}/>} onClick={() => setConfirmDelete(true)}>{t('services.deleteService')}</Menu.Item>}
+      </Menu.Dropdown></Menu>}
 
       <ConfirmModal
         opened={confirmStop}
@@ -899,16 +865,14 @@ export default function Services() {
 
   if (serviceId) {
     if (!detailService) return <Stack className="service-detail-page" gap="md"><Button component={Link} to="/services" variant="subtle" leftSection={<IconArrowLeft size={16} />}>Все услуги</Button><Paper withBorder p="xl" radius="lg"><Title order={3}>Услуга не найдена</Title><Text c="dimmed" mt="xs">Обновите список услуг и попробуйте ещё раз.</Text><Button mt="md" onClick={() => void fetchServices()}>Обновить список</Button></Paper></Stack>;
-    const statusLabel = t(`status.${detailService.status}`, detailService.status);
-    const expiry = getExpiryState(detailService.expire);
-    return <Stack gap="lg" className="service-detail-page"><Button component={Link} to="/services" variant="subtle" className="service-detail-page__back" leftSection={<IconArrowLeft size={16} />}>Все услуги</Button><Paper withBorder radius="lg" p="xl" className="service-detail-page__summary" style={{ borderRadius: 20, borderTop: '3px solid var(--mantine-primary-color-filled)', background: 'var(--mantine-color-body)' }}><Group justify="space-between" align="flex-start"><div><Text c="dimmed" size="xs">Услуга #{detailService.user_service_id}</Text><Title order={2} mt={6} style={{ fontSize: 'clamp(1rem, 2.5vw, 1.25rem)', lineHeight: 1.3, overflowWrap: 'anywhere' }}>{detailService.service.name}</Title><Text c="dimmed" size="sm" mt={6}>Подключение, срок действия и настройки подписки.</Text></div><Stack gap="xs" align="flex-end"><Badge color={statusColors[detailService.status] || 'gray'} size="lg" variant="light">{statusLabel}</Badge>{expiry.label && <Text className={`expiry-indicator expiry-indicator--${expiry.tone}`}><IconCalendarTime size={15} />{expiry.label}</Text>}</Stack></Group></Paper><ServiceDetail service={detailService} onDelete={() => { void fetchServices(); navigate('/services'); }} onChangeTariff={handleChangeTariff} /></Stack>;
+    return <Stack gap="md" className="service-detail-page"><Button component={Link} to="/services" variant="subtle" className="service-detail-page__back" leftSection={<IconArrowLeft size={16} />}>Все услуги</Button><ServiceDetail service={detailService} onDelete={() => { void fetchServices(); navigate('/services'); }} onChangeTariff={handleChangeTariff} /></Stack>;
   }
 
   return (
     <Stack gap="lg" className="services-overview">
       <DataLoadStatus showRefresh={false} loading={refreshing} error={loadError && "Не удалось обновить услуги"} updatedAt={updatedAt} onRetry={() => void fetchServices()} />
       <Paper withBorder radius="lg" className="services-header-card">
-        <div className="services-header-card__copy"><Text size="xs" c="dimmed" tt="uppercase" fw={700}>Личный кабинет</Text><Title className="page-header__title" order={2}>{t('services.title')}</Title><Text c="dimmed" size="sm" mt={6}>Подписки, подключение и продление в одном месте.</Text></div>
+        <div className="services-header-card__copy"><Text size="xs" c="dimmed" tt="none" fw={700}>Личный кабинет</Text><Title className="page-header__title" order={2}>{t('services.title')}</Title><Text c="dimmed" size="sm" mt={6}>Подписки, подключение и продление в одном месте.</Text></div>
         <Group className="services-header-card__actions">
           <Button
             leftSection={<IconPlus size={16} />}

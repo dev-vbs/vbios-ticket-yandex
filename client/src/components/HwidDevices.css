@@ -23,3 +23,17 @@
 .hwid-details{margin-top:8px}.hwid-details summary{cursor:pointer;font-size:12px;color:var(--mantine-primary-color-filled);padding:6px 0}.hwid-details summary:focus-visible{outline:2px solid var(--mantine-primary-color-filled)}
 .hwid-panel-header > .mantine-Group-root { flex: 0 0 auto; min-width: 0; }
 .service-detail-page .hwid-panel { margin-top: 16px; margin-bottom: 16px; }
+.hwid-platform-icon { display:inline-flex; align-items:center; justify-content:center; width:28px; height:28px; border:1px solid var(--ui-border); border-radius:8px; color:var(--ui-muted); background:var(--ui-surface-soft); }
+.hwid-panel .hwid-panel-header .mantine-Button-root[data-variant="light"] { color:var(--ui-text); border:1px solid var(--ui-border); }
+.vpn-cabinet .mantine-Badge-label { text-transform:none; letter-spacing:0; font-weight:600; }
+.vpn-cabinet .hwid-panel-header > .mantine-Group-root { flex:0 0 auto; }
+.vpn-cabinet .hwid-panel-header > .mantine-Group-root .mantine-Button-root { width:auto; }
+.vpn-cabinet .hwid-panel-header { gap:12px; }
+.vpn-cabinet .hwid-panel .hwid-panel-header > div > .mantine-Text-root:last-child { font-size:13px; }
+@media(max-width:600px){
+ .vpn-cabinet .hwid-panel-header > .mantine-Group-root { width:auto; display:flex; flex-direction:row; flex-wrap:nowrap; }
+ .vpn-cabinet .hwid-panel-header .mantine-Button-root { padding-inline:12px; min-height:40px; }
+ .vpn-cabinet .hwid-panel-header { gap:8px; }
+ .vpn-cabinet .hwid-panel-header > div { min-width:0; }
+ .vpn-cabinet .hwid-panel > .mantine-Group-root:nth-child(2) > .mantine-Text-root:last-child { display:none; }
+}

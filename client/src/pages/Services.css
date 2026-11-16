@@ -67,3 +67,9 @@
   .service-technical-details { padding: 12px; }
   .service-connection-card { padding: 12px; }
 }
+.service-primary-card > .mantine-Stack-root { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+.service-primary-card > .mantine-Stack-root > .mantine-Group-root:first-child { grid-column:1/-1; }
+.service-primary-card > .mantine-Stack-root > .mantine-Divider-root { display:none; }
+.service-primary-card > .mantine-Stack-root > .mantine-Button-root { grid-column:1/-1; }
+.service-primary-card > .mantine-Stack-root > .mantine-Group-root { align-items:flex-start; }
+@media(max-width:600px){.service-primary-card > .mantine-Stack-root > .mantine-Group-root:not(:first-child){flex-direction:column;gap:6px}.service-primary-card .mantine-Text-root{overflow-wrap:anywhere}}

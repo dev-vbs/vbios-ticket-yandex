@@ -122,3 +122,19 @@
   .ticket-create__actions > button:last-child { flex: 1; }
   .ticket-pending-files { grid-template-columns:1fr; }
 }
+/* A quieter, more spacious conversation. */
+.vpn-cabinet .ticket-conversation .mantine-ScrollArea-root { background:transparent; padding:16px 4px; }
+.vpn-cabinet .ticket-message { max-width:84%!important; padding:14px 16px!important; }
+.vpn-cabinet .ticket-operator-row { padding:8px 12px; }
+.vpn-cabinet .ticket-operator-row > .mantine-Text-root { font-weight:600; font-size:13px; }
+.vpn-cabinet .ticket-conversation__header .mantine-Button-root { color:var(--ui-muted); }
+.vpn-cabinet .ticket-media-thumb { max-width:240px; }
+.vpn-cabinet .ticket-media-thumb img { max-height:180px; object-fit:cover; }
+.vpn-cabinet .ticket-reply-box { flex-shrink:0; margin-top:auto; }
+@media(max-width:768px){
+ .vpn-cabinet .tickets-page .page-header__description { display:none; }
+ .vpn-cabinet .ticket-message { max-width:94%!important; }
+ .vpn-cabinet .ticket-operator-row { flex-direction:row; align-items:center!important; }
+ .vpn-cabinet .ticket-operator-row .mantine-Button-root { width:auto; font-size:12px; }
+ .vpn-cabinet .ticket-operator-row .mantine-Text-root { width:auto; }
+}

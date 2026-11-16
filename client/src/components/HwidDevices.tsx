@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useId, useState } from 'react';
-import { Alert, Badge, Button, Group, Loader, Paper, Stack, Text, Progress } from '@mantine/core';
-import { IconDeviceMobile, IconRefresh, IconTrash, IconChevronDown, IconChevronUp } from '@tabler/icons-react';
+import { Alert, Badge, Button, Group, Loader, Paper, Stack, Text, Progress, Collapse, Skeleton } from '@mantine/core';
+import { IconDeviceMobile, IconDeviceLaptop, IconRefresh, IconTrash, IconChevronDown, IconChevronUp } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 import { api, userApi } from '../api/client';
 import ConfirmModal from './ConfirmModal';
@@ -9,6 +9,7 @@ import './HwidDevices.css';
 type Device = { hwid: string; deviceModel?: string; platform?: string; osVersion?: string; userAgent?: string; lastConnectedAt?: string; lastSeenAt?: string; createdAt?: string };
 type Stats = { used_bytes?: number | null; lifetime_bytes?: number | null; limit_bytes?: number | null; online_at?: string | null; first_connected_at?: string | null; last_subscription_at?: string | null };
 const when = (value?: string | null) => value && Number.isFinite(Date.parse(value)) ? new Date(value).toLocaleString() : 'Нет данных';
+const deviceIcon = (platform?: string) => /windows|mac|linux|desktop/i.test(platform || '') ? <IconDeviceLaptop size={16} /> : <IconDeviceMobile size={16} />;
 const bytes = (value?: number | null) => value != null && Number.isFinite(Number(value)) ? `${(Number(value) / 1073741824).toLocaleString('ru-RU', { maximumFractionDigits: 2 })} ГБ` : 'Нет данных';
 function payload(body: unknown): Record<string, unknown> {
   let value: any = body;
@@ -81,9 +82,10 @@ export default function HwidDevices({ serviceId }: { serviceId: number }) {
     finally { setDeleting(false); }
   };
   return <Paper withBorder p="md" radius="md" className="hwid-panel">
-    <Group className="hwid-panel-header" justify="space-between" wrap="wrap" gap="sm"><div><Group gap="xs"><IconDeviceMobile size={22} /><Text component="h2" className="hwid-panel-title" fw={650}>Центр устройств</Text></Group><Text size="sm" c="dimmed" mt={6}>Просматривайте подключённые устройства и расход трафика. Чтобы освободить место для нового устройства, сбросьте его HWID-привязку.</Text></div><Group gap="xs"><Button size="xs" variant="light" aria-expanded={expanded} aria-controls={expanded ? detailsId : undefined} onClick={() => setExpanded(value => !value)} leftSection={expanded ? <IconChevronUp size={15} /> : <IconChevronDown size={15} />}>{expanded ? 'Свернуть' : 'Раскрыть'}</Button><Button size="xs" variant="subtle" loading={loading || statsLoading} disabled={deleting} onClick={load} leftSection={<IconRefresh size={15} />}>Обновить</Button></Group></Group>
-    {!expanded ? <Group mt="md" gap="xs"><Badge variant="light">{loading ? "Устройства загружаются…" : error ? "Не удалось обновить устройства" : `Подключено: ${devices.length}${limit !== null && limit > 0 ? ` · лимит ${limit}` : ""}`}</Badge><Text size="xs" c="dimmed">Нажмите «Раскрыть», чтобы посмотреть устройства и статистику.</Text></Group> : <div id={detailsId}>
-    {statsLoading && !stats ? <Text mt="sm" size="xs" c="dimmed">Загружаем статистику…</Text> : statsError && !stats ? <Alert mt="sm" color="orange">Статистика Remnawave недоступна. Список устройств загружается отдельно.</Alert> : stats && <>
+    <Group className="hwid-panel-header" justify="space-between" wrap="wrap" gap="sm"><div><Group gap="xs"><IconDeviceMobile size={22} /><Text component="h2" className="hwid-panel-title" fw={650}>Центр устройств</Text></Group><Text size="sm" c="dimmed" mt={6}>Устройства подписки и расход трафика.</Text></div><Group gap="xs"><Button size="xs" variant="light" aria-expanded={expanded} aria-controls={detailsId} onClick={() => setExpanded(value => !value)} leftSection={expanded ? <IconChevronUp size={15} /> : <IconChevronDown size={15} />}>{expanded ? 'Свернуть' : 'Раскрыть'}</Button><Button size="xs" variant="subtle" loading={loading || statsLoading} disabled={deleting} onClick={load} leftSection={<IconRefresh size={15} />}>Обновить</Button></Group></Group>
+    {!expanded ? <Group mt="md" gap="sm" wrap="wrap"><Badge variant="light">{loading ? 'Загружаем устройства…' : error ? 'Не удалось обновить' : `${devices.length} из ${limit && limit > 0 ? limit : '∞'} устройств`}</Badge><Group gap={4}>{devices.slice(0, 4).map((device, index) => <span className="hwid-platform-icon" title={device.platform || `Устройство ${index + 1}`} key={device.hwid}>{deviceIcon(device.platform)}</span>)}</Group><Text size="xs" c="dimmed">Раскройте, чтобы управлять устройствами</Text></Group> : null}
+    <Collapse in={expanded}><div id={detailsId}>
+    {statsLoading && !stats ? <Stack gap="sm" mt="md" aria-label="Загрузка статистики"><Skeleton height={60} radius="md"/><Skeleton height={16} width="65%"/></Stack> : statsError && !stats ? <Alert mt="sm" color="orange">Статистика Remnawave недоступна. Список устройств загружается отдельно.</Alert> : stats && <>
       <div className="hwid-stats">
         <div><Text size="xs" c="dimmed">Трафик за текущий период</Text><Text fw={600}>{bytes(stats.used_bytes)}</Text></div>
         <div><Text size="xs" c="dimmed">Лимит трафика</Text><Text fw={600}>{stats.limit_bytes === 0 ? 'Без ограничений' : bytes(stats.limit_bytes)}</Text></div>
@@ -105,7 +107,7 @@ export default function HwidDevices({ serviceId }: { serviceId: number }) {
         <Button className="hwid-device-remove" color="red" variant="light" size="xs" disabled={deleting} onClick={() => setSelected(device)} leftSection={<IconTrash size={15} />}>Сбросить HWID</Button>
       </div>)}
     </Stack>
-    </div>}
+    </div></Collapse>
     <ConfirmModal opened={!!selected} onClose={() => { if (!deleting) setSelected(null); }} onConfirm={remove} title="Сбросить привязку устройства?" message={`Устройство «${selected?.deviceModel || selected?.platform || 'Устройство'}» будет удалено из списка. Остальные устройства останутся. Это не блокировка: при новом подключении устройство может привязаться снова.`} confirmLabel="Сбросить HWID" confirmColor="red" loading={deleting} />
   </Paper>;
 }

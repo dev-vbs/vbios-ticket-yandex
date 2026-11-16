@@ -11,6 +11,6 @@ export const theme = createTheme({
   components: {
     Card: { defaultProps: { radius: 'md', withBorder: true } },
     Button: { defaultProps: { radius: 'md' } },
-    Modal: { defaultProps: { lockScroll: false, radius: 'md' } },
+    Modal: { defaultProps: { lockScroll: false, radius: 'lg', transitionProps: { transition: 'fade-up', duration: 170 } } },
   },
 });

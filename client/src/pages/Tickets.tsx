@@ -830,7 +830,7 @@ export default function Tickets() {
 
         {!ticketIsClosed(selectedTicket.status) && <Group justify="space-between" align="center" gap="sm" className="ticket-operator-row">
           <Text size="sm" c="dimmed" style={{ flex: 1 }}>
-            {selectedTicket.responder === 'ai' ? 'Вам отвечает ИИ-помощник. При необходимости подключите сотрудника поддержки.' : 'Обращение у оператора. ИИ отключён, ожидайте ответа сотрудника.'}
+            {selectedTicket.responder === 'ai' ? 'Отвечает ИИ' : 'Ожидаем оператора'}
           </Text>
           {(selectedTicket.responder !== 'human' || selectedTicket.telegram_error) && <Button
             size="sm" variant="light" fullWidth={isMobile} leftSection={<IconMessageCircle size={16} />}
