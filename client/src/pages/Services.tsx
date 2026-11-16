@@ -461,7 +461,7 @@ function ServiceDetail({ service, onDelete, onChangeTariff }: ServiceDetailProps
             )}
           </Stack>
         </section>
-      {isProxy && <HwidDevices key={service.user_service_id} serviceId={service.user_service_id} />}
+      {isProxy && <HwidDevices key={service.user_service_id} serviceId={service.user_service_id} subscriptionUrl={subscriptionUrl} onAddSubscription={() => urlSchema ? void handleOpenUrlSchema() : handleConfigure()} />}
 
 
         { service.status === 'ACTIVE' && isVpnOrProxy && (

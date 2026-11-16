@@ -21,7 +21,7 @@ function payload(body: unknown): Record<string, unknown> {
   }
   return {};
 }
-export default function HwidDevices({ serviceId }: { serviceId: number }) {
+export default function HwidDevices({ serviceId, subscriptionUrl, onAddSubscription }: { serviceId: number; subscriptionUrl?: string | null; onAddSubscription?: () => void }) {
   const [devices, setDevices] = useState<Device[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -92,7 +92,7 @@ export default function HwidDevices({ serviceId }: { serviceId: number }) {
         <div><Text size="xs" c="dimmed">За всё время</Text><Text fw={600}>{bytes(stats.lifetime_bytes)}</Text></div>
         <div><Text size="xs" c="dimmed">Последнее VPN-подключение</Text><Text size="sm">{when(stats.online_at)}</Text></div>
         <div><Text size="xs" c="dimmed">Первое подключение</Text><Text size="sm">{when(stats.first_connected_at)}</Text></div>
-        <div><Text size="xs" c="dimmed">Обновление подписки в приложении</Text><Text size="sm">{when(stats.last_subscription_at)}</Text></div>
+        <div><Text size="xs" c="dimmed">Ссылка на подписку</Text><Button mt={6} size="xs" variant="light" disabled={!subscriptionUrl || !onAddSubscription} onClick={onAddSubscription} leftSection={<IconDeviceMobile size={15} />}>Добавить в приложение</Button></div>
       </div>
       {stats.used_bytes != null && stats.limit_bytes != null && stats.limit_bytes > 0 && <Stack gap={5} mt="sm"><Text size="xs" c="dimmed">Использование трафика · {Math.round(Number(stats.used_bytes) / Number(stats.limit_bytes) * 100)}%</Text><Progress aria-label="Использование лимита трафика" value={Math.min(100, Math.max(0, Number(stats.used_bytes) / Number(stats.limit_bytes) * 100))} size="lg" radius="xl" /><Text size="xs" c="dimmed">Осталось: {bytes(Math.max(0, Number(stats.limit_bytes) - Number(stats.used_bytes)))}</Text></Stack>}
       <Text mt="sm" size="xs" c="dimmed">Трафик и время подключения относятся ко всей подписке. История по дням в этом разделе пока не собирается.</Text>
