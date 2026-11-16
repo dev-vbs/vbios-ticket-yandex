@@ -58,6 +58,16 @@
 @media(max-width:380px){.vpn-language{display:none}.vpn-header__actions{gap:6px}.vpn-brand{font-size:18px}.vpn-workspace{padding-inline:14px}}
 @media(prefers-reduced-motion:reduce){.vpn-cabinet *,.vpn-cabinet *::before{scroll-behavior:auto!important;transition:none!important;animation:none!important}}
 
+/* Polished cabinet surface: a calm workspace with a clearer visual hierarchy. */
+.vpn-cabinet.cabinet-shell{background:radial-gradient(circle at 82% -12%,color-mix(in srgb,var(--ui-accent) 9%,transparent),transparent 34%),var(--ui-page)}
+.vpn-cabinet .vpn-header{background:color-mix(in srgb,var(--ui-surface) 92%,transparent);backdrop-filter:blur(14px)}
+.vpn-brand__symbol{box-shadow:0 8px 18px color-mix(in srgb,var(--ui-accent) 28%,transparent)}
+.vpn-sidebar{background:linear-gradient(160deg,#1f3150 0%,#172438 72%,#142033 100%);box-shadow:0 18px 34px rgba(18,35,61,.16)}
+.vpn-sidebar__nav a{transition:background-color .18s ease,color .18s ease,transform .18s ease}.vpn-sidebar__nav a:hover{transform:translateX(2px)}
+.vpn-cabinet :is(.cabinet-panel,.dashboard-funds,.vpn-finance-panel,.service-overview-card,.profile-card,.ticket-list-panel,.ticket-chat-panel){box-shadow:0 10px 30px rgba(31,50,79,.055)!important}
+.vpn-cabinet :is(.cabinet-panel,.dashboard-funds,.vpn-finance-panel,.service-overview-card,.profile-card,.ticket-list-panel,.ticket-chat-panel){transition:border-color .18s ease,box-shadow .18s ease,transform .18s ease}
+.vpn-cabinet :is(.cabinet-panel,.dashboard-funds,.vpn-finance-panel,.service-overview-card,.profile-card):hover{box-shadow:0 14px 36px rgba(31,50,79,.09)!important}
+
 .vpn-cabinet .cabinet-panel { margin: 0; }
 .vpn-cabinet .page-header__title { font-size: clamp(24px, 3vw, 30px); line-height: 1.2; }
 .vpn-cabinet .services-summary { padding: 12px 16px; border: 1px solid var(--cabinet-border); border-radius: 12px; }
