@@ -344,14 +344,22 @@ export default function Login() {
     setLoading(true);
     try {
       const returnUrl = `${window.location.origin}${window.location.pathname}`;
-      const params = new URLSearchParams({
+      const response = await auth.telegramOidcInit({
         profile: telegramProfile,
-        register_if_not_exists: registerEnabled ? '1' : '0',
+        register_if_not_exists: registerEnabled ? 1 : 0,
         return_url: returnUrl,
       });
-      window.location.href = `/shm/v1/telegram/web/auth/start?${params.toString()}`;
-    } catch {
-      notifications.show({ title: t('common.error'), message: t('auth.telegramAuthError'), color: 'red' });
+      const raw = response.data?.data ?? response.data;
+      const payload = Array.isArray(raw) ? raw[0] : raw;
+      const problem = response.data?.error || payload?.error;
+      if (problem || !payload?.auth_url) throw new Error(typeof problem === 'string' ? problem : 'Telegram OIDC: сервер не вернул адрес входа. Проверьте настройки профиля бота.');
+      const destination = new URL(payload.auth_url);
+      if (destination.origin !== 'https://oauth.telegram.org') throw new Error('Telegram OIDC: недопустимый адрес авторизации.');
+      window.location.assign(destination.href);
+    } catch (error) {
+      const detail = (error as { response?: { data?: { error?: unknown } } }).response?.data?.error;
+      const message = typeof detail === 'string' ? detail : error instanceof Error ? error.message : t('auth.telegramAuthError');
+      notifications.show({ title: t('common.error'), message, color: 'red', autoClose: 10000 });
       setLoading(false);
     }
   };

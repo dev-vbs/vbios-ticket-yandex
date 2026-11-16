@@ -840,6 +840,11 @@ sub telegram_oidc_init {
 
     $args{profile} ||= 'telegram_bot';
 
+    # OIDC must request openid even when a caller supplies a custom scope.
+    my %scopes = map { $_ => 1 } grep { length } split /\s+/, ($args{scope} || '');
+    $scopes{openid} = 1;
+    $args{scope} = join ' ', sort keys %scopes;
+
     if ( $args{bind_to_profile} ) {
         my %headers = parse_headers;
         $args{session_id} ||= $headers{HTTP_SESSION_ID};
@@ -1016,6 +1021,10 @@ sub telegram_oidc_exchange_code {
         code => $args{code},
         redirect_uri => $args{redirect_uri},
         client_id => $client_id,
+        # Telegram accepts client_secret_post as well as HTTP Basic. Sending
+        # the secret in the form keeps the exchange compatible with proxies
+        # that strip Authorization headers and with Telegram's Web Login docs.
+        client_secret => $client_secret,
     );
     $form{code_verifier} = $args{code_verifier} if defined $args{code_verifier} && $args{code_verifier} ne '';
 
@@ -1023,15 +1032,12 @@ sub telegram_oidc_exchange_code {
         uri_escape($_) . '=' . uri_escape( defined $form{$_} ? $form{$_} : '' )
     } sort keys %form;
 
-    my $credentials = encode_base64("$client_id:$client_secret", '');
-
     my $response = $self->http_transport->http(
         method => 'post',
         url => $self->telegram_oauth_server . '/token',
         content_type => 'application/x-www-form-urlencoded',
         headers => {
             Accept => 'application/json',
-            Authorization => "Basic $credentials",
         },
         content => $content,
     );
@@ -1045,8 +1051,12 @@ sub telegram_oidc_exchange_code {
     }
 
     my $json = decode_json( $response->decoded_content );
+    # Some gateways wrap OAuth data in `data`; accept that shape without
+    # relaxing verification of the JWT itself.
+    $json = $json->{data} if ref($json) eq 'HASH' && ref($json->{data}) eq 'HASH';
     unless ( ref $json eq 'HASH' && $json->{id_token} ) {
-        report->error('Telegram OIDC token response has no id_token');
+        my $hint = ref($json) eq 'HASH' && $json->{access_token} ? ' (access_token-only response; проверьте scope=openid и Client ID/Secret Telegram)' : '';
+        report->error('Telegram OIDC token response has no id_token' . $hint);
         return undef;
     }
 
