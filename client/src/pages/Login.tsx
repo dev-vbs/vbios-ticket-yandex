@@ -1,8 +1,8 @@
 import './Login.css';
 import { useAuthOptions } from '../hooks/useAuthOptions';
 import { useEffect, useRef, useState } from 'react';
-import { Card, Text, Stack, Button, ActionIcon, TextInput, PasswordInput, Divider, Title, Center, Modal, Group, Loader, useMantineColorScheme, useComputedColorScheme, Checkbox, Tooltip } from '@mantine/core';
-import { useMediaQuery } from '@mantine/hooks';
+import { Card, Text, Stack, Button, ActionIcon, TextInput, PasswordInput, Divider, Title, Modal, Group, Loader, useMantineColorScheme, useComputedColorScheme, Checkbox, Tooltip } from '@mantine/core';
+
 import { useForm, isEmail, hasLength } from '@mantine/form';
 import { IconLogin, IconUserPlus, IconHeadset, IconFingerprint, IconShieldLock, IconBrandTelegram, IconMailForward, IconLock, IconMoon, IconSun, IconAt, IconKey, IconSparkles } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
@@ -67,6 +67,8 @@ export default function Login() {
       setMode('register');
     }
   }, [registerEnabled]);
+  const [authOpen, setAuthOpen] = useState(() => new URLSearchParams(location.search).has('register'));
+  const isMobile = window.matchMedia('(max-width: 768px)').matches;
   const [loading, setLoading] = useState(false);
   const [passkeyLoading, setPasskeyLoading] = useState(false);
   const [loginOrEmail, setLoginOrEmail] = useState('');
@@ -87,7 +89,7 @@ export default function Login() {
   const [docModalTitle, setDocModalTitle] = useState('');
   const { setUser, setTelegramPhoto } = useStore();
   const { t } = useTranslation();
-  const isMobile = useMediaQuery('(max-width: 768px)');
+
   const modeRef = useRef(mode);
   modeRef.current = mode;
   const form = useForm({
@@ -495,7 +497,24 @@ export default function Login() {
   };
 
   return (
-    <Center className="auth-screen" style={{ minHeight: '100svh', paddingTop: 24, paddingBottom: isMobile ? 88 : 24, position: 'relative' }}>
+        <div className="welcome-page">
+      <a className="welcome-skip" href="#welcome-main">К содержанию</a>
+      <header className="welcome-header welcome-wrap">
+        <a className="welcome-brand" href="#welcome-main">{config.LOGO_URL && <img src={config.LOGO_URL} alt="" />}<span>{config.APP_NAME}</span></a>
+        <nav aria-label="Основное меню"><a href="#welcome-benefits">Возможности</a><a href="#welcome-connection">Подключение</a><a href="#welcome-questions">Вопросы</a></nav>
+        <Group gap="xs"><ThemeToggle /><LanguageSwitcher /><Button onClick={() => { setMode('login'); setAuthOpen(true); }}>Войти</Button></Group>
+      </header>
+      <main id="welcome-main" className="welcome-wrap">
+        <section className="welcome-hero">
+          <div className="welcome-copy"><p className="welcome-intro">VPN для ваших устройств</p><h1>Раз, два, три.<br /><span>Вы на связи.</span></h1><p className="welcome-description">{config.APP_DESCRIPTION || 'Подключение, подписки и помощь — в одном личном кабинете. На телефоне, планшете и компьютере.'}</p><div className="welcome-actions"><Button size="lg" onClick={() => { setMode(registerEnabled ? 'register' : 'login'); setAuthOpen(true); }}>{registerEnabled ? 'Начать пользоваться' : 'Войти в кабинет'}</Button><Button size="lg" variant="default" onClick={() => { setMode('login'); setAuthOpen(true); }}>У меня уже есть аккаунт</Button></div><p className="welcome-compatibility">iPhone · Android · Windows · macOS</p></div>
+          <div className="welcome-visual" aria-label="Подключение в три шага"><div className="welcome-visual-line" /><div className="welcome-flow welcome-flow-one"><span>01</span><IconKey size={28} /><div><strong>Ваш личный кабинет</strong><small>Подписки и оплата в одном месте</small></div></div><div className="welcome-flow welcome-flow-two"><span>02</span><IconAt size={28} /><div><strong>Добавьте подписку</strong><small>В приложение на вашем устройстве</small></div></div><div className="welcome-flow welcome-flow-three"><span>03</span><IconShieldLock size={28} /><div><strong>Включите подключение</strong><small>Выберите сервер в приложении</small></div></div><p>Три шага — и можно подключаться.</p></div>
+        </section>
+        <section id="welcome-benefits" className="welcome-benefits"><div><h2>Всё нужное.<br />Под рукой.</h2><p>Управляйте своим подключением без лишних действий.</p></div><article><IconKey size={26} /><h3>Ваши подписки</h3><p>Срок действия, продление и ссылка подключения — в карточке услуги.</p></article><article><IconShieldLock size={26} /><h3>Ваши устройства</h3><p>Просматривайте привязки и управляйте устройствами в кабинете.</p></article><article><IconHeadset size={26} /><h3>Помощь рядом</h3><p>Инструкции для приложений и обращения в поддержку в одном месте.</p></article></section>
+        <section id="welcome-connection" className="welcome-connection"><h2>Подключиться проще,<br />чем кажется.</h2><ol><li><b>1</b><h3>Создайте аккаунт</h3><p>Войдите удобным способом и выберите услугу в кабинете.</p></li><li><b>2</b><h3>Добавьте подписку</h3><p>Установите приложение и добавьте ссылку из карточки услуги.</p></li><li><b>3</b><h3>Включите VPN</h3><p>Выберите сервер и подтвердите подключение на устройстве.</p></li></ol></section>
+        <section id="welcome-questions" className="welcome-faq"><div><h2>Остались вопросы?</h2><p>Самое нужное перед первым входом.</p></div><div><details><summary>Как войти в личный кабинет?</summary><p>Нажмите «Войти». Используйте логин и пароль или доступный способ входа через Telegram, Passkey либо другой сервис.</p></details><details><summary>Где посмотреть тарифы и оплатить?</summary><p>После входа откройте «Мои услуги». Доступные предложения и способы оплаты отображаются в кабинете.</p></details><details><summary>Как добавить подписку в приложение?</summary><p>Выберите активную услугу и нажмите «Добавить в приложение». Подробная инструкция находится в разделе «Помощь».</p></details><details><summary>Забыл пароль — что делать?</summary><p>Откройте форму входа и нажмите «Забыли пароль?». Следуйте инструкции восстановления.</p></details></div></section>
+      </main>
+      <footer className="welcome-footer welcome-wrap"><strong>{config.APP_NAME}</strong><div>{config.SUPPORT_LINK && <button type="button" onClick={handleSupportLink}>Поддержка</button>}{legalLinks.map(link => <a key={link.href} href={link.href} target="_blank" rel="noopener noreferrer">{link.label}</a>)}</div></footer>
+      <Modal opened={authOpen} onClose={() => setAuthOpen(false)} centered size={460} padding={0} withCloseButton title={mode === 'login' ? 'Личный кабинет' : 'Создать аккаунт'} className="welcome-auth-modal">
       <Card className="auth-card" withBorder radius="md" p="xl" w={400}>
         <Stack gap="lg">
           <Group className="auth-toolbar" justify="space-between" align="center">
@@ -765,6 +784,7 @@ export default function Login() {
           )}
         </Stack>
       </Card>
+      </Modal>
 
       <Modal
         opened={showOtp}
@@ -931,6 +951,6 @@ export default function Login() {
           </Button>
         )
       )}
-    </Center>
+    </div>
   );
 }
