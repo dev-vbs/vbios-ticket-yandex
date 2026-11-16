@@ -843,6 +843,7 @@ sub telegram_oidc_init {
     # OIDC must request openid even when a caller supplies a custom scope.
     my %scopes = map { $_ => 1 } grep { length } split /\s+/, ($args{scope} || '');
     $scopes{openid} = 1;
+    $scopes{profile} = 1; # Telegram Bot API user id is `id`, not OIDC `sub`.
     $args{scope} = join ' ', sort keys %scopes;
 
     if ( $args{bind_to_profile} ) {
@@ -2217,7 +2218,16 @@ sub web_auth {
         my $name = $claims->{name} || '';
         my ( $first_name, $last_name ) = split /\s+/, $name, 2;
 
-        $in{id} = $claims->{id} || $claims->{sub};
+        # OIDC sub is a separate identifier and must never be used as a Bot
+        # API user/chat id. Only the signed profile claim proves this value.
+        my $telegram_id = $claims->{id};
+        unless (defined($telegram_id) && !ref($telegram_id)
+            && "$telegram_id" =~ /\A[1-9][0-9]{0,15}\z/
+            && $telegram_id <= 4503599627370495) {
+            report->error('Telegram OIDC profile has no valid Telegram user id; sign in again with scope=openid profile');
+            return undef;
+        }
+        $in{id} = "$telegram_id";
         $in{username} = $claims->{preferred_username} if defined $claims->{preferred_username};
         $in{first_name} = defined $claims->{given_name} ? $claims->{given_name} : ( $first_name || '' );
         $in{last_name} = defined $claims->{family_name} ? $claims->{family_name} : ( $last_name || '' );
