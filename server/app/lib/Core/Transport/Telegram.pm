@@ -1115,11 +1115,11 @@ sub verify_telegram_oidc_id_token {
     }
     my $kid = $header->{kid};
     my $alg = $header->{alg} || '';
-    # Telegram restricts EdDSA/ES256K to openid-only tokens. This cabinet
-    # requires profile.id for linking the identity to the Bot API account.
-    my %allowed_alg = map { $_ => 1 } qw(RS256 ES256);
+    # Accept every algorithm advertised by Telegram. The signed claims are
+    # still validated below; profile.id is required before an account is used.
+    my %allowed_alg = map { $_ => 1 } qw(RS256 ES256 ES256K EdDSA);
     unless ($allowed_alg{$alg}) {
-        report->error('Telegram OIDC: выберите RS256 или ES256 в BotFather → Login Widget → Advanced → Signing algorithm. Для входа нужен профиль Telegram; EdDSA и ES256K поддерживают только openid.');
+        report->error('Telegram OIDC id_token has unsupported signing algorithm');
         return undef;
     }
 
@@ -1137,14 +1137,13 @@ sub verify_telegram_oidc_id_token {
             ref $_ eq 'HASH'
                 && (!defined $kid || ($_->{kid} || '') eq $kid)
                 && (!$_->{alg} || $_->{alg} eq $alg)
-                && (!$_->{use} || $_->{use} eq 'sig')
         } @{ $jwks || [] };
         for my $jwk (@keys) {
             my $decoded = eval {
                 jwt_decode(
                     token => $id_token,
                     key => $jwk,
-                    accepted_alg => [qw(RS256 ES256)],
+                    accepted_alg => [qw(RS256 ES256 ES256K EdDSA)],
                     verify_exp => 0,
                     verify_iat => 0,
                     verify_nbf => 1,

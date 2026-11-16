@@ -21,7 +21,7 @@ use Test::More;
       my %args = @_;
       push @attempts, $args{key}{kid};
       die 'signature mismatch' unless $args{key}{valid};
-      die 'unexpected algorithms' unless join(',', @{$args{accepted_alg}}) eq 'RS256,ES256';
+      die 'unexpected algorithms' unless join(',', @{$args{accepted_alg}}) eq 'RS256,ES256,ES256K,EdDSA';
       return $claims;
   }
 }
@@ -48,7 +48,7 @@ $OidcVerifier::keys = [{kid => 'old', valid => 1}];
 ok(verify(), 'rotated signing key is fetched');
 is_deeply(\@OidcVerifier::requests, [0,1], 'one forced JWKS refresh');
 is_deeply(\@OidcVerifier::attempts, ['new'], 'unrelated kid is never used');
-for my $alg ('EdDSA', 'ES256K', 'none', '') {
+for my $alg ('none', '') {
     reset_case(); $OidcVerifier::header->{alg} = $alg;
     ok(!verify(), 'openid-only or unsafe algorithm is rejected');
     is(scalar @OidcVerifier::requests, 0, 'no key request for unsupported algorithm');
