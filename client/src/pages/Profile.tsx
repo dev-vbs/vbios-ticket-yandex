@@ -287,7 +287,7 @@ export default function Profile() {
 
   const handleTelegramOidcBind = async (event: any) => {
     event.preventDefault();
-    if (!profile) return;
+    if (!profile || telegramWaitingOpen) return;
 
     setTelegramWaitingOpen(true);
     try {
@@ -297,15 +297,19 @@ export default function Profile() {
       });
       const raw = response.data?.data ?? response.data;
       const result = Array.isArray(raw) ? raw[0] : raw;
+      const problem = response.data?.error || result?.error;
+      if (problem || !result?.auth_url) throw new Error(typeof problem === 'string' ? problem : 'Telegram OIDC: сервер не вернул адрес привязки. Проверьте настройки профиля бота.');
       const destination = new URL(result?.auth_url);
-      if (destination.origin !== 'https://oauth.telegram.org') throw new Error('Invalid Telegram authorization URL');
+      if (destination.origin !== 'https://oauth.telegram.org') throw new Error('Telegram OIDC: недопустимый адрес авторизации.');
       window.location.assign(destination.href);
-    } catch {
+    } catch (error) {
       setTelegramWaitingOpen(false);
+      const detail = (error as { response?: { data?: { error?: unknown } } }).response?.data?.error;
       notifications.show({
         title: t('common.error'),
-        message: t('auth.telegramBindError'),
+        message: typeof detail === 'string' ? detail : error instanceof Error ? error.message : t('auth.telegramBindError'),
         color: 'red',
+        autoClose: 10000,
       });
     }
   };
@@ -795,7 +799,7 @@ export default function Profile() {
                 {t('profile.telegramUnbind')}
               </Button>
             ) : (
-              <Button size="xs" variant="light" onClick={handleTelegramOidcBind}>
+              <Button size="xs" variant="light" onClick={handleTelegramOidcBind} loading={telegramWaitingOpen}>
                 {t('profile.telegramAuthLink')}
               </Button>
             )}
