@@ -98,6 +98,12 @@ state $routes //= {
         },
     },
 },
+'/apps' => {
+    GET => {
+        params => {}, controller => 'Config', method => 'api_data_by_apps',
+        swagger => { summary => 'Приложения и инструкции для подключения' },
+    },
+},
 '/user/captcha' => {
     swagger => { tags => 'Капча' },
     GET => {

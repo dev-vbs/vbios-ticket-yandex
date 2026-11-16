@@ -1,0 +1,12 @@
+{
+  "name": "HAPP",
+  "description": "Приложение для подключения к VPN на телефоне и компьютере.",
+  "docs": "https://docs.happ.info/main/ru",
+  "download_url": "https://happ.info/download",
+  "platforms": [
+    {"name": "Android", "download_url": "https://happ.info/download", "steps": ["Установите HAPP с официальной страницы.", "В «Моих услугах» нажмите «Добавить в приложение» или скопируйте ссылку в HAPP.", "Выберите сервер, подтвердите разрешение VPN и включите подключение."]},
+    {"name": "iPhone и iPad", "steps": ["Установите HAPP из App Store по ссылке с официального сайта.", "Добавьте подписку из карточки услуги в кабинете.", "Разрешите добавление VPN-профиля и включите подключение."]},
+    {"name": "Windows", "steps": []},
+    {"name": "macOS", "steps": []}
+  ]
+}

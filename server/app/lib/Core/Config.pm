@@ -124,6 +124,34 @@ sub all_data_by_name {
 
 sub api_data_by_company { shift->data_by_name('company') };
 
+sub api_data_by_apps {
+    my $self = shift;
+    my $cfg = $self->data_by_name('apps') || {};
+    my @apps = ref($cfg) eq 'ARRAY' ? @$cfg
+        : ref($cfg) eq 'HASH' && exists($cfg->{name}) ? ($cfg)
+        : ref($cfg) eq 'HASH' ? map { ref($cfg->{$_}) eq 'HASH' ? +{ name => $_, %{$cfg->{$_}} } : () } sort keys %$cfg
+        : ();
+    my @result;
+    for my $app (@apps) {
+        next unless ref($app) eq 'HASH' && ($app->{enabled} // 1);
+        my %public;
+        for my $field (qw(name description docs download_url)) {
+            $public{$field} = $app->{$field} if defined($app->{$field}) && !ref($app->{$field});
+        }
+        next unless $public{name};
+        my @platforms;
+        for my $platform (@{ref($app->{platforms}) eq 'ARRAY' ? $app->{platforms} : []}) {
+            next unless ref($platform) eq 'HASH';
+            my %item = map { defined($platform->{$_}) && !ref($platform->{$_}) ? ($_ => $platform->{$_}) : () } qw(name download_url);
+            $item{steps} = [grep { defined($_) && !ref($_) } @{ref($platform->{steps}) eq 'ARRAY' ? $platform->{steps} : []}];
+            push @platforms, \%item if $item{name};
+        }
+        $public{platforms} = \@platforms;
+        push @result, \%public;
+    }
+    return { apps => \@result };
+}
+
 sub delete {
     my $self = shift;
     my %args = @_;

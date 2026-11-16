@@ -529,3 +529,7 @@ docker compose exec api wget -qO- http://127.0.0.1/shm/healthcheck.cgi
 ![Мобильная карточка услуги — обновлённый вид](docs/screenshots/mobile-service-v2.png)
 
 ![Главный экран — обновлённый вид](docs/screenshots/dashboard-v2.png)
+
+## Настройка страницы помощи
+
+Страница /help получает приложения и инструкции из конфигурации SHM с ключом apps. [Инструкция и форматы](docs/help-apps.md), [готовый пример JSON](docs/apps-config.example.json).
