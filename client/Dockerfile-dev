@@ -1,11 +1,11 @@
-FROM --platform=$BUILDPLATFORM node:20-alpine AS node
+FROM --platform=$BUILDPLATFORM node:22-alpine AS node
 
 WORKDIR /app
 ENTRYPOINT ["/vite-entry.sh"]
 EXPOSE 5173
 
 COPY package*.json ./
-RUN npm install
+RUN npm ci
 
 # Копируем основные файлы для Vite
 COPY index.html ./
