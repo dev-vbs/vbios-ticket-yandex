@@ -1020,6 +1020,10 @@ sub telegram_oidc_exchange_code {
         code => $args{code},
         redirect_uri => $args{redirect_uri},
         client_id => $client_id,
+        # Explicitly repeat the requested scopes at the token endpoint. Some
+        # Telegram Login clients otherwise return only OIDC core claims and
+        # omit the profile `id` claim needed for Bot API identity.
+        scope => 'openid profile',
     );
     $form{code_verifier} = $args{code_verifier} if defined $args{code_verifier} && $args{code_verifier} ne '';
 
