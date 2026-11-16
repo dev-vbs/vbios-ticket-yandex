@@ -2130,6 +2130,17 @@ sub webapp_auth {
     };
 }
 
+sub _telegram_oidc_user_id {
+    my ($claims) = @_;
+    return undef unless ref($claims) eq 'HASH';
+    # Identity comes only from verified Telegram claims. `sub` is never a
+    # Bot API id, even if it happens to be a short decimal string.
+    my $id = $claims->{id} // $claims->{user_id} // $claims->{telegram_id};
+    return undef unless defined($id) && !ref($id)
+        && "$id" =~ /\A[1-9][0-9]{0,15}\z/ && $id <= 4503599627370495;
+    return "$id";
+}
+
 sub web_auth {
     my $self = shift;
     my %args = (
@@ -2220,15 +2231,8 @@ sub web_auth {
 
         # OIDC sub is a separate identifier and must never be used as a Bot
         # API user/chat id. Only the signed profile claim proves this value.
-        # Telegram documents `id` for the profile scope. Keep aliases for
-        # older Telegram Login responses, but never fall back to OIDC `sub`:
-        # `sub` is not the Bot API user/chat id.
-        my $telegram_id = $claims->{id};
-        $telegram_id = $claims->{user_id} if !defined($telegram_id);
-        $telegram_id = $claims->{telegram_id} if !defined($telegram_id);
-        unless (defined($telegram_id) && !ref($telegram_id)
-            && "$telegram_id" =~ /\A[1-9][0-9]{0,15}\z/
-            && $telegram_id <= 4503599627370495) {
+        my $telegram_id = _telegram_oidc_user_id($claims);
+        unless (defined($telegram_id)) {
             # Log structure only, after JWT verification. Never log the JWT,
             # claim values, account identifiers or credentials.
             my @fields = sort grep { /\A[A-Za-z_][A-Za-z0-9_]{0,63}\z/ } keys %$claims;
