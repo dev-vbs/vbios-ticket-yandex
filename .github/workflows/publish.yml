@@ -7,6 +7,11 @@ on:
   pull_request:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      telegram_chat_id:
+        description: 'ID группы/канала/чата для уведомления (например, -1001234567890)'
+        required: false
+        type: string
 
 permissions:
   contents: read
@@ -113,7 +118,7 @@ jobs:
       - name: Send Telegram notification
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          TELEGRAM_CHAT_ID: ${{ inputs.telegram_chat_id || secrets.TELEGRAM_CHAT_ID || vars.TELEGRAM_CHAT_ID }}
           REPOSITORY: ${{ github.repository }}
           BRANCH: ${{ github.ref_name }}
           COMMIT_SHA: ${{ github.sha }}
