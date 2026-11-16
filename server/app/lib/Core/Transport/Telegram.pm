@@ -1021,10 +1021,6 @@ sub telegram_oidc_exchange_code {
         code => $args{code},
         redirect_uri => $args{redirect_uri},
         client_id => $client_id,
-        # Explicitly repeat the requested scopes at the token endpoint. Some
-        # Telegram Login clients otherwise return only OIDC core claims and
-        # omit the profile `id` claim needed for Bot API identity.
-        scope => 'openid profile',
     );
     $form{code_verifier} = $args{code_verifier} if defined $args{code_verifier} && $args{code_verifier} ne '';
 
@@ -1111,13 +1107,19 @@ sub verify_telegram_oidc_id_token {
     my $id_token = $args{id_token};
     return undef unless $id_token;
 
-    my ($header_b64) = split /\./, $id_token;
-    my $header = decode_json( decode_base64url( $header_b64 ) ) || {};
+    my @parts = split /\./, $id_token, -1;
+    my $header = @parts == 3 ? eval { decode_json(decode_base64url($parts[0])) } : undef;
+    unless (ref $header eq 'HASH') {
+        report->error('Telegram OIDC id_token is malformed');
+        return undef;
+    }
     my $kid = $header->{kid};
     my $alg = $header->{alg} || '';
-    my %allowed_alg = map { $_ => 1 } qw(RS256 ES256 ES256K EdDSA);
-    unless (!$header->{alg} || $allowed_alg{$alg}) {
-        report->error('Telegram OIDC id_token has unsupported signing algorithm');
+    # Telegram restricts EdDSA/ES256K to openid-only tokens. This cabinet
+    # requires profile.id for linking the identity to the Bot API account.
+    my %allowed_alg = map { $_ => 1 } qw(RS256 ES256);
+    unless ($allowed_alg{$alg}) {
+        report->error('Telegram OIDC: выберите RS256 или ES256 в BotFather → Login Widget → Advanced → Signing algorithm. Для входа нужен профиль Telegram; EdDSA и ES256K поддерживают только openid.');
         return undef;
     }
 
@@ -1127,31 +1129,33 @@ sub verify_telegram_oidc_id_token {
         return undef;
     }
 
-    my $jwks = $self->telegram_oidc_jwks;
-    my @keys = grep { ref $_ eq 'HASH' && ( !$kid || ( $_->{kid} || '' ) eq $kid ) } @{ $jwks || [] };
-    @keys = @{ $jwks || [] } unless @keys;
-
     my $claims;
-    for my $jwk ( @keys ) {
-        next unless ref $jwk eq 'HASH';
-
-        my $decoded;
-        my $ok = eval {
-            $decoded = jwt_decode(
-                token => $id_token,
-                key => $jwk,
-                accepted_alg => [qw(RS256 ES256 ES256K EdDSA)],
-                verify_exp => 0,
-                verify_iat => 0,
-                verify_nbf => 0,
-            );
-            1;
-        };
-
-        if ( $ok ) {
-            $claims = $decoded;
-            last;
+    # Retry once with fresh keys when Telegram rotates its signing key.
+    for my $refresh (0, 1) {
+        my $jwks = $self->telegram_oidc_jwks(refresh => $refresh);
+        my @keys = grep {
+            ref $_ eq 'HASH'
+                && (!defined $kid || ($_->{kid} || '') eq $kid)
+                && (!$_->{alg} || $_->{alg} eq $alg)
+                && (!$_->{use} || $_->{use} eq 'sig')
+        } @{ $jwks || [] };
+        for my $jwk (@keys) {
+            my $decoded = eval {
+                jwt_decode(
+                    token => $id_token,
+                    key => $jwk,
+                    accepted_alg => [qw(RS256 ES256)],
+                    verify_exp => 0,
+                    verify_iat => 0,
+                    verify_nbf => 1,
+                );
+            };
+            if (ref $decoded eq 'HASH') {
+                $claims = $decoded;
+                last;
+            }
         }
+        last if $claims;
     }
 
     unless ( ref $claims eq 'HASH' ) {
@@ -2261,7 +2265,7 @@ sub web_auth {
                 : 'out_of_range';
             logger->error('Telegram OIDC profile diagnostic: id_status=' . $reason
                 . '; claim_names=' . join(',', @fields));
-            report->error('Telegram OIDC profile has no valid Telegram user id; sign in again with scope=openid profile');
+            report->error('Telegram OIDC: Telegram не передал ID профиля. В BotFather → Login Widget → Advanced выберите RS256 или ES256, затем начните вход заново. Требуется scope=openid profile.');
             return undef;
         }
         $in{id} = "$telegram_id";

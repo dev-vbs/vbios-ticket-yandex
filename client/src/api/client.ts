@@ -320,11 +320,10 @@ export const servicesApi = {
 };
 
 export const telegramApi = {
-  bindWidget: (state: string, identity: { id: number; first_name: string; last_name?: string; username?: string; photo_url?: string; auth_date: number; hash: string }) => api.post('/telegram/web/auth', { ...identity, state, bind_to_profile: 1 }),
   getSettings: () => api.get('/telegram/user'),
   updateSettings: (data: Record<string, unknown>) => api.post('/telegram/user', data),
   unbindAccount: () => api.delete('/telegram/user'),
-  initOidc: (params: { return_url: string; profile?: string; widget_binding?: number }) => api.get('/telegram/web/auth/init', {
+  initOidc: (params: { return_url: string; profile?: string }) => api.get('/telegram/web/auth/init', {
     params: {
       bind_to_profile: 1,
       register_if_not_exists: 0,

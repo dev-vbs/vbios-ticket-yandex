@@ -10,12 +10,12 @@ import { useTranslation } from 'react-i18next';
 import { auth, passkeyApi, userApi, telegramSessionId } from '../api/client';
 import { setCookie, getResetTokenCookie, removeResetTokenCookie, parseAndSaveResetToken } from '../api/cookie';
 import { useStore } from '../store/useStore';
-import TelegramLoginButton, { TelegramUser } from '../components/TelegramLoginButton';
+
 import { config } from '../config';
 import { useTelegramWebApp } from '../hooks/useTelegramWebApp';
 import LanguageSwitcher from '../components/LanguageSwitcher';
 import DocumentModal from '../components/DocumentModal';
-import { hasTelegramWebAppAutoAuth, hasTelegramWidget, hasTelegramWebAppAuth } from '../constants/webapp';
+import { hasTelegramWebAppAutoAuth, hasTelegramWebAppAuth } from '../constants/webapp';
 
 function isPdf(value: string) {
   return value.toLowerCase().endsWith('.pdf');
@@ -364,31 +364,6 @@ export default function Login() {
     }
   };
 
-  const handleTelegramWidgetAuth = async (telegramUser: TelegramUser) => {
-    setLoading(true);
-    try {
-      await auth.telegramWidgetAuth({
-          ...telegramUser,
-          register_if_not_exists: registerEnabled ? 1 : 0,
-          profile: telegramProfile,
-        });
-      const userResponse = await auth.getCurrentUser();
-      const responseData = userResponse.data.data;
-      const userData = Array.isArray(responseData) ? responseData[0] : responseData;
-      setUser(userData);
-
-      if (telegramUser.photo_url) {
-        setTelegramPhoto(telegramUser.photo_url);
-      }
-
-      notifications.show({ title: t('common.success'), message: t('auth.telegramAuth'), color: 'green' });
-    } catch {
-      notifications.show({ title: t('common.error'), message: t('auth.telegramAuthError'), color: 'red' });
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleTelegramWebAppAuth = async () => {
     if (!telegramWebApp?.initData) {
       notifications.show({ title: t('common.error'), message: t('auth.telegramAuthError'), color: 'red' });
@@ -565,10 +540,10 @@ export default function Login() {
             </>
           )}
 
-          {loginEnabled && (telegramEnabled || hasTelegramWidget) && (
+          {loginEnabled && telegramEnabled && (
             <>
               <div className="auth-social-section">
-              {telegramEnabled && !hasTelegramWidget && (
+              {telegramEnabled && (
                 <Button
                   color="blue"
                   leftSection={<IconBrandTelegram size={18} />}
@@ -581,17 +556,6 @@ export default function Login() {
               )}
 
 
-
-              {hasTelegramWidget && (
-                <Center>
-                  <TelegramLoginButton
-                    botName={config.TELEGRAM_BOT_NAME}
-                    onAuth={handleTelegramWidgetAuth}
-                    buttonSize="large"
-                    requestAccess="write"
-                  />
-                </Center>
-              )}
 
               <Divider label={t('common.or')} labelPosition="center" />
               </div>

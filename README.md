@@ -187,23 +187,42 @@ test -n "$TICKET_S3_SECRET_KEY" && echo SECRET_OK || echo SECRET_MISSING
 
 ## 9. Telegram-бот и группа
 
-### Вход и привязка Telegram, если OIDC не возвращает ID
+### Вход, регистрация и привязка через Telegram OIDC
 
-Если лог содержит `id_status=missing; claim_names=aud,exp,iat,iss,nonce,sub`, токен OIDC не содержит реального Telegram ID. Значение `sub` нельзя записывать как ID пользователя бота. Для входа, регистрации и привязки в профиле используйте Telegram Login Widget с проверкой подписи ботом.
+Кабинет использует Authorization Code Flow с PKCE S256, одноразовым state и nonce. Подпись JWT проверяется ключами Telegram, также проверяются issuer, audience и срок действия. Реальный Telegram ID берётся из `id` подписанного профиля, а не из `sub`.
 
-1. В @BotFather выполните `/setdomain`, выберите своего бота и задайте домен кабинета, например `pbalka.ru`.
-2. В `/opt/shm/.env` задайте следующие параметры (замените имя бота на своё, без `@`):
+1. Откройте мини-приложение @BotFather, выберите бота → **Login Widget**.
+2. В **Allowed URLs** добавьте оба адреса (замените домен своим):
+   - `https://pbalka.ru`
+   - `https://pbalka.ru/shm/v1/telegram/web/callback`
+3. В **Advanced → Signing algorithm** выберите **RS256** (рекомендуется) или **ES256**. **EdDSA и ES256K поддерживают только `openid`, без `profile` и реального Telegram ID.** Именно поэтому токен может содержать только `aud,exp,iat,iss,nonce,sub` несмотря на запрошенный `profile`.
+4. Получите **Client ID** и **Client Secret** в этом же разделе BotFather. Client Secret — отдельный секрет OIDC, это не токен бота.
+5. В конфигурации `telegram` SHM дополните свой существующий профиль (сохраните его токен и остальные параметры):
 
-```dotenv
-TELEGRAM_BOT_NAME=vBios_BOT
-TELEGRAM_BOT_AUTH_PROFILE=vBios_BOT
-TELEGRAM_BOT_AUTH_ENABLE=true
-TELEGRAM_OIDC_AUTH_ENABLE=false
+```json
+{
+  "vBios_BOT": {
+    "token": "BOT_TOKEN",
+    "oidc_enabled": true,
+    "client_id": "CLIENT_ID_FROM_BOTFATHER",
+    "client_secret": "CLIENT_SECRET_FROM_BOTFATHER"
+  }
+}
 ```
 
-`TELEGRAM_BOT_NAME` — username бота в Telegram. `TELEGRAM_BOT_AUTH_PROFILE` — имя профиля транспорта SHM, в котором хранится токен именно этого бота; эти два имени могут отличаться. Не публикуйте токен и не добавляйте его в клиентские переменные. Для регистрации новых пользователей регистрация должна быть разрешена в настройках SHM.
+Секреты хранятся только на сервере. Не вставляйте их в клиентские переменные и не публикуйте. Client ID относится к приложению/боту, а не к личному ID пользователя.
 
-3. Обновите файлы Compose из репозитория и дождитесь успешной публикации образов GitHub Actions, затем выполните:
+6. В `/opt/shm/.env` установите:
+
+```dotenv
+TELEGRAM_BOT_AUTH_PROFILE=vBios_BOT
+TELEGRAM_BOT_AUTH_ENABLE=false
+TELEGRAM_OIDC_AUTH_ENABLE=true
+```
+
+Имя профиля должно совпадать с ключом в конфигурации `telegram`. Для регистрации новых пользователей регистрация должна быть разрешена в настройках SHM. Имя бота и `/setdomain` старого iframe Widget не заменяют настройки Allowed URLs OIDC.
+
+7. Обновите файлы Compose из репозитория. После успешной публикации образов в GitHub Actions выполните:
 
 ```bash
 cd /opt/shm
@@ -212,10 +231,11 @@ docker compose up -d --force-recreate client core
 docker compose ps
 ```
 
-4. Обновите страницу кабинета. Проверьте вход через Telegram, затем привязку в разделе «Профиль → Telegram». Должен сохраняться реальный числовой Telegram ID. Для привязки нужно войти в кабинет; одноразовое состояние привязки ограничено текущим браузером и сессией.
+8. Откройте `/login` заново, без старых параметров callback, обновите страницу и проверьте вход, затем «Профиль → Telegram». После изменения алгоритма в BotFather нужно начать новую авторизацию: старый токен не изменится.
 
-Изменение значений по умолчанию в Compose не переопределяет существующий `.env`: обязательно проверьте его. Если виджет сообщает `Bot domain invalid`, исправьте домен в @BotFather. При ошибке подписи проверьте, что токен профиля SHM принадлежит боту из `TELEGRAM_BOT_NAME`. OIDC остаётся доступен отдельно, однако отсутствие Telegram ID в его подписанных claims не обходится подстановкой `sub`.
+Если `client_id/client_secret is not configured`, проверьте профиль и отдельные OIDC credentials. Если не приходит `id`, проверьте **RS256/ES256** и начните вход заново с `openid profile`. Отдельного UserInfo endpoint Telegram не предоставляет. При ошибке `redirect_uri` проверьте точное совпадение callback с Allowed URLs, включая HTTPS, домен и путь. Неверная подпись не обходится: проверьте credentials приложения и актуальность образа core. Не отправляйте токены, cookie и Client Secret в переписку.
 
+Официальная документация: https://core.telegram.org/bots/telegram-login#openid-connect
 
 1. Откройте `@BotFather`.
 2. Создайте бота.
