@@ -1130,14 +1130,22 @@ sub verify_telegram_oidc_id_token {
     }
 
     my $claims;
+    my $matching_keys = 0;
     # Retry once with fresh keys when Telegram rotates its signing key.
     for my $refresh (0, 1) {
         my $jwks = $self->telegram_oidc_jwks(refresh => $refresh);
-        my @keys = grep {
+        my @compatible = grep {
             ref $_ eq 'HASH'
-                && (!defined $kid || ($_->{kid} || '') eq $kid)
                 && (!$_->{alg} || $_->{alg} eq $alg)
         } @{ $jwks || [] };
+        my @keys = defined($kid)
+            ? grep { ($_->{kid} || '') eq $kid } @compatible
+            : @compatible;
+        # Some Telegram responses have omitted/changed kid during key
+        # rotation. The algorithm and cryptographic signature still decide;
+        # try every compatible public key instead of failing before verify.
+        @keys = @compatible unless @keys;
+        $matching_keys = scalar @keys;
         for my $jwk (@keys) {
             my $decoded = eval {
                 jwt_decode(
@@ -1158,7 +1166,7 @@ sub verify_telegram_oidc_id_token {
     }
 
     unless ( ref $claims eq 'HASH' ) {
-        report->error('Telegram OIDC id_token signature verification failed');
+        report->error('Telegram OIDC id_token signature verification failed (matching_keys=' . $matching_keys . ')');
         return undef;
     }
 
