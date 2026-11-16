@@ -2224,6 +2224,17 @@ sub web_auth {
         unless (defined($telegram_id) && !ref($telegram_id)
             && "$telegram_id" =~ /\A[1-9][0-9]{0,15}\z/
             && $telegram_id <= 4503599627370495) {
+            # Log structure only, after JWT verification. Never log the JWT,
+            # claim values, account identifiers or credentials.
+            my @fields = sort grep { /\A[A-Za-z_][A-Za-z0-9_]{0,63}\z/ } keys %$claims;
+            splice(@fields, 40) if @fields > 40;
+            my $reason = !exists($claims->{id}) ? 'missing'
+                : !defined($telegram_id) ? 'null'
+                : ref($telegram_id) ? 'non_scalar'
+                : "$telegram_id" !~ /\A[1-9][0-9]{0,15}\z/ ? 'invalid_decimal_format'
+                : 'out_of_range';
+            logger->error('Telegram OIDC profile diagnostic: id_status=' . $reason
+                . '; claim_names=' . join(',', @fields));
             report->error('Telegram OIDC profile has no valid Telegram user id; sign in again with scope=openid profile');
             return undef;
         }
