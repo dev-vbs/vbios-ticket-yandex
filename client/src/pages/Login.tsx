@@ -59,6 +59,7 @@ function ThemeToggle() {
 
 export default function Login() {
   const { loginEnabled, registerEnabled, captchaEnabled, telegramEnabled, telegramProfile, providers } = useAuthOptions();
+  const colorScheme = useComputedColorScheme('dark');
   const [mode, setMode] = useState<'login' | 'register'>('login');
   useEffect(() => { if (!registerEnabled) setMode('login'); }, [registerEnabled]);
   useEffect(() => {
@@ -499,7 +500,7 @@ export default function Login() {
   };
 
   return (
-        <div className="welcome-page">
+        <div className="welcome-page" data-theme={colorScheme}>
       <a className="welcome-skip" href="#welcome-main">К содержанию</a>
       <header className="welcome-header welcome-wrap">
         <a className="welcome-brand" href="#welcome-main">{config.LOGO_URL && <img src={config.LOGO_URL} alt="" />}<span>{main.name || config.APP_NAME}</span></a>
@@ -515,7 +516,7 @@ export default function Login() {
         <section id="welcome-connection" className="welcome-connection"><h2>{main.connection_title || 'Начать проще, чем кажется.'}</h2><ol>{(main.steps || [{title:'Создайте аккаунт',description:'Войдите удобным способом.'},{title:'Выберите услугу',description:'Доступные предложения находятся в кабинете.'},{title:'Активируйте сервис',description:'Следуйте инструкции выбранной услуги.'}]).map((item: {title: string; description: string}, i: number) => <li key={i}><b>{i+1}</b><h3>{item.title}</h3><p>{item.description}</p></li>)}</ol></section>
         <section id="welcome-questions" className="welcome-faq"><div><h2>{main.faq_title || 'Остались вопросы?'}</h2><p>{main.faq_description || 'Самое нужное перед первым входом.'}</p></div><div>{(main.faq || [{title:'Как войти в кабинет?',description:'Нажмите «Войти» и используйте доступный способ авторизации.'},{title:'Где посмотреть услуги?',description:'После входа откройте «Мои услуги».'},{title:'Забыл пароль — что делать?',description:'В форме входа нажмите «Забыли пароль?».'}]).map((item: {title: string; description: string}, i: number) => <details key={i}><summary>{item.title}</summary><p>{item.description}</p></details>)}</div></section>      </main>
       <footer className="welcome-footer welcome-wrap"><strong>{main.name || config.APP_NAME}</strong><div>{config.SUPPORT_LINK && <button type="button" onClick={handleSupportLink}>Поддержка</button>}{legalLinks.map(link => <a key={link.href} href={link.href} target="_blank" rel="noopener noreferrer">{link.label}</a>)}</div></footer>
-      <Modal opened={authOpen} onClose={() => setAuthOpen(false)} centered size={460} padding={0} withCloseButton title={mode === 'login' ? 'Личный кабинет' : 'Создать аккаунт'} className="welcome-auth-modal">
+      <Modal opened={authOpen} onClose={() => setAuthOpen(false)} centered size={460} padding={0} withCloseButton title={mode === 'login' ? 'Личный кабинет' : 'Создать аккаунт'} className={`welcome-auth-modal welcome-auth-modal-${colorScheme}`}>
       <Card className="auth-card" withBorder radius="md" p="xl" w={400}>
         <Stack gap="lg">
           <Group className="auth-toolbar" justify="space-between" align="center">
