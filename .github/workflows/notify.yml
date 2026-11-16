@@ -10,7 +10,6 @@ permissions:
 
 jobs:
   telegram:
-    if: github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -27,6 +26,10 @@ jobs:
           BRANCH: ${{ github.event.workflow_run.head_branch }}
         run: |
           set -euo pipefail
+          if [[ "${{ github.event.workflow_run.conclusion }}" != "success" || "${{ github.event.workflow_run.head_branch }}" != "main" ]]; then
+            echo "The published workflow did not complete successfully on main; notification skipped."
+            exit 0
+          fi
           if [[ -z "${TELEGRAM_BOT_TOKEN}" || -z "${TELEGRAM_CHAT_ID}" ]]; then
             echo "Telegram secrets are not configured; notification skipped."
             exit 0
