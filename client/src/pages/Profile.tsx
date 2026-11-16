@@ -16,6 +16,7 @@ import SecuritySettings from '../components/security/SecuritySettings';
 import { DEFAULT_AVATAR_URL, useStore } from '../store/useStore';
 import { config } from '../config';
 import { hasTelegramWidget } from '../constants/webapp';
+import TelegramLoginButton, { type TelegramUser } from '../components/TelegramLoginButton';
 import './Profile.css';
 
 const RESEND_COOLDOWN_MS = 3 * 60 * 1000;
@@ -82,6 +83,7 @@ export default function Profile() {
   const [telegramId, setTelegramId] = useState<string | null>(null);
   const [telegramLoading, setTelegramLoading] = useState(false);
   const [telegramWaitingOpen, setTelegramWaitingOpen] = useState(false);
+  const [telegramBindState, setTelegramBindState] = useState<string | null>(null);
   const [payModalOpen, setPayModalOpen] = useState(false);
   const [payModalAmount, setPayModalAmount] = useState<number | undefined>(undefined);
 
@@ -290,14 +292,20 @@ export default function Profile() {
     if (!profile || telegramWaitingOpen) return;
 
     setTelegramWaitingOpen(true);
+    setTelegramBindState(null);
     try {
       const response = await telegramApi.initOidc({
         return_url: `${window.location.origin}${window.location.pathname}`,
         profile: telegramProfile,
+        ...(hasTelegramWidget ? { widget_binding: 1 } : {}),
       });
       const raw = response.data?.data ?? response.data;
       const result = Array.isArray(raw) ? raw[0] : raw;
       const problem = response.data?.error || result?.error;
+      if (!problem && hasTelegramWidget && result?.state) {
+        setTelegramBindState(result.state);
+        return;
+      }
       if (problem || !result?.auth_url) throw new Error(typeof problem === 'string' ? problem : 'Telegram OIDC: сервер не вернул адрес привязки. Проверьте настройки профиля бота.');
       const destination = new URL(result?.auth_url);
       if (destination.origin !== 'https://oauth.telegram.org') throw new Error('Telegram OIDC: недопустимый адрес авторизации.');
@@ -311,6 +319,25 @@ export default function Profile() {
         color: 'red',
         autoClose: 10000,
       });
+    }
+  };
+
+  const handleWidgetBind = async (identity: TelegramUser) => {
+    if (!telegramBindState) return;
+    const state = telegramBindState;
+    setTelegramBindState(null);
+    try {
+      const response = await telegramApi.bindWidget(state, identity);
+      const raw = response.data?.data ?? response.data;
+      const result = Array.isArray(raw) ? raw[0] : raw;
+      const problem = response.data?.error || result?.error;
+      if (problem) throw new Error(typeof problem === 'string' ? problem : 'Не удалось привязать Telegram.');
+      await loadTelegramSettings();
+      notifications.show({ color: 'green', message: 'Telegram привязан.' });
+    } catch (error) {
+      notifications.show({ color: 'red', message: error instanceof Error ? error.message : 'Не удалось привязать Telegram. Повторите попытку.' });
+    } finally {
+      setTelegramWaitingOpen(false);
     }
   };
 
@@ -843,7 +870,7 @@ export default function Profile() {
         closeOnEscape
       >
         <Stack gap="sm" align="center" py="sm">
-          <Loader size="sm" />
+          {telegramBindState ? <TelegramLoginButton botName={config.TELEGRAM_BOT_NAME} onAuth={handleWidgetBind} /> : <Loader size="sm" />}
           <Text size="sm" ta="center">
             {t('profile.telegramWaitDescription')}
           </Text>

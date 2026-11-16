@@ -369,7 +369,8 @@ export default function Login() {
     try {
       await auth.telegramWidgetAuth({
           ...telegramUser,
-          register_if_not_exists: 1,
+          register_if_not_exists: registerEnabled ? 1 : 0,
+          profile: telegramProfile,
         });
       const userResponse = await auth.getCurrentUser();
       const responseData = userResponse.data.data;
@@ -567,7 +568,7 @@ export default function Login() {
           {loginEnabled && (telegramEnabled || hasTelegramWidget) && (
             <>
               <div className="auth-social-section">
-              {telegramEnabled && (
+              {telegramEnabled && !hasTelegramWidget && (
                 <Button
                   color="blue"
                   leftSection={<IconBrandTelegram size={18} />}
@@ -579,7 +580,7 @@ export default function Login() {
                 </Button>
               )}
 
-              {telegramEnabled && hasTelegramWidget && <Divider label={t('common.or')} labelPosition="center" />}
+
 
               {hasTelegramWidget && (
                 <Center>

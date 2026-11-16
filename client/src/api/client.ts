@@ -93,6 +93,7 @@ export const auth = {
     bind_to_profile?: number;
     uid?: number;
     register_if_not_exists?: number;
+    profile?: string;
   }) => {
     const partnerId = getPartnerCookie();
     const bindingSession = userData.bind_to_profile ? getCookie() : null;
@@ -101,7 +102,7 @@ export const auth = {
     }
     const response = await api.post('/telegram/web/auth', {
       ...userData,
-      profile: config.TELEGRAM_BOT_AUTH_PROFILE,
+      profile: userData.profile || config.TELEGRAM_BOT_AUTH_PROFILE,
       ...(partnerId && { partner_id: partnerId }),
       ...(userData.bind_to_profile && { bind_to_profile: userData.bind_to_profile }),
       ...(bindingSession && { session_id: bindingSession }),
@@ -319,10 +320,11 @@ export const servicesApi = {
 };
 
 export const telegramApi = {
+  bindWidget: (state: string, identity: { id: number; first_name: string; last_name?: string; username?: string; photo_url?: string; auth_date: number; hash: string }) => api.post('/telegram/web/auth', { ...identity, state, bind_to_profile: 1 }),
   getSettings: () => api.get('/telegram/user'),
   updateSettings: (data: Record<string, unknown>) => api.post('/telegram/user', data),
   unbindAccount: () => api.delete('/telegram/user'),
-  initOidc: (params: { return_url: string; profile?: string }) => api.get('/telegram/web/auth/init', {
+  initOidc: (params: { return_url: string; profile?: string; widget_binding?: number }) => api.get('/telegram/web/auth/init', {
     params: {
       bind_to_profile: 1,
       register_if_not_exists: 0,

@@ -2136,6 +2136,7 @@ state $routes //= {
     },
     GET => {
         params => {
+            widget_binding         => { type => 'boolean' },
             profile                => { type => 'string' },
             redirect_uri           => { type => 'string' },
             return_url             => { type => 'string' },

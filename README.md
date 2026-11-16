@@ -187,6 +187,36 @@ test -n "$TICKET_S3_SECRET_KEY" && echo SECRET_OK || echo SECRET_MISSING
 
 ## 9. Telegram-бот и группа
 
+### Вход и привязка Telegram, если OIDC не возвращает ID
+
+Если лог содержит `id_status=missing; claim_names=aud,exp,iat,iss,nonce,sub`, токен OIDC не содержит реального Telegram ID. Значение `sub` нельзя записывать как ID пользователя бота. Для входа, регистрации и привязки в профиле используйте Telegram Login Widget с проверкой подписи ботом.
+
+1. В @BotFather выполните `/setdomain`, выберите своего бота и задайте домен кабинета, например `pbalka.ru`.
+2. В `/opt/shm/.env` задайте следующие параметры (замените имя бота на своё, без `@`):
+
+```dotenv
+TELEGRAM_BOT_NAME=vBios_BOT
+TELEGRAM_BOT_AUTH_PROFILE=vBios_BOT
+TELEGRAM_BOT_AUTH_ENABLE=true
+TELEGRAM_OIDC_AUTH_ENABLE=false
+```
+
+`TELEGRAM_BOT_NAME` — username бота в Telegram. `TELEGRAM_BOT_AUTH_PROFILE` — имя профиля транспорта SHM, в котором хранится токен именно этого бота; эти два имени могут отличаться. Не публикуйте токен и не добавляйте его в клиентские переменные. Для регистрации новых пользователей регистрация должна быть разрешена в настройках SHM.
+
+3. Обновите файлы Compose из репозитория и дождитесь успешной публикации образов GitHub Actions, затем выполните:
+
+```bash
+cd /opt/shm
+docker compose pull client core
+docker compose up -d --force-recreate client core
+docker compose ps
+```
+
+4. Обновите страницу кабинета. Проверьте вход через Telegram, затем привязку в разделе «Профиль → Telegram». Должен сохраняться реальный числовой Telegram ID. Для привязки нужно войти в кабинет; одноразовое состояние привязки ограничено текущим браузером и сессией.
+
+Изменение значений по умолчанию в Compose не переопределяет существующий `.env`: обязательно проверьте его. Если виджет сообщает `Bot domain invalid`, исправьте домен в @BotFather. При ошибке подписи проверьте, что токен профиля SHM принадлежит боту из `TELEGRAM_BOT_NAME`. OIDC остаётся доступен отдельно, однако отсутствие Telegram ID в его подписанных claims не обходится подстановкой `sub`.
+
+
 1. Откройте `@BotFather`.
 2. Создайте бота.
 3. Сохраните токен в конфигурации Telegram-профиля SHM.

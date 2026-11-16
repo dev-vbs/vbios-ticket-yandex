@@ -868,7 +868,7 @@ sub telegram_oidc_init {
     }
     my $client_id = $self->telegram_oidc_client_id( profile => $args{profile} );
 
-    unless ( $client_id ) {
+    unless ( $client_id || ($args{widget_binding} && $args{bind_to_profile}) ) {
         report->error('Telegram OIDC client_id is not configured');
         return undef;
     }
@@ -888,6 +888,7 @@ sub telegram_oidc_init {
         register_if_not_exists => $args{register_if_not_exists} ? 1 : 0,
         bind_to_profile => $args{bind_to_profile} ? 1 : 0,
         bind_only_if_new => $args{bind_only_if_new} ? 1 : 0,
+        widget_binding => ($args{widget_binding} && $args{bind_to_profile}) ? 1 : 0,
         ( defined $args{session_id} ? ( session_id => $args{session_id} ) : () ),
     };
 
@@ -897,7 +898,7 @@ sub telegram_oidc_init {
     my $auth_url = sprintf(
         '%s/auth?client_id=%s&redirect_uri=%s&response_type=code&scope=%s&state=%s&nonce=%s&code_challenge=%s&code_challenge_method=S256',
         $self->telegram_oauth_server,
-        uri_escape($client_id),
+        uri_escape($client_id || ''),
         uri_escape($redirect_uri),
         uri_escape($args{scope}),
         uri_escape($state),
@@ -906,7 +907,7 @@ sub telegram_oidc_init {
     );
 
     return {
-        auth_url => $auth_url,
+        auth_url => $ctx->{widget_binding} ? undef : $auth_url,
         state => $state,
         nonce => $nonce,
         code_challenge => $code_challenge,
@@ -2157,6 +2158,18 @@ sub web_auth {
     );
 
     $args{profile} ||= 'telegram_bot';
+
+    if ($args{bind_to_profile} && $args{state} && !$args{code} && !$args{id_token}) {
+        my $ctx = Core::Auth::Base::resolve_callback_state($self, \%args, 'tg_oidc_state');
+        unless ($ctx && $ctx->{widget_binding} && $ctx->{bind_to_profile}) {
+            report->status(400);
+            report->error('Invalid or expired Telegram binding state');
+            return undef;
+        }
+        my %identity = map { exists($args{$_}) ? ($_ => $args{$_}) : () }
+            qw(id first_name last_name username photo_url auth_date hash);
+        %args = (%$ctx, %identity);
+    }
 
     # Widget linking must present a bearer session explicitly; never bind using
     # an ambient browser cookie on a request carrying somebody else's identity.
