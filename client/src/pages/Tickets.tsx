@@ -268,18 +268,40 @@ export default function Tickets() {
   const [searchQuery, setSearchQuery] = useState('');
   const ticketButtonRefs = useRef<Record<number, HTMLButtonElement | null>>({});
   const messagesViewportRef = useRef<HTMLDivElement>(null);
+  const messagesContentRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
     if (messagesViewportRef.current) {
-      messagesViewportRef.current.scrollTo({ top: messagesViewportRef.current.scrollHeight, behavior: 'smooth' });
+      messagesViewportRef.current.scrollTo({ top: messagesViewportRef.current.scrollHeight, behavior: 'instant' });
     }
   };
 
   const latestMessageId = selectedTicket?.messages?.[selectedTicket.messages.length - 1]?.message_id;
 
   useEffect(() => {
-    if (latestMessageId) scrollToBottom();
-  }, [latestMessageId]);
+    const frame = requestAnimationFrame(scrollToBottom);
+    return () => cancelAnimationFrame(frame);
+  }, [latestMessageId, selectedTicket?.ticket_id, ticketOpen, ticketLoading]);
+
+  useEffect(() => {
+    const viewport = messagesViewportRef.current;
+    const content = messagesContentRef.current;
+    if (!viewport || !content) return;
+    let pinned = true;
+    const onScroll = () => {
+      pinned = viewport.scrollHeight - viewport.scrollTop - viewport.clientHeight < 80;
+    };
+    const observer = new ResizeObserver(() => {
+      if (pinned) scrollToBottom();
+    });
+    observer.observe(content);
+    observer.observe(viewport);
+    viewport.addEventListener('scroll', onScroll, { passive: true });
+    return () => {
+      observer.disconnect();
+      viewport.removeEventListener('scroll', onScroll);
+    };
+  }, [selectedTicket?.ticket_id, ticketOpen, ticketLoading]);
 
   const loadTickets = useCallback(async () => {
     setLoading(true);
@@ -840,7 +862,7 @@ export default function Tickets() {
         <Divider />
 
         <ScrollArea style={{ flex: 1 }} offsetScrollbars viewportRef={messagesViewportRef}>
-          <Stack gap="sm" pr="xs">
+          <Stack gap="sm" pr="xs" ref={messagesContentRef}>
             {(selectedTicket.messages || []).map((message) => {
               const isAdmin = String(message.is_admin) === 'true' || String(message.is_admin) === '1';
               return (
@@ -902,10 +924,11 @@ export default function Tickets() {
                 value={replyMessage}
                 onChange={(event) => setReplyMessage(event.currentTarget.value.slice(0, MAX_MESSAGE_LENGTH))}
                 onKeyDown={(event) => {
-                  if (event.key !== 'Enter' || event.shiftKey || event.nativeEvent.isComposing) return;
+                  if (event.key !== 'Enter' || event.shiftKey || event.nativeEvent.isComposing || event.nativeEvent.keyCode === 229) return;
                   event.preventDefault();
-                  if (!sending) void sendMessage();
+                  if (!event.repeat && !sending && (replyMessage.trim() || replyFiles.length)) void sendMessage();
                 }}
+                enterKeyHint="send"
                 aria-label={t('tickets.messagePlaceholder')}
                 maxLength={MAX_MESSAGE_LENGTH}
                 autosize
