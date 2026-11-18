@@ -4,6 +4,7 @@ use parent 'Core::Base';
 use Core::Base;
 use Core::System::ServiceManager qw(get_service);
 use Core::Utils qw(decode_json now);
+use Data::Validate::IP qw(is_ipv4 is_ipv6);
 
 sub _cfg {
     my $self = shift;
@@ -40,10 +41,13 @@ sub api_monitor {
     for my $item (@$visible) {
         next unless ref($item) eq 'HASH' && $item->{uuid};
         my $node = $nodes{$item->{uuid}};
+        my $ip = $item->{ping_ip};
+        my $ip_url = defined($ip) && !ref($ip) && is_ipv4($ip) ? 'https://'.$ip.'/ping'
+            : defined($ip) && !ref($ip) && is_ipv6($ip) ? 'https://['.$ip.']/ping' : undef;
         push @public, {
             name => substr($item->{title} || 'Сервер', 0, 100),
             country => substr($item->{description} || '', 0, 100),
-            ping_url => ($item->{ping_url} && !ref($item->{ping_url}) && $item->{ping_url} =~ m{^https://[^\s\@]+$}) ? $item->{ping_url} : ($item->{ping_ip} && !ref($item->{ping_ip}) && $item->{ping_ip} =~ m{^[0-9a-fA-F:.]+$} ? 'https://'.$item->{ping_ip}.'/ping' : undef),
+            ping_url => ($item->{ping_url} && !ref($item->{ping_url}) && $item->{ping_url} =~ m{^https://[^\s\@]+$}) ? $item->{ping_url} : $ip_url,
             status => !$node ? 'unknown' : $node->{isDisabled} ? 'maintenance' : $node->{isConnected} ? 'online' : 'offline',
         };
         last if @public >= 30;
