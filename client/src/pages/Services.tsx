@@ -7,8 +7,8 @@ import { useDisclosure, useClipboard } from '@mantine/hooks';
 import { useTranslation } from 'react-i18next';
 import { api, servicesApi, storageApi, userApi } from '../api/client';
 import { notifications } from '@mantine/notifications';
-import PayModal from '../components/PayModal';
-import QrModal from '../components/QrModal';
+const PayModal = lazy(() => import('../components/PayModal'));
+const QrModal = lazy(() => import('../components/QrModal'));
 import AppDownloadBlock from '../components/AppDownloadBlock';
 const OrderServiceModal = lazy(() => import('../components/OrderServiceModal'));
 const RemnawaveFeatures = lazy(() => import('../components/RemnawaveFeatures'));
@@ -544,13 +544,13 @@ function ServiceDetail({ service, onDelete, onChangeTariff }: ServiceDetailProps
                 )}
               </Stack>
             </Paper>
-            <QrModal opened={qrModalOpen} onClose={() => setQrModalOpen(false)} data={isVpn ? (storageData || '') : (subscriptionUrl || '')} title={isVpn ? t('services.vpnQrTitle') : t('services.subscriptionQrTitle')} onDownload={isVpn ? downloadConfig : undefined} />
+            {qrModalOpen && <Suspense fallback={<Text role="status">Открываем QR-код…</Text>}><QrModal opened={qrModalOpen} onClose={() => setQrModalOpen(false)} data={isVpn ? (storageData || '') : (subscriptionUrl || '')} title={isVpn ? t('services.vpnQrTitle') : t('services.subscriptionQrTitle')} onDownload={isVpn ? downloadConfig : undefined} /></Suspense>}
           </details>
         )}
       {isProxy && <HwidDevices key={service.user_service_id} serviceId={service.user_service_id} subscriptionUrl={subscriptionUrl} onAddSubscription={() => urlSchema ? void handleOpenUrlSchema() : handleConfigure()} />}
       {isProxy && <Suspense fallback={null}><RemnawaveFeatures serviceId={service.user_service_id} onRotated={url => { setSubscriptionUrl(url); setConnectionReload(v => v + 1); }} /></Suspense>}
       </div>
-      <PayModal opened={paymentOpen} onClose={() => setPaymentOpen(false)} initialAmount={payAmount > 0 ? payAmount : service.service.cost} />
+      {paymentOpen && <Suspense fallback={<Text role="status">Открываем оплату…</Text>}><PayModal opened={paymentOpen} onClose={() => setPaymentOpen(false)} initialAmount={payAmount > 0 ? payAmount : service.service.cost} /></Suspense>}
 
       {isNotPaid && <Text size="sm" c="dimmed">{forecastLoading ? 'Рассчитываем доплату…' : forecastTotal !== null ? 'Доплата по услуге: ' + forecastTotal.toFixed(2) + ' ₽' : 'Доплата пока неизвестна. Проверьте расчёт перед оплатой.'}</Text>}
 
