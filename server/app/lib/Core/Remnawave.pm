@@ -27,6 +27,28 @@ sub _configure_service {
 }
 sub _transport { get_service('Transport::Http') }
 sub found_rows { 1 }
+sub api_monitor {
+    my $self = shift;
+    my $main = get_service('config')->data_by_name('main') || {};
+    return { enabled => 0, nodes => [] } unless $main->{monitor_enabled};
+    my $visible = $main->{monitor_nodes};
+    return { enabled => 1, state => 'empty', nodes => [] } unless ref($visible) eq 'ARRAY' && @$visible;
+    my $response = eval { $self->_request(path => '/api/nodes') };
+    return { enabled => 1, state => 'unknown', nodes => [] } if $@ || ref($response) ne 'HASH' || ref($response->{response}) ne 'ARRAY';
+    my %nodes = map { ref($_) eq 'HASH' && $_->{uuid} ? ($_->{uuid} => $_) : () } @{$response->{response}};
+    my @public;
+    for my $item (@$visible) {
+        next unless ref($item) eq 'HASH' && $item->{uuid};
+        my $node = $nodes{$item->{uuid}};
+        push @public, {
+            name => substr($item->{title} || 'Сервер', 0, 100),
+            country => substr($item->{description} || '', 0, 100),
+            status => !$node ? 'unknown' : $node->{isDisabled} ? 'maintenance' : $node->{isConnected} ? 'online' : 'offline',
+        };
+        last if @public >= 30;
+    }
+    return { enabled => 1, state => 'ready', checked_at => time(), nodes => \@public };
+}
 sub _request {
     my ($self,%a)=@_; my $cfg=$self->_cfg;
     die 'Remnawave URL is not configured' unless $cfg->{url};

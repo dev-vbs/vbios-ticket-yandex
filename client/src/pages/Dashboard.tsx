@@ -1,15 +1,16 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { notifications } from '@mantine/notifications';
-import { userApi } from '../api/client';
+import { monitorApi, userApi } from '../api/client';
 import { useStore } from '../store/useStore';
-import { IconAlertCircle, IconArrowRight, IconCalendarEvent, IconCircleCheck, IconCreditCard, IconRefresh, IconServer, IconWallet, IconPlus, IconHeadset } from '@tabler/icons-react';
+import { IconAlertCircle, IconArrowRight, IconCalendarEvent, IconCircleCheck, IconCreditCard, IconRefresh, IconServer, IconWallet, IconPlus, IconHeadset, IconActivity } from '@tabler/icons-react';
 import PayModal from '../components/PayModal';
 import './Dashboard.css';
 
 type Payment = { amount?: number; sum?: number; cost?: number; money?: number; created?: string; date?: string };
 type Service = { user_service_id: number; status?: string; service?: { name?: string }; name?: string; expire?: string | null };
 type Forecast = { total?: number; dept?: number };
+type MonitorNode = { name: string; country?: string; status: 'online' | 'offline' | 'maintenance' | 'unknown' };
 const rubles = (value: number) => new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 2 }).format(value);
 const formatDate = (value?: string | null) => {
   const date = value ? new Date(value.replace(' ', 'T')) : null;
@@ -34,12 +35,14 @@ export default function Dashboard() {
   const [servicesUpdated, setServicesUpdated] = useState<Date | null>(null);
   const [paymentsUpdated, setPaymentsUpdated] = useState<Date | null>(null);
   const [payModalOpen, setPayModalOpen] = useState(false);
+  const [monitor, setMonitor] = useState<{ enabled?: boolean; state?: string; nodes?: MonitorNode[] }>({});
   const load = useCallback(async () => {
     setLoading(true);
-    const [servicesResult, paymentsResult, forecastResult] = await Promise.allSettled([userApi.getServices(), userApi.getPayments({ limit: 5, sort_field: 'created', sort_direction: 'desc', filter: { money: { '>': 0 } } }), userApi.getForecast()]);
+    const [servicesResult, paymentsResult, forecastResult, monitorResult] = await Promise.allSettled([userApi.getServices(), userApi.getPayments({ limit: 5, sort_field: 'created', sort_direction: 'desc', filter: { money: { '>': 0 } } }), userApi.getForecast(), monitorApi.get()]);
     if (servicesResult.status === 'fulfilled' && Array.isArray(servicesResult.value.data?.data)) { setServices(servicesResult.value.data.data); setServiceError(false); setServicesUpdated(new Date()); } else setServiceError(true);
     if (paymentsResult.status === 'fulfilled' && Array.isArray(paymentsResult.value.data?.data)) { setPayments(paymentsResult.value.data.data); setPaymentError(false); setPaymentsUpdated(new Date()); } else setPaymentError(true);
     if (forecastResult.status === 'fulfilled') { const data = forecastResult.value.data?.data; setForecast(Array.isArray(data) ? data[0] : data); setForecastError(false); } else setForecastError(true);
+    if (monitorResult.status === 'fulfilled') { const data = monitorResult.value.data?.data ?? monitorResult.value.data; setMonitor(Array.isArray(data) ? data[0] || {} : data || {}); }
     if (servicesResult.status === 'rejected') notifications.show({ title: 'Не удалось обновить кабинет', message: 'Проверьте соединение с сервером и повторите попытку.', color: 'red' });
     setLoading(false);
   }, []);
@@ -66,6 +69,7 @@ export default function Dashboard() {
       <Link to="/services" className="dashboard-stat dashboard-stat--warning"><span className="dashboard-stat__label">Истекают скоро</span><strong>{loading ? '—' : expiringServices.length}</strong><span className="dashboard-stat__hint">требуют внимания</span></Link>
       <Link to="/services" className="dashboard-stat dashboard-stat--muted"><span className="dashboard-stat__label">Приостановлены</span><strong>{loading ? '—' : blockedServices.length}</strong><span className="dashboard-stat__hint">проверить услуги</span></Link>
     </section>
+    {monitor.enabled && <section className="node-monitor" aria-labelledby="node-monitor-title"><div className="node-monitor__head"><div><span className="node-monitor__eyebrow"><IconActivity size={14} />Сеть</span><h2 id="node-monitor-title">Доступность серверов</h2></div><span className="node-monitor__live"><i />{monitor.state === 'ready' ? 'Работает' : 'Проверяем'}</span></div><div className="node-monitor__list">{(monitor.nodes || []).map((node) => <div className="node-monitor__row" key={node.name}><span className={`node-monitor__dot node-monitor__dot--${node.status}`} /><div><strong>{node.name}</strong><small>{node.country || 'Сервер Remnawave'}</small></div><span className={`node-monitor__status node-monitor__status--${node.status}`}>{node.status === 'online' ? 'РАБОТАЕТ' : node.status === 'maintenance' ? 'ТЕХРАБОТЫ' : node.status === 'offline' ? 'НЕДОСТУПЕН' : 'ПРОВЕРКА'}</span></div>)}</div></section>}
     <div className="dashboard-primary">
       <section className="dashboard-funds" aria-label="Баланс аккаунта">
         <div className="dashboard-section-label"><IconWallet size={18} />Ваш баланс</div>

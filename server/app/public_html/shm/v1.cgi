@@ -110,6 +110,12 @@ state $routes //= {
         swagger => { summary => 'Публичное содержимое стартовой страницы' },
     },
 },
+'/system/monitor' => {
+    GET => {
+        params => {}, skip_check_auth => 1, controller => 'Remnawave', method => 'api_monitor',
+        swagger => { summary => 'Публичные статусы выбранных серверов' },
+    },
+},
 '/user/captcha' => {
     swagger => { tags => 'Капча' },
     GET => {

@@ -207,6 +207,10 @@ export const userApi = {
   },
 };
 
+export const monitorApi = {
+  get: () => api.get('/system/monitor'),
+};
+
 export interface TicketMedia {
   id: number;
   name: string;

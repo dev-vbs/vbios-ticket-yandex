@@ -25,6 +25,13 @@
     nav_connection = 'Как начать'
     nav_questions = 'Вопросы'
     support_label = 'Поддержка'
+    monitor_enabled = 1
+    monitor_nodes = [
+        { uuid = 'REMNAWAVE_NODE_UUID_1' title = 'Москва' description = 'Россия' }
+        { uuid = 'REMNAWAVE_NODE_UUID_2' title = 'Франкфурт' description = 'Германия' }
+        { uuid = 'REMNAWAVE_NODE_UUID_3' title = 'Дронтен' description = 'Нидерланды' }
+        { uuid = 'REMNAWAVE_NODE_UUID_4' title = 'Рига' description = 'Латвия' }
+    ]
 
     visual_steps = [
         { title = 'Войдите' description = 'Используйте привычный способ авторизации.' }

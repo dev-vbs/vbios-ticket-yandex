@@ -130,16 +130,16 @@ sub api_data_by_main {
     my $cfg = $self->data_by_name('main');
     $cfg = {} unless ref($cfg) eq 'HASH';
     my %public;
-    for my $field (qw(name description logo_url support_url intro title accent_title primary_button login_button secondary_button compatibility visual_caption benefits_title benefits_description connection_title faq_title faq_description nav_benefits nav_connection nav_questions support_label login_title register_title)) {
+    for my $field (qw(name description logo_url support_url intro title accent_title primary_button login_button secondary_button compatibility visual_caption benefits_title benefits_description connection_title faq_title faq_description nav_benefits nav_connection nav_questions support_label login_title register_title monitor_enabled)) {
         $public{$field} = $cfg->{$field} if defined($cfg->{$field}) && !ref($cfg->{$field});
     }
-    for my $field (qw(visual_steps benefits steps faq documents)) {
+    for my $field (qw(visual_steps benefits steps faq documents monitor_nodes)) {
         next unless ref($cfg->{$field}) eq 'ARRAY';
         my @items;
         for my $item (@{$cfg->{$field}}) {
             next unless ref($item) eq 'HASH';
             my %entry = map { defined($item->{$_}) && !ref($item->{$_}) ? ($_ => $item->{$_}) : () }
-                ($field eq 'documents' ? qw(label url) : qw(title description));
+                ($field eq 'documents' ? qw(label url) : $field eq 'monitor_nodes' ? qw(uuid title description) : qw(title description));
             push @items, \%entry;
             last if @items >= 20;
         }
