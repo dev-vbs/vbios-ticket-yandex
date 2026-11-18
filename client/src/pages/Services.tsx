@@ -1,5 +1,5 @@
 import DataLoadStatus from '../components/DataLoadStatus';
-import { useState, useEffect, useRef } from 'react';
+import { lazy, Suspense, useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import { Card, Timeline, Text, Stack, Group, Badge, Button, Divider, ActionIcon, Loader, Center, Paper, Title, Menu, Code, Tooltip, Accordion, Box, Pagination, Alert, TextInput, Skeleton } from '@mantine/core';
 import { IconQrcode, IconCopy, IconCheck, IconDownload, IconRefresh, IconTrash, IconPlus, IconPlayerStop, IconExchange, IconWallet, IconDeviceMobileCog, IconArrowLeft, IconArrowRight, IconSearch, IconCalendarTime, IconWifi, IconWifiOff } from '@tabler/icons-react';
@@ -10,7 +10,7 @@ import { notifications } from '@mantine/notifications';
 import PayModal from '../components/PayModal';
 import QrModal from '../components/QrModal';
 import AppDownloadBlock from '../components/AppDownloadBlock';
-import OrderServiceModal from '../components/OrderServiceModal';
+const OrderServiceModal = lazy(() => import('../components/OrderServiceModal'));
 import ConfirmModal from '../components/ConfirmModal';
 import HwidDevices from '../components/HwidDevices';
 import { config } from '../config';
@@ -700,6 +700,7 @@ export default function Services() {
   const { serviceId } = useParams();
   const [services, setServices] = useState<UserService[]>([]);
   const loadedRef = useRef(false);
+  const fetchingRef = useRef(false);
   const [loadError, setLoadError] = useState(false);
   const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -724,10 +725,12 @@ export default function Services() {
   };
 
   const fetchServices = async (background = false) => {
+    if (fetchingRef.current) return;
+    fetchingRef.current = true;
     if (!background && !loadedRef.current) setLoading(true);
     setRefreshing(true);
     try {
-      const response = await api.get('/user/service', { params: { limit: 1000 } });
+      const response = await userApi.getServices();
       const raw: UserService[] = response.data?.data;
       if (!Array.isArray(raw)) throw new Error('Invalid services response');
       const data: UserService[] = raw.filter((item) => item && typeof item === 'object' && item.user_service_id != null).map((item: UserService & { category?: string; cost?: string | number; name?: string }) => ({
@@ -769,6 +772,7 @@ export default function Services() {
       setServices(roots);
       return roots;
     } finally {
+      fetchingRef.current = false;
       setLoading(false); setRefreshing(false);
     }
   };
@@ -970,16 +974,16 @@ export default function Services() {
         </Accordion>
       )}
 
-      <OrderServiceModal
+      {orderModalOpened && <Suspense fallback={<Loader size="sm" />}><OrderServiceModal
         opened={orderModalOpened}
         onClose={closeOrderModal}
         onOrderSuccess={() => {
           refreshAttemptsRef.current = 0;
           fetchServices();
         }}
-      />
+      /></Suspense>}
 
-      <OrderServiceModal
+      {changeModalOpened && <Suspense fallback={<Loader size="sm" />}><OrderServiceModal
         opened={changeModalOpened}
         onClose={() => {
           setChangeService(null);
@@ -1001,7 +1005,7 @@ export default function Services() {
           refreshAttemptsRef.current = 0;
           fetchServices();
         }}
-      />
+      /></Suspense>}
 
       <ConfirmModal
         opened={confirmEmailNotVerified}
