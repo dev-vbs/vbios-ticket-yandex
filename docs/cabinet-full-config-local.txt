@@ -1,0 +1,153 @@
+{{# Полный конфиг кабинета: транспорт local, администратор SHM. Сначала замените значения REPLACE и примерные ID. }}
+{{ settings = {
+    panel_url = 'https://remna.example.com'
+    api_token = 'REPLACE_WITH_API_TOKEN'
+    name_prefix = 'vBios_us_'
+    storage_prefix = 'vpn_mrzb_'
+    signing_key = 'REPLACE_WITH_OUTPUT_OF_OPENSSL_RAND_HEX_32'
+    tariff_ids = [10, 11]
+    addon_devices_id = 201
+    addon_traffic_id = 202
+    addon_location_id = 203
+    node_moscow = 'REPLACE_WITH_MOSCOW_NODE_UUID'
+    node_frankfurt = 'REPLACE_WITH_FRANKFURT_NODE_UUID'
+    squad_moscow = 'REPLACE_WITH_MOSCOW_INTERNAL_SQUAD_UUID'
+    squad_frankfurt = 'REPLACE_WITH_FRANKFURT_INTERNAL_SQUAD_UUID'
+    squad_paid = 'REPLACE_WITH_PAID_INTERNAL_SQUAD_UUID'
+    monitor_enabled = 1
+    server_choice_enabled = 1
+    addons_enabled = 1
+} }}
+
+{{# Проверки выполняются до записи конфигурации. }}
+{{ IF settings.panel_url == 'https://remna.example.com' || settings.api_token == 'REPLACE_WITH_API_TOKEN' }}
+{{ THROW configuration 'Замените panel_url и api_token на значения вашей панели Remnawave' }}
+{{ END }}
+{{ IF settings.monitor_enabled && (settings.node_moscow == 'REPLACE_WITH_MOSCOW_NODE_UUID' || settings.node_frankfurt == 'REPLACE_WITH_FRANKFURT_NODE_UUID') }}
+{{ THROW configuration 'Укажите UUID узлов для мониторинга либо monitor_enabled = 0' }}
+{{ END }}
+{{ IF settings.server_choice_enabled && (settings.squad_moscow == 'REPLACE_WITH_MOSCOW_INTERNAL_SQUAD_UUID' || settings.squad_frankfurt == 'REPLACE_WITH_FRANKFURT_INTERNAL_SQUAD_UUID') }}
+{{ THROW configuration 'Укажите UUID отдельных internal squads для выбора серверов' }}
+{{ END }}
+{{ IF settings.addons_enabled && (settings.signing_key == 'REPLACE_WITH_OUTPUT_OF_OPENSSL_RAND_HEX_32' || settings.squad_paid == 'REPLACE_WITH_PAID_INTERNAL_SQUAD_UUID') }}
+{{ THROW configuration 'Укажите signing_key и UUID отдельной платной группы либо addons_enabled = 0' }}
+{{ END }}
+
+{{ main = config.main || {} }}
+{{ main_values = {
+    name = 'vBios'
+    description = 'Личный кабинет, в котором всё уже готово: услуги, оплата, устройства и помощь.'
+    intro = 'Простой доступ к вашим услугам'
+    title = 'Всё важное'
+    accent_title = 'в одном кабинете.'
+    primary_button = 'Начать сейчас'
+    login_button = 'У меня уже есть аккаунт'
+    secondary_button = 'Войти'
+    compatibility = 'iPhone · Android · Windows · macOS'
+    visual_caption = 'Один вход — и всё под рукой.'
+    benefits_title = 'Пользоваться легко'
+    benefits_description = 'Откройте кабинет, выберите нужную услугу и сразу переходите к делу.'
+    connection_title = 'Начните за три простых шага.'
+    faq_title = 'Всё понятно с первого раза'
+    faq_description = 'Короткие ответы без сложных инструкций.'
+    nav_benefits = 'Возможности'
+    nav_connection = 'Как начать'
+    nav_questions = 'Вопросы'
+    support_label = 'Поддержка'
+    catalog = [
+        { title = 'Услуги и подписки' description = 'Выбор, подключение и продление в одном кабинете.' }
+        { title = 'Управление доступом' description = 'Настройки и инструкции для ваших устройств.' }
+        { title = 'Поддержка' description = 'История обращений и ответы специалистов всегда под рукой.' }
+    ]
+    plans = []
+    monitor_enabled = settings.monitor_enabled
+    monitor_nodes = [
+        { uuid = settings.node_moscow title = 'Москва' description = 'Россия' }
+        { uuid = settings.node_frankfurt title = 'Франкфурт' description = 'Германия' }
+    ]
+
+    visual_steps = [
+        { title = 'Войдите' description = 'Используйте привычный способ авторизации.' }
+        { title = 'Выберите услугу' description = 'Все доступные варианты уже собраны в кабинете.' }
+        { title = 'Пользуйтесь' description = 'Следуйте короткой инструкции — и всё готово.' }
+    ]
+
+    benefits = [
+        { title = 'Всё в одном месте' description = 'Услуги, срок действия и оплата собраны на одном экране.' }
+        { title = 'Без лишних шагов' description = 'Понятные кнопки и короткий путь к нужному действию.' }
+        { title = 'Помощь рядом' description = 'Ответы и поддержка доступны прямо из кабинета.' }
+    ]
+
+    steps = [
+        { title = 'Войдите в кабинет' description = 'Используйте удобный способ входа и откройте кабинет.' }
+        { title = 'Настройте услугу' description = 'Выберите подходящую услугу в разделе «Мои услуги».' }
+        { title = 'Настройте подключение' description = 'Откройте инструкцию для выбранного приложения.' }
+    ]
+
+    faq = [
+        { title = 'Как войти в кабинет?' description = 'Нажмите «Войти» и используйте доступный способ авторизации.' }
+        { title = 'Где управлять услугами и оплатой?' description = 'После входа откройте раздел «Мои услуги».' }
+        { title = 'Где получить помощь?' description = 'Откройте поддержку и создайте обращение.' }
+    ]
+} }}
+{{ main.name = main_values.name }}
+{{ main.description = main_values.description }}
+{{ main.intro = main_values.intro }}
+{{ main.title = main_values.title }}
+{{ main.accent_title = main_values.accent_title }}
+{{ main.primary_button = main_values.primary_button }}
+{{ main.login_button = main_values.login_button }}
+{{ main.secondary_button = main_values.secondary_button }}
+{{ main.compatibility = main_values.compatibility }}
+{{ main.visual_caption = main_values.visual_caption }}
+{{ main.benefits_title = main_values.benefits_title }}
+{{ main.benefits_description = main_values.benefits_description }}
+{{ main.connection_title = main_values.connection_title }}
+{{ main.faq_title = main_values.faq_title }}
+{{ main.faq_description = main_values.faq_description }}
+{{ main.nav_benefits = main_values.nav_benefits }}
+{{ main.nav_connection = main_values.nav_connection }}
+{{ main.nav_questions = main_values.nav_questions }}
+{{ main.support_label = main_values.support_label }}
+{{ main.catalog = main_values.catalog }}
+{{ main.plans = main_values.plans }}
+{{ main.monitor_enabled = main_values.monitor_enabled }}
+{{ main.monitor_nodes = main_values.monitor_nodes }}
+{{ main.visual_steps = main_values.visual_steps }}
+{{ main.benefits = main_values.benefits }}
+{{ main.steps = main_values.steps }}
+{{ main.faq = main_values.faq }}
+
+{{ remna = config.remna || {} }}
+{{ remna.url = settings.panel_url }}
+{{ remna.api_token = settings.api_token }}
+{{ remna.name_prefix = settings.name_prefix }}
+{{ remna.storage_prefix = settings.storage_prefix }}
+{{# Значения по умолчанию не заменяют лимиты уже существующих пользователей панели. 0 = безлимит. }}
+{{ IF !remna.exists('hwidDeviceLimit') }}{{ remna.hwidDeviceLimit = 3 }}{{ END }}
+{{ IF !remna.exists('hwid_reset_daily_limit') }}{{ remna.hwid_reset_daily_limit = 3 }}{{ END }}
+{{ IF !remna.time_zone }}{{ remna.time_zone = '+03:00' }}{{ END }}
+{{ IF !remna.exists('internal_squads') }}{{ remna.internal_squads = [] }}{{ END }}
+{{ IF !remna.exists('external_squad') }}{{ remna.external_squad = '' }}{{ END }}
+{{ remna.server_choices = [] }}
+{{ IF settings.server_choice_enabled }}
+{{ remna.server_choices = [
+    { key = 'moscow' title = 'Москва' tariff_ids = settings.tariff_ids squad_uuids = [settings.squad_moscow] }
+    { key = 'frankfurt' title = 'Франкфурт' tariff_ids = settings.tariff_ids squad_uuids = [settings.squad_frankfurt] }
+] }}
+{{ END }}
+{{ remna.addons = [] }}
+{{ IF settings.addons_enabled }}
+{{ remna.addon_signing_key = settings.signing_key }}
+{{ remna.addons = [
+    { key = 'devices_2' title = 'Ещё 2 устройства до окончания услуги' service_id = settings.addon_devices_id tariff_ids = settings.tariff_ids type = 'devices' amount = 2 }
+    { key = 'traffic_50' title = 'Ещё 50 ГБ к текущему лимиту' service_id = settings.addon_traffic_id tariff_ids = settings.tariff_ids type = 'traffic' amount = 53687091200 }
+    { key = 'location_extra' title = 'Дополнительная локация до окончания услуги' service_id = settings.addon_location_id tariff_ids = settings.tariff_ids type = 'locations' squad_uuid = settings.squad_paid }
+] }}
+{{ END }}
+
+{{ IF !config.main }}{{ r = user.srv('config').add(key = 'main') }}{{ END }}
+{{ IF !config.remna }}{{ r = user.srv('config').add(key = 'remna') }}{{ END }}
+{{ r = user.srv('config').id('main').set_json('value', main) }}
+{{ r = user.srv('config').id('remna').set_json('value', remna) }}
+Настройки сайта, Remnawave, выбора локаций и расширений сохранены. API-токен и ключ подписи в результат не выводятся. Проверьте SHM-услуги, SQL-журнал и локальное событие выдачи по инструкции.
