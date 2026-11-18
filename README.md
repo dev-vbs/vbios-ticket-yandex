@@ -1,8 +1,106 @@
+# vBios — личный кабинет для SHM
+
+Услуги, подписки, устройства, оплата и поддержка в одном интерфейсе. Светлая и тёмная темы, адаптивная мобильная версия и AJAX-форма входа.
+
+[Установка на сервер](#установка-vbios-shm-на-новый-сервер) · [Галерея скриншотов](docs/screenshots/README.md)
+
+## Превью личного кабинета
+
+Актуальные снимки интерфейса от 18 ноября 2026 года. Все данные демонстрационные: аккаунт, тарифы, баланс, сообщения и показатели мониторинга. Секреты и реальные ключи доступа не используются.
+
+| Тёмная тема | Светлая тема |
+| --- | --- |
+| ![Кабинет — тёмная тема](docs/screenshots/dashboard.png) | ![Кабинет — светлая тема](docs/screenshots/dashboard-light.png) |
+
+Раскройте нужный раздел, чтобы посмотреть остальные экраны. Нажмите на изображение для просмотра в полном размере.
+
+<details>
+<summary><strong>Стартовая страница и AJAX-вход</strong></summary>
+
+| Экран | Тёмная тема | Светлая тема |
+| --- | --- | --- |
+| Стартовая страница | ![Стартовая страница — тёмная тема](docs/screenshots/landing-preview-dark.png) | ![Стартовая страница — светлая тема](docs/screenshots/landing-preview-light.png) |
+| Мониторинг серверов | ![Мониторинг серверов — тёмная тема](docs/screenshots/monitor-dark.png) | ![Мониторинг серверов — светлая тема](docs/screenshots/monitor-light.png) |
+| Вход в кабинет | ![Вход в кабинет — тёмная тема](docs/screenshots/login.png) | ![Вход в кабинет — светлая тема](docs/screenshots/login-light.png) |
+| Регистрация | ![Регистрация — тёмная тема](docs/screenshots/register.png) | ![Регистрация — светлая тема](docs/screenshots/register-light.png) |
+| Восстановление пароля | ![Восстановление пароля — тёмная тема](docs/screenshots/password-reset.png) | ![Восстановление пароля — светлая тема](docs/screenshots/password-reset-light.png) |
+
+</details>
+
+<details>
+<summary><strong>Все разделы кабинета</strong></summary>
+
+| Экран | Тёмная тема | Светлая тема |
+| --- | --- | --- |
+| Главная | ![Главная — тёмная тема](docs/screenshots/dashboard.png) | ![Главная — светлая тема](docs/screenshots/dashboard-light.png) |
+| Мои услуги | ![Мои услуги — тёмная тема](docs/screenshots/services.png) | ![Мои услуги — светлая тема](docs/screenshots/services-light.png) |
+| Карточка услуги | ![Карточка услуги — тёмная тема](docs/screenshots/service-details.png) | ![Карточка услуги — светлая тема](docs/screenshots/service-details-light.png) |
+| Центр устройств | ![Центр устройств — тёмная тема](docs/screenshots/device-center.png) | ![Центр устройств — светлая тема](docs/screenshots/device-center-light.png) |
+| Параметры подключения | ![Параметры подключения — тёмная тема](docs/screenshots/connection.png) | ![Параметры подключения — светлая тема](docs/screenshots/connection-light.png) |
+| Баланс | ![Баланс — тёмная тема](docs/screenshots/balance.png) | ![Баланс — светлая тема](docs/screenshots/balance-light.png) |
+| История операций | ![История операций — тёмная тема](docs/screenshots/operations.png) | ![История операций — светлая тема](docs/screenshots/operations-light.png) |
+| Уведомления | ![Уведомления — тёмная тема](docs/screenshots/notifications.png) | ![Уведомления — светлая тема](docs/screenshots/notifications-light.png) |
+| Поддержка | ![Поддержка — тёмная тема](docs/screenshots/tickets.png) | ![Поддержка — светлая тема](docs/screenshots/tickets-light.png) |
+| Переписка с поддержкой | ![Переписка с поддержкой — тёмная тема](docs/screenshots/ticket-conversation.png) | ![Переписка с поддержкой — светлая тема](docs/screenshots/ticket-conversation-light.png) |
+| Профиль | ![Профиль — тёмная тема](docs/screenshots/profile.png) | ![Профиль — светлая тема](docs/screenshots/profile-light.png) |
+| Помощь | ![Помощь — тёмная тема](docs/screenshots/help.png) | ![Помощь — светлая тема](docs/screenshots/help-light.png) |
+
+</details>
+
+<details>
+<summary><strong>Формы и дополнительные действия</strong></summary>
+
+| Экран | Тёмная тема | Светлая тема |
+| --- | --- | --- |
+| Выбор тарифа | ![Выбор тарифа — тёмная тема](docs/screenshots/order.png) | ![Выбор тарифа — светлая тема](docs/screenshots/order-light.png) |
+| Пополнение баланса | ![Пополнение баланса — тёмная тема](docs/screenshots/payment.png) | ![Пополнение баланса — светлая тема](docs/screenshots/payment-light.png) |
+| Промокод | ![Промокод — тёмная тема](docs/screenshots/promo.png) | ![Промокод — светлая тема](docs/screenshots/promo-light.png) |
+| QR-код подписки | ![QR-код подписки — тёмная тема](docs/screenshots/subscription-qr.png) | ![QR-код подписки — светлая тема](docs/screenshots/subscription-qr-light.png) |
+| Создание обращения | ![Создание обращения — тёмная тема](docs/screenshots/ticket-create.png) | ![Создание обращения — светлая тема](docs/screenshots/ticket-create-light.png) |
+| Смена пароля | ![Смена пароля — тёмная тема](docs/screenshots/password-change.png) | ![Смена пароля — светлая тема](docs/screenshots/password-change-light.png) |
+| Настройка 2FA | ![Настройка 2FA — тёмная тема](docs/screenshots/two-factor.png) | ![Настройка 2FA — светлая тема](docs/screenshots/two-factor-light.png) |
+| Passkey | ![Passkey — тёмная тема](docs/screenshots/passkey.png) | ![Passkey — светлая тема](docs/screenshots/passkey-light.png) |
+
+</details>
+
+<details>
+<summary><strong>Мобильная версия — 390 px</strong></summary>
+
+| Экран | Тёмная тема | Светлая тема |
+| --- | --- | --- |
+| Стартовая страница | ![Стартовая страница — тёмная тема](docs/screenshots/mobile-landing-dark.png) | ![Стартовая страница — светлая тема](docs/screenshots/mobile-landing-light.png) |
+| AJAX-вход | ![AJAX-вход — тёмная тема](docs/screenshots/mobile-login-dark.png) | ![AJAX-вход — светлая тема](docs/screenshots/mobile-login-light.png) |
+| Регистрация | ![Регистрация — тёмная тема](docs/screenshots/mobile-register-dark.png) | ![Регистрация — светлая тема](docs/screenshots/mobile-register-light.png) |
+| Главная | ![Главная — тёмная тема](docs/screenshots/mobile-dashboard.png) | ![Главная — светлая тема](docs/screenshots/mobile-dashboard-light.png) |
+| Мои услуги | ![Мои услуги — тёмная тема](docs/screenshots/mobile-services.png) | ![Мои услуги — светлая тема](docs/screenshots/mobile-services-light.png) |
+| Карточка услуги | ![Карточка услуги — тёмная тема](docs/screenshots/mobile-service.png) | ![Карточка услуги — светлая тема](docs/screenshots/mobile-service-light.png) |
+| Центр устройств | ![Центр устройств — тёмная тема](docs/screenshots/mobile-devices.png) | ![Центр устройств — светлая тема](docs/screenshots/mobile-devices-light.png) |
+| Выбор тарифа | ![Выбор тарифа — тёмная тема](docs/screenshots/mobile-order.png) | ![Выбор тарифа — светлая тема](docs/screenshots/mobile-order-light.png) |
+| Баланс | ![Баланс — тёмная тема](docs/screenshots/mobile-balance.png) | ![Баланс — светлая тема](docs/screenshots/mobile-balance-light.png) |
+| История операций | ![История операций — тёмная тема](docs/screenshots/mobile-operations.png) | ![История операций — светлая тема](docs/screenshots/mobile-operations-light.png) |
+| Уведомления | ![Уведомления — тёмная тема](docs/screenshots/mobile-notifications.png) | ![Уведомления — светлая тема](docs/screenshots/mobile-notifications-light.png) |
+| Поддержка | ![Поддержка — тёмная тема](docs/screenshots/mobile-tickets.png) | ![Поддержка — светлая тема](docs/screenshots/mobile-tickets-light.png) |
+| Переписка | ![Переписка — тёмная тема](docs/screenshots/mobile-conversation.png) | ![Переписка — светлая тема](docs/screenshots/mobile-conversation-light.png) |
+| Профиль | ![Профиль — тёмная тема](docs/screenshots/mobile-profile.png) | ![Профиль — светлая тема](docs/screenshots/mobile-profile-light.png) |
+| Помощь | ![Помощь — тёмная тема](docs/screenshots/mobile-help.png) | ![Помощь — светлая тема](docs/screenshots/mobile-help-light.png) |
+
+</details>
+
+<details>
+<summary><strong>Стартовая страница целиком</strong></summary>
+
+| Экран | Тёмная тема | Светлая тема |
+| --- | --- | --- |
+| Все блоки стартовой страницы | ![Все блоки стартовой страницы — тёмная тема](docs/screenshots/landing-dark.png) | ![Все блоки стартовой страницы — светлая тема](docs/screenshots/landing-light.png) |
+
+</details>
+
+---
+
 # Установка vBios SHM на новый сервер
 
 Документ предназначен для пользователя без опыта администрирования Linux. Все команды ниже выполняются на Ubuntu-сервере через SSH.
 
-[Посмотреть интерфейс личного кабинета](#превью-личного-кабинета) · [Все скриншоты](docs/screenshots)
 
 ## 1. Что понадобится
 
@@ -414,122 +512,6 @@ docker compose exec api wget -qO- http://127.0.0.1/shm/healthcheck.cgi
 - регулярно обновляйте Docker-образы;
 - проверяйте резервные копии.
 
-# Превью личного кабинета
-
-Ниже приведены скриншоты основных экранов личного кабинета. Изображения демонстрационные: суммы, даты, услуги и сообщения используются только для показа интерфейса.
-
-## Вход и регистрация
-
-![Вход](docs/screenshots/login.png)
-
-![Регистрация](docs/screenshots/register.png)
-
-## Главная
-
-![Главная страница](docs/screenshots/dashboard.png)
-
-На главном экране отображаются баланс, активные услуги, ближайшие события и быстрые действия.
-
-## Мои услуги
-
-![Список услуг](docs/screenshots/services.png)
-
-![Карточка услуги](docs/screenshots/service-details.png)
-
-В карточке услуги сверху находятся статус, срок действия, стоимость и основное действие. Ссылка подписки, QR-код и технические параметры находятся в раскрываемом блоке.
-
-## Центр устройств
-
-![Центр устройств](docs/screenshots/device-center-preview.png)
-
-Сначала показывается компактный обзор с количеством устройств. После нажатия **«Раскрыть»** становятся доступны статистика, модель, платформа, последнее VPN-подключение и сброс HWID.
-
-![Раскрытый центр устройств в карточке услуги](docs/screenshots/device-center.png)
-
-### QR-код подписки
-
-![QR-код подписки](docs/screenshots/subscription-qr.png)
-
-## Баланс и оплата
-
-![Баланс и оплата](docs/screenshots/balance.png)
-
-![История операций](docs/screenshots/operations.png)
-
-В разделе баланса можно пополнить счёт и ввести промокод. История операций показывает пополнения и списания.
-
-### Пополнение баланса
-
-![Форма пополнения баланса](docs/screenshots/payment.png)
-
-### Промокод
-
-![Ввод промокода](docs/screenshots/promo.png)
-
-## Уведомления
-
-![Уведомления](docs/screenshots/notifications.png)
-
-Пользователь видит окончание подписки, состояние баланса и ответы поддержки. Настройки уведомлений доступны в этом же разделе.
-
-## Поддержка
-
-![Обращения](docs/screenshots/tickets.png)
-
-В разделе поддержки создаются обращения, отправляются сообщения и вложения, а статус показывает, отвечает ИИ или оператор.
-
-### Переписка с поддержкой
-
-![Открытое обращение](docs/screenshots/ticket-conversation.png)
-
-### Создание обращения
-
-![Форма создания обращения](docs/screenshots/ticket-create.png)
-
-## Профиль и безопасность
-
-![Профиль](docs/screenshots/profile.png)
-
-На странице профиля находятся данные аккаунта, аватар, Telegram, email и настройки безопасности: смена пароля, 2FA и Passkey.
-
-### Изменение пароля
-
-![Изменение пароля](docs/screenshots/password-change.png)
-
-### Настройка двухфакторной аутентификации
-
-![Настройка 2FA](docs/screenshots/two-factor.png)
-
-Код и секрет на изображении — учебные, они не используются для входа в настоящий аккаунт.
-
-## Помощь по HAPP
-
-![Помощь](docs/screenshots/help.png)
-
-Раздел помощи содержит инструкции для Android, iOS, Windows, macOS и роутеров со ссылкой на официальную документацию HAPP.
-
-## Мобильная версия
-
-![Главная на мобильном экране](docs/screenshots/mobile-dashboard.png)
-
-![Услуга на мобильном экране](docs/screenshots/mobile-service.png)
-
-![Поддержка на мобильном экране](docs/screenshots/mobile-tickets.png)
-
-Интерфейс проверен на ширине 390 px: нижняя навигация, длинные названия услуг, карточки и основные действия остаются доступными.
-
-## Обновлённая визуальная версия
-
-В новой версии выровнены радиусы и отступы карточек, сокращены вторичные подписи, основной сценарий услуги вынесен в одну заметную кнопку, а дополнительные действия убраны в меню **«Ещё»**. Центр устройств по умолчанию свёрнут и показывает только краткий счётчик, платформы и кнопку раскрытия. В поддержке статус ответа и поле сообщения остаются видимыми без лишних вложенных панелей.
-
-![Карточка услуги и центр устройств — обновлённый вид](docs/screenshots/service-device-v2.png)
-
-![Поддержка — обновлённый вид](docs/screenshots/ticket-conversation-v2.png)
-
-![Мобильная карточка услуги — обновлённый вид](docs/screenshots/mobile-service-v2.png)
-
-![Главный экран — обновлённый вид](docs/screenshots/dashboard-v2.png)
-
 ## Настройка страницы помощи
 
-Страница /help получает приложения и инструкции из конфигурации SHM с ключом apps. [Инструкция и форматы](docs/help-apps.md), [готовый пример JSON](docs/apps-config.example.json).
+Страница `/help` получает приложения и инструкции из конфигурации SHM с ключом `apps`. [Инструкция и форматы](docs/help-apps.md), [готовый пример JSON](docs/apps-config.example.json).

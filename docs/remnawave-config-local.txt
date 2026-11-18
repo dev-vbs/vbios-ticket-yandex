@@ -1,0 +1,15 @@
+{{ IF !config.remna }}
+{{ r = user.srv('config').add(key = 'remna') }}
+{{ END }}
+{{ r = user.srv('config').id('remna').set_json('value', {
+    url = 'https://remna.example.com'
+    api_token = 'REPLACE_WITH_API_TOKEN'
+    name_prefix = 'vBios_us_'
+    storage_prefix = 'vpn_mrzb_'
+    hwidDeviceLimit = 0
+    hwid_reset_daily_limit = 3
+    time_zone = '+03:00'
+    internal_squads = []
+    external_squad = ''
+}) }}
+Конфигурация Remnawave сохранена.

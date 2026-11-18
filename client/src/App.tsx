@@ -1,6 +1,4 @@
 import '@mantine/core/styles.css';
-const BalancePage = lazy(() => import('./pages/AccountSections').then(module => ({ default: module.BalancePage })));
-const OperationsPage = lazy(() => import('./pages/AccountSections').then(module => ({ default: module.OperationsPage })));
 import '@mantine/notifications/styles.css';
 import { lazy, Suspense, useEffect, useState } from 'react';
 import { isAxiosError } from 'axios';
@@ -40,6 +38,9 @@ import NotFound from './pages/NotFound';
 const AddToHomeScreen = lazy(() => import('./pages/AddToHomeScreen'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 import { CabinetLayout } from './components/CabinetLayout';
+
+const BalancePage = lazy(() => import('./pages/AccountSections').then(module => ({ default: module.BalancePage })));
+const OperationsPage = lazy(() => import('./pages/AccountSections').then(module => ({ default: module.OperationsPage })));
 
 function AppContent() {
   const location = useLocation();

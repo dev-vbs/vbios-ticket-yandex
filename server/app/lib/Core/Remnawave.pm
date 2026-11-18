@@ -8,6 +8,29 @@ use Digest::SHA qw(sha256_hex);
 use Data::Validate::IP qw(is_ipv4 is_ipv6);
 use IO::Socket::IP;
 use Time::HiRes qw(time);
+use Core::Remnawave::Operations;
+use URI;
+use URI::Escape qw(uri_escape_utf8);
+
+# Server-side administration only. Never expose this dispatcher as a public API.
+sub operation {
+    my ($self, %args) = @_;
+    die 'Administrator required' unless $self->user->is_admin;
+    my $op = $Core::Remnawave::Operations::OPERATIONS{$args{operation_id} || ''}
+        or die 'Unknown Remnawave operation';
+    my $path = $op->{path};
+    my $params = $args{path_params} || {};
+    die 'Invalid path parameters' unless ref($params) eq 'HASH';
+    $path =~ s/\{([^}]+)\}/defined($params->{$1}) && !ref($params->{$1}) ? uri_escape_utf8($params->{$1}) : die('Missing path parameter')/ge;
+    if ($args{query}) {
+        die 'Invalid query' unless ref($args{query}) eq 'HASH';
+        my $uri = URI->new($path);
+        $uri->query_form(%{$args{query}});
+        $path = $uri->as_string;
+    }
+    return $self->_request(path => $path, method => $op->{method},
+        exists($args{body}) ? (content => $args{body}) : ());
+}
 
 sub _cfg {
     my $self = shift;
@@ -97,7 +120,8 @@ sub _request {
     my $body=eval { $resp->json_content };
     $body = {} unless defined $body;
     unless ($resp->is_success) {
-        my $description = ref($body) eq 'HASH' ? ($body->{message} || $body->{error} || $body->{description} || $body->{response}{message} || '') : '';
+        my $description = ref($body) eq 'HASH' ? ($body->{message} || $body->{error} || $body->{description} || (ref($body->{response}) eq 'HASH' ? $body->{response}{message} : '') || '') : '';
+        $description = encode_json($description) if ref($description);
         $description ||= eval { $resp->decoded_content } || '';
         $description = substr($description, 0, 300);
         $description =~ s/[\r\n]+/ /g;

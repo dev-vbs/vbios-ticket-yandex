@@ -1,0 +1,9 @@
+{{# Transport: local. Execute as an SHM administrator. Read-only smoke test. }}
+{{ result = user.srv('Remnawave').operation(
+    operation_id = 'NodesController_getNodes'
+) }}
+{{ IF result.response }}
+Remnawave: API доступен.
+{{ ELSE }}
+Remnawave: проверьте результат и журнал задания.
+{{ END }}

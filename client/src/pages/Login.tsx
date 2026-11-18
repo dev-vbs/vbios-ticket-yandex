@@ -6,7 +6,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Card, Text, Stack, Button, ActionIcon, TextInput, PasswordInput, Divider, Title, Modal, Group, Loader, useMantineColorScheme, useComputedColorScheme, Checkbox, Tooltip } from '@mantine/core';
 
 import { useForm, isEmail, hasLength } from '@mantine/form';
-import { IconLogin, IconUserPlus, IconHeadset, IconFingerprint, IconShieldLock, IconBrandTelegram, IconMailForward, IconLock, IconMoon, IconSun, IconAt, IconKey, IconSparkles } from '@tabler/icons-react';
+import { IconLogin, IconUserPlus, IconHeadset, IconFingerprint, IconShieldLock, IconBrandTelegram, IconMailForward, IconLock, IconMoon, IconSun, IconAt, IconKey } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 import { useTranslation } from 'react-i18next';
 import { auth, monitorApi, passkeyApi, userApi, telegramSessionId } from '../api/client';
@@ -525,18 +525,19 @@ export default function Login() {
       <Modal opened={authOpen} onClose={() => setAuthOpen(false)} centered size={460} padding={0} withCloseButton title={mode === 'login' ? 'Личный кабинет' : 'Создать аккаунт'} className={`welcome-auth-modal welcome-auth-modal-${colorScheme}`}>
       <Card className="auth-card" withBorder radius="md" p="xl" w={400}>
         <Stack gap="lg">
-          <Group className="auth-toolbar" justify="space-between" align="center">
+          <Group className="auth-topline" justify="space-between" align="center" wrap="nowrap">
+            <Group className="auth-brand" gap="xs" wrap="nowrap">
+              {config.LOGO_URL && <img src={config.LOGO_URL} alt="" width={32} height={32} />}
+              <Text fw={700}>{main.name || config.APP_NAME}</Text>
+            </Group>
+            <Group className="auth-toolbar" gap="xs" wrap="nowrap">
               <ThemeToggle />
               <LanguageSwitcher />
+            </Group>
           </Group>
-            {config.LOGO_URL && <Group className="auth-brand" justify="center"><img src={config.LOGO_URL} alt="" style={{ height: 40, width: 40, objectFit: 'contain', flexShrink: 0 }} /></Group>}
           {config.APP_DESCRIPTION && (
             <Text size="sm" c="dimmed" ta="center" style={{ flex: 'auto' }}>{config.APP_DESCRIPTION}</Text>
           )}
-          <div className="auth-intro">
-            <span className="auth-intro-icon"><IconSparkles size={16} /></span>
-            <Text className="auth-kicker" size="xs" fw={700} tt="uppercase">{main.name || config.APP_NAME}</Text>
-          </div>
           <Title order={3} className="auth-heading" ta="center">
               {mode === 'login' ? t('auth.loginTitle') : t('auth.registerTitle')}
           </Title>
