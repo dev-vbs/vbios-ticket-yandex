@@ -3,7 +3,8 @@ use v5.14;
 use parent 'Core::Base';
 use Core::Base;
 use Core::System::ServiceManager qw(get_service);
-use Core::Utils qw(decode_json now);
+use Core::Utils qw(decode_json encode_json now);
+use Digest::SHA qw(sha256_hex);
 use Data::Validate::IP qw(is_ipv4 is_ipv6);
 use IO::Socket::IP;
 use Time::HiRes qw(time);
@@ -53,6 +54,10 @@ sub api_monitor {
     return { enabled => 0, nodes => [] } unless $main->{monitor_enabled};
     my $visible = $main->{monitor_nodes};
     return { enabled => 1, state => 'empty', nodes => [] } unless ref($visible) eq 'ARRAY' && @$visible;
+    my $monitor_cfg = get_service('config')->data_by_name('remna') || {};
+    my $cache_key = 'SHM:Remnawave:Monitor:v2:'.sha256_hex(encode_json($visible).($monitor_cfg->{url} || '').($monitor_cfg->{api_token} || ''));
+    my $cached = eval { $self->cache->get_json($cache_key) };
+    return $cached if ref($cached) eq 'HASH' && ref($cached->{nodes}) eq 'ARRAY';
     my $response = eval { $self->_request(path => '/api/nodes') };
     return { enabled => 1, state => 'unknown', nodes => [] } if $@ || ref($response) ne 'HASH' || ref($response->{response}) ne 'ARRAY';
     my %nodes = map { ref($_) eq 'HASH' && $_->{uuid} ? ($_->{uuid} => $_) : () } @{$response->{response}};
@@ -73,7 +78,9 @@ sub api_monitor {
         };
         last if @public >= 30;
     }
-    return { enabled => 1, state => 'ready', checked_at => time(), nodes => \@public };
+    my $result = { enabled => 1, state => 'ready', checked_at => time(), nodes => \@public };
+    eval { $self->cache->set_json($cache_key, $result, 15) };
+    return $result;
 }
 sub _request {
     my ($self,%a)=@_; my $cfg=$self->_cfg;
@@ -124,7 +131,7 @@ sub _remna_id {
     my $resolved_payload=$resolved->{response} || $resolved->{data} || $resolved;
     my $resolved_id=ref($resolved_payload) eq 'HASH' ? ($resolved_payload->{id} || $resolved_payload->{user}{id}) : undef;
     return int($resolved_id) if defined $resolved_id && "$resolved_id" =~ /^\d+$/ && $resolved_id > 0;
-    my $data=eval { $self->srv('storage')->read(name=>$prefix.$row->{user_service_id}) } || {};
+    my $data=$stored;
     my $id=$data->{id} || $data->{uuid} || $data->{user}{id} || $data->{user}{uuid} || $data->{response}{user}{id} || $data->{response}{user}{uuid};
     if (!$id && $data->{shortUuid}) {
         my $resolved=$self->_request(path=>'/api/users/by-short-uuid/'.$data->{shortUuid});
