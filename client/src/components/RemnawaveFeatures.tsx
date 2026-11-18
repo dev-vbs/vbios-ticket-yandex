@@ -30,14 +30,17 @@ type Diagnostics = {
   notices?: { kind: string; text: string }[];
   devices_unavailable?: boolean;
 };
-type Addon = { key: string; title: string; cost: number; service_id: number };
+type Addon = { key: string; title: string; cost: number; service_id: number; unavailable_reason?: string };
+type ServerOption = { key: string; title: string; selected: number };
 type Section = "diagnostics" | "nodes" | "traffic" | "history" | "addons";
 type Data = Diagnostics & {
   nodes?: Node[];
+  server_options?: ServerOption[];
   days?: string[];
   bytes?: number[];
   records?: RecordItem[];
   addons?: Addon[];
+  setup_issues?: string[];
 };
 export function remnaPayload(
   body: unknown,
@@ -55,6 +58,13 @@ export function remnaPayload(
     v = v.data ?? v.response;
   }
   throw new Error("Не удалось прочитать ответ сервера");
+}
+function apiMessage(error: unknown, fallback: string): string {
+  const body = (error as { response?: { data?: { error?: unknown; errors?: unknown } } })?.response?.data;
+  const value = body?.error ?? body?.errors;
+  if (typeof value === 'string') return value;
+  if (Array.isArray(value)) return value.filter(x => typeof x === 'string').join(' ') || fallback;
+  return fallback;
 }
 const date = (s?: string) =>
   s && Number.isFinite(Date.parse(s))
@@ -99,6 +109,10 @@ function SectionBody({
   const [busy, setBusy] = useState(false);
   const [order, setOrder] = useState<number>();
   const [purchaseError, setPurchaseError] = useState("");
+  const [serverChoice, setServerChoice] = useState<ServerOption | null>(null);
+  const [selectionMessage, setSelectionMessage] = useState("");
+  const [refresh, setRefresh] = useState(0);
+  const [orderPaid, setOrderPaid] = useState(false);
   useEffect(() => {
     const controller = new AbortController();
     setLoading(true);
@@ -125,7 +139,7 @@ function SectionBody({
         if (!controller.signal.aborted) setLoading(false);
       });
     return () => controller.abort();
-  }, [section, serviceId, revision]);
+  }, [section, serviceId, revision, refresh]);
   const purchase = async () => {
     if (!buy || busy) return;
     setBusy(true);
@@ -141,17 +155,31 @@ function SectionBody({
       );
       if (!r.ok || !r.order_id) throw new Error();
       setOrder(r.order_id);
+      setOrderPaid(!!r.paid);
       setBuy(null);
-    } catch {
+    } catch (error) {
       setBuy(null);
       setPurchaseError(
-        "Не удалось подтвердить заказ. Проверьте «Мои услуги» перед повторной покупкой.",
+        apiMessage(error, "Не удалось подтвердить заказ. Проверьте «Мои услуги» перед повторной покупкой."),
       );
     } finally {
       setBusy(false);
     }
   };
-  if (loading)
+  const selectServer = async () => {
+    if (!serverChoice || busy) return;
+    setBusy(true); setSelectionMessage("");
+    try {
+      const r = remnaPayload((await api.put('/user/service/remnawave/server', { user_service_id: serviceId, server: serverChoice.key })).data);
+      if (!r.ok) throw new Error();
+      setSelectionMessage('Сервер выбран. Обновите подписку в приложении, чтобы получить новые настройки.');
+    } catch (error) {
+      setSelectionMessage(apiMessage(error, 'Не удалось подтвердить выбор. Обновляем текущие данные — проверьте их перед повтором.'));
+    } finally {
+      setBusy(false); setServerChoice(null); setRefresh(v => v + 1);
+    }
+  };
+  if (loading && !data)
     return (
       <Group p="md">
         <Loader size="sm" />
@@ -168,6 +196,13 @@ function SectionBody({
   if (section === "nodes")
     return (
       <Stack gap="sm">
+        {selectionMessage && <Alert role="status">{selectionMessage}</Alert>}
+        {!!data.server_options?.length ? <>
+          <Text fw={650}>Выберите локацию подписки</Text>
+          <Text size="sm" c="dimmed">После смены обновите подписку в приложении. Дополнительно купленные локации сохранятся.</Text>
+          <div className="remna-node-grid">{data.server_options.map(option => <Paper withBorder p="md" key={option.key}><Stack gap="sm"><Text fw={650}>{option.title}</Text><Button variant={option.selected ? "light" : "filled"} disabled={!!option.selected || busy} onClick={() => setServerChoice(option)}>{option.selected ? "Выбран" : "Выбрать сервер"}</Button></Stack></Paper>)}</div>
+        </> : <Alert color="gray">Выбор локации для этого тарифа ещё не настроен. Ниже показаны серверы вашей текущей подписки.</Alert>}
+        <ConfirmModal opened={!!serverChoice} onClose={() => !busy && setServerChoice(null)} onConfirm={() => void selectServer()} loading={busy} title="Сменить сервер подписки?" confirmLabel="Выбрать" message={`Локация: ${serverChoice?.title || ""}. Текущий набор переключаемых серверов будет заменён. Затем обновите подписку в приложении.`} />
         {!data.nodes?.length && (
           <Text c="dimmed">В тарифе пока нет доступных серверов.</Text>
         )}
@@ -309,11 +344,12 @@ function SectionBody({
         </Text>
         {order && (
           <Alert color="teal">
-            Заказ создан.{" "}
-            <Link to={`/services/${order}`}>Открыть услугу и оплатить →</Link>
+            {orderPaid ? "Заказ оплачен в SHM. Расширение применяется обработчиком услуги; обновите данные после завершения." : "Заказ создан в SHM. Откройте услугу и оплатите её."}{" "}
+            <Link to={`/services/${order}`}>Открыть заказ →</Link>
           </Alert>
         )}
         {purchaseError && <Alert color="orange">{purchaseError}</Alert>}
+        {data.setup_issues?.map(issue => <Alert color="orange" key={issue}>{issue}</Alert>)}
         {!data.addons?.length && (
           <Text c="dimmed">Для этого тарифа расширения пока не настроены.</Text>
         )}
@@ -323,10 +359,11 @@ function SectionBody({
               <Stack>
                 <Text fw={650}>{a.title}</Text>
                 <Text>{Number(a.cost).toLocaleString("ru-RU")} ₽</Text>
+                {a.unavailable_reason && <Text size="sm" c="dimmed">{a.unavailable_reason}</Text>}
                 <Button
                   variant="light"
                   onClick={() => setBuy(a)}
-                  disabled={busy}
+                  disabled={busy || !!a.unavailable_reason}
                 >
                   Добавить
                 </Button>

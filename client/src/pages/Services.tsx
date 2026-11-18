@@ -430,7 +430,7 @@ function ServiceDetail({ service, onDelete, onChangeTariff }: ServiceDetailProps
                     </Group>
                   </>
                 )}
-                {needsRenewal ? <Button fullWidth onClick={() => setPaymentOpen(true)}>Продлить</Button> : service.status === 'ACTIVE' && isVpnOrProxy ? <Button fullWidth onClick={() => setActiveTab('config')}>Подключить</Button> : isNotPaid ? <Button fullWidth onClick={() => setPaymentOpen(true)}>Оплатить</Button> : null}
+                {needsRenewal ? <Button fullWidth onClick={() => setPaymentOpen(true)}>Продлить</Button> : service.status === 'ACTIVE' && isVpnOrProxy ? <Button fullWidth aria-expanded={activeTab === 'config'} aria-controls={`service-connection-${service.user_service_id}`} onClick={() => setActiveTab(current => current === 'config' ? 'info' : 'config')}>{activeTab === 'config' ? 'Свернуть' : 'Показать'}</Button> : isNotPaid ? <Button fullWidth onClick={() => setPaymentOpen(true)}>Оплатить</Button> : null}
               </Stack>
             </Paper>
             {service.next && (
@@ -463,7 +463,7 @@ function ServiceDetail({ service, onDelete, onChangeTariff }: ServiceDetailProps
           </Stack>
         </section>
         { service.status === 'ACTIVE' && isVpnOrProxy && (
-          <details className="service-technical-details" open={activeTab === 'config'} onToggle={event => setActiveTab(event.currentTarget.open ? 'config' : 'info')}><summary>Ссылка подписки, QR-код и параметры подключения</summary>
+          <details id={`service-connection-${service.user_service_id}`} className="service-technical-details" open={activeTab === 'config'} onToggle={event => setActiveTab(event.currentTarget.open ? 'config' : 'info')}><summary>Ссылка подписки, QR-код и параметры подключения</summary>
             <Paper withBorder p="lg" radius="md" className="service-connection-card">
               <Stack gap="md">
                 <Group justify="space-between" align="flex-start">

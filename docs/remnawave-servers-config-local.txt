@@ -1,0 +1,21 @@
+{{# Transport: local. Выполнить администратором SHM. Существующий config.remna сохраняется. }}
+{{ IF !config.remna }}
+{{ THROW remna_config 'Сначала настройте config.remna' }}
+{{ END }}
+{{ remna = config.remna }}
+{{ remna.server_choices = [
+    {
+        key = 'moscow'
+        title = 'Москва'
+        tariff_ids = [10, 11]
+        squad_uuids = ['REPLACE_WITH_MOSCOW_INTERNAL_SQUAD_UUID']
+    }
+    {
+        key = 'frankfurt'
+        title = 'Франкфурт'
+        tariff_ids = [10, 11]
+        squad_uuids = ['REPLACE_WITH_FRANKFURT_INTERNAL_SQUAD_UUID']
+    }
+] }}
+{{ r = user.srv('config').id('remna').set_json('value', remna) }}
+Выбор серверов сохранён. Замените tariff_ids на ID основных тарифов SHM, а squad_uuids на UUID групп Remnawave. Платные локации не включайте в бесплатные варианты.

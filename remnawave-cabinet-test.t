@@ -3,7 +3,7 @@ use warnings;
 use Test::More;
 use JSON::PP;
 use lib 'server/app/lib';
-our (%services,$paid,%rows,@requests,$fail_patch,$lock_available,$configured_addons,%ledger);
+our (%services,$paid,%rows,@requests,$fail_patch,$lock_available,$configured_addons,$server_choices,%ledger);
 BEGIN {
     package Core::System::ServiceManager;
     use Exporter 'import';
@@ -26,6 +26,8 @@ use Core::Remnawave::Cabinet;
     sub data_by_name { {addon_signing_key=>'a' x 40,addons=>$main::configured_addons || []} }
     package FakeOrder;
     sub is_paid { $main::paid }
+    sub id { 88 }
+    sub create { $_[0] }
     package FakeStorage;
     sub save { $_[0]{$_[1]}=$_[2] }
     sub read { $_[0]{$_[2]} }
@@ -39,6 +41,7 @@ use Core::Remnawave::Cabinet;
     sub increment { ++$_[0]{$_[1]} }
     package FakeDB;
     sub selectrow_array {
+        die 'missing table' if $_[0]{missing};
         my ($self,$sql,$attr,@a)=@_;
         if ($sql =~ /GET_LOCK/) { die 'MySQL lock name too long' if length($a[0])>64; return $main::lock_available; }
         if ($sql =~ /SELECT order_id FROM remnawave_addon_ledger/) {
@@ -62,9 +65,9 @@ use Core::Remnawave::Cabinet;
     package CabinetClient;
     our @ISA=('Core::Remnawave');
     sub user_id { 7 }
-    sub _cfg { {url=>'https://panel.example',api_token=>'secret',storage_prefix=>'vpn_mrzb_'} }
+    sub _cfg { {url=>'https://panel.example',api_token=>'secret',storage_prefix=>'vpn_mrzb_',server_choices=>$main::server_choices || [],addons=>$main::configured_addons || []} }
     sub cache { $_[0]{cache} }
-    sub dbh { bless {},'FakeDB' }
+    sub dbh { $_[0]{db} ||= bless {},'FakeDB' }
     sub srv { $_[0]{storage} ||= bless {},'FakeStorage' }
     sub _owned { $main::rows{$_[2]} }
     sub _owned_or_error { $main::rows{$_[1]} || die 'Not owned' }
@@ -98,7 +101,7 @@ $services{USObject}=bless {},'FakeOrder';
 my $client=bless {cache=>bless({},'FakeCache')},'CabinetClient';
 $rows{10}={user_service_id=>10,user_id=>7,service_id=>2,status=>'ACTIVE',settings=>'{}'};
 my $r=$client->api_cabinet(user_service_id=>10,section=>'nodes');
-is_deeply($r,{nodes=>[{name=>'Berlin',country=>'DE',status=>'online'}]},'only allowed nodes and public status fields');
+is_deeply($r,{server_options=>[],nodes=>[{name=>'Berlin',country=>'DE',status=>'online'}]},'only allowed nodes and public status fields');
 my $count=@requests;
 $client->api_cabinet(user_service_id=>10,section=>'nodes');
 is(scalar @requests,$count,'nodes cached');
@@ -255,4 +258,74 @@ eval 'package SafeOrderClient; '.$safe_order;
 die $@ if $@;
 ok(!defined(bless({},'SafeOrderClient')->create_for_api_safe(service_id=>20)),'direct generic addon order rejected before billing');
 
+
+# Server changes are tariff-bound and preserve paid/unmanaged squads.
+$configured_addons=[];
+$server_choices=[
+ {key=>'berlin',title=>'Berlin',tariff_ids=>[2],squad_uuids=>['11111111-1111-4111-8111-111111111111']},
+ {key=>'paris',title=>'Paris',tariff_ids=>[2],squad_uuids=>['33333333-3333-4333-8333-333333333333']},
+ {key=>'premium',title=>'Premium',tariff_ids=>[99],squad_uuids=>['44444444-4444-4444-8444-444444444444']},
+];
+$client->{user}={id=>123,activeInternalSquads=>['11111111-1111-4111-8111-111111111111','22222222-2222-4222-8222-222222222222']};
+$client->_cabinet_invalidate($rows{10},123);
+$r=$client->api_cabinet(user_service_id=>10,section=>'nodes');
+is(scalar @{$r->{server_options}},2,'only own tariff server choices returned');
+ok($r->{server_options}[0]{selected},'current server choice derived from actual user squads');
+$count=scalar @requests;
+ok(!defined $client->api_select_server(user_service_id=>10,server=>'premium'),'other tariff server denied');
+is(scalar @requests,$count,'forbidden server makes no upstream call');
+ok(!defined $client->api_select_server(user_service_id=>999,server=>'paris'),'foreign service server change denied');
+ok($client->api_select_server(user_service_id=>10,server=>'paris')->{ok},'server selection confirmed');
+is_deeply($client->{user}{activeInternalSquads},['22222222-2222-4222-8222-222222222222','33333333-3333-4333-8333-333333333333'],'server switching retains purchased location and replaces only managed pool');
+ok($client->api_select_server(user_service_id=>10,server=>'paris')->{ok},'retrying same selection is idempotent');
+$configured_addons=[{type=>'locations',squad_uuid=>'33333333-3333-4333-8333-333333333333'}];
+$count=scalar @requests;
+ok(!defined $client->api_select_server(user_service_id=>10,server=>'berlin'),'paid and free pool overlap rejected');
+is(scalar @requests,$count,'overlap causes no upstream write');
+$configured_addons=[{type=>'devices'}];
+$ledger{99}={order_id=>99,user_id=>7,target_id=>10,applied=>0};
+ok(!defined $client->api_select_server(user_service_id=>10,server=>'berlin'),'pending paid mutation blocks server change');
+delete $ledger{99};
+$configured_addons=[];
+$fail_patch=1;
+ok(!defined $client->api_select_server(user_service_id=>10,server=>'berlin'),'failed selection not reported as success');
+$fail_patch=0;
+
+{
+ package AddonPlan;
+ sub get_period { $_[0]{period} || 0 }
+ sub get_cost { 100 }
+ sub price_list_check_allow_to_order { 1 }
+}
+$services{service}=bless {},'AddonPlan';
+$configured_addons=[{key=>'devices',title=>'Devices',service_id=>20,type=>'devices',amount=>2,tariff_ids=>[2]}];
+$client->{user}={id=>123,hwidDeviceLimit=>0,trafficLimitBytes=>1000};
+$client->_cabinet_invalidate($rows{10},123);
+$r=$client->api_addons(user_service_id=>10);
+is(scalar @{$r->{addons}},1,'unlimited device expansion remains visible with explanation');
+ok($r->{addons}[0]{unavailable_reason},'unlimited device expansion has disabled reason');
+$services{service}{period}=1;
+$client->{user}{hwidDeviceLimit}=3;
+$client->_cabinet_invalidate($rows{10},123);
+$r=$client->api_addons(user_service_id=>10);
+ok($r->{addons}[0]{unavailable_reason},'recurring SHM product has disabled reason');
+$services{service}{period}=0;
+$r=$client->api_addons(user_service_id=>10);
+is($r->{addons}[0]{unavailable_reason},'','valid one-time product available');
+$client->{db}{missing}=1;
+$r=$client->api_addons(user_service_id=>10);
+ok(@{$r->{setup_issues}},'missing ledger reported before purchase');
+ok($r->{addons}[0]{unavailable_reason},'purchase disabled without durable ledger');
+ok(!defined $client->api_purchase_addon(user_service_id=>10,addon=>'devices'),'missing ledger prevents creation of charged order');
+$client->{db}{missing}=0;
+$r=$client->api_purchase_addon(user_service_id=>10,addon=>'devices');
+is($r->{order_id},88,'valid expansion creates SHM order');
+is($r->{paid},1,'SHM paid state returned separately from application state');
+
+$configured_addons=[{key=>'bad_location',title=>'Free server',service_id=>20,type=>'locations',squad_uuid=>'33333333-3333-4333-8333-333333333333',tariff_ids=>[2]}];
+$r=$client->api_addons(user_service_id=>10);
+ok($r->{addons}[0]{unavailable_reason},'free server location is not sellable as addon');
+$count=scalar @requests;
+ok(!defined $client->api_purchase_addon(user_service_id=>10,addon=>'bad_location'),'free server location cannot create a paid order');
+is(scalar @requests,$count,'free location purchase denied before upstream mutation');
 done_testing;

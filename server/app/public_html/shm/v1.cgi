@@ -538,6 +538,9 @@ state $routes //= {
 '/user/service/remnawave/access' => {
     GET => { controller => 'Remnawave', method => 'api_subscription_access', params => { user_service_id => { type => 'integer', required => 1, min => 1 } } },
 },
+'/user/service/remnawave/server' => {
+    PUT => { controller => 'Remnawave', method => 'api_select_server', params => { user_service_id => { type => 'integer', required => 1, min => 1 }, server => { type => 'string', required => 1, max_length => 64 } } },
+},
 '/user/service/remnawave/addons' => {
     GET => { controller => 'Remnawave', method => 'api_addons', params => { user_service_id => { type => 'integer', required => 1, min => 1 } } },
     PUT => { controller => 'Remnawave', method => 'api_purchase_addon', params => { user_service_id => { type => 'integer', required => 1, min => 1 }, addon => { type => 'string', required => 1, max_length => 64 } } },

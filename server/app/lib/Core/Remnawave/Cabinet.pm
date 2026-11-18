@@ -22,16 +22,76 @@ sub _cabinet_invalidate {
     eval {
         $self->cache->delete('remna-user-v1-'.sha256_hex(join(':',$cfg->{url},$cfg->{api_token},$self->user_id,$id)));
         for my $section (qw(nodes traffic history diagnostics)) {
-            $self->cache->delete('remna-cabinet-v1-'.sha256_hex(join(':',$cfg->{url},$cfg->{api_token},$self->user_id,$row->{user_service_id},$id,$section)));
+            $self->cache->delete('remna-cabinet-v2-'.sha256_hex(join(':',$cfg->{url},$cfg->{api_token},$self->user_id,$row->{user_service_id},$id,$section)));
         }
     };
+}
+
+# Server choices are an administrator-defined entitlement allowlist, never node IDs from clients.
+sub _server_choices {
+    my ($self,$row)=@_;
+    my $defs=$self->_cfg->{server_choices} || [];
+    die 'Invalid server choices' unless ref($defs) eq 'ARRAY';
+    my @allowed;
+    for my $d (@$defs) {
+        next unless ref($d) eq 'HASH' && ($d->{key} || '') =~ /^[a-zA-Z0-9_-]{1,64}$/;
+        next unless ref($d->{tariff_ids}) eq 'ARRAY' && grep { $_ == $row->{service_id} } @{$d->{tariff_ids}};
+        next unless ref($d->{squad_uuids}) eq 'ARRAY' && @{$d->{squad_uuids}};
+        die 'Invalid server squad' if grep { !defined($_) || ref($_) || !/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i } @{$d->{squad_uuids}};
+        push @allowed,$d;
+    }
+    return \@allowed;
+}
+sub api_select_server {
+    my ($self,%a)=@_;
+    my $result=eval {
+        my $row=$self->_owned_or_error($a{user_service_id});
+        die 'Active target required' unless ($row->{status} || '') eq 'ACTIVE';
+        my $choices=$self->_server_choices($row);
+        my ($choice)=grep { $_->{key} eq ($a{server} || '') } @$choices;
+        die 'Server not allowed' unless $choice;
+        my %managed=map { map { $_=>1 } @{$_->{squad_uuids}} } @$choices;
+        # Paid location grants must not be part of the free switching pool.
+        die 'Paid location overlaps server choices' if grep { ref($_) eq 'HASH' && ($_->{type} || '') eq 'locations' && $managed{$_->{squad_uuid} || ''} } @{$self->_cfg->{addons} || []};
+        my $lock='remna-addon-'.substr(sha256_hex(join(':',$self->_cfg->{url},$row->{user_service_id})),0,48);
+        my ($locked)=$self->dbh->selectrow_array('SELECT GET_LOCK(?, 5)',undef,$lock);
+        die 'Server selection busy' unless $locked;
+        my $value=eval {
+            if (@{$self->_cfg->{addons} || []}) {
+                my ($pending)=$self->dbh->selectrow_array('SELECT order_id FROM remnawave_addon_ledger WHERE user_id=? AND target_id=? AND applied=0 AND order_id<>? LIMIT 1',undef,$self->user_id,$row->{user_service_id},0);
+                die 'An addon is pending; retry after fulfillment' if $pending;
+            }
+            my $id=$self->_remna_id($row);
+            my $u=$self->_request(path=>"/api/users/$id")->{response};
+            die 'Invalid user' unless ref($u) eq 'HASH';
+            my %squads=map { (ref($_) ? $_->{uuid} : $_)=>1 } @{$u->{activeInternalSquads} || []};
+            delete @squads{keys %managed};
+            $squads{$_}=1 for @{$choice->{squad_uuids}};
+            # A lost PATCH response must not leave the old selection cached.
+            $self->_cabinet_invalidate($row,$id);
+            my $updated=$self->_request(path=>'/api/users',method=>'patch',content=>{id=>$id,activeInternalSquads=>[sort keys %squads]})->{response};
+            die 'Selection not confirmed' unless ref($updated) eq 'HASH';
+            my %got=map { (ref($_) ? $_->{uuid} : $_)=>1 } @{$updated->{activeInternalSquads} || []};
+            die 'Selection not confirmed' if keys(%got)!=keys(%squads) || grep { !$got{$_} } keys %squads;
+            $self->_cabinet_invalidate($row,$id);
+            {ok=>1};
+        };
+        my $error=$@;
+        $self->dbh->selectrow_array('SELECT RELEASE_LOCK(?)',undef,$lock);
+        die $error if $error;
+        $value;
+    };
+    return $result if $result;
+    get_service('report')->status(400);
+    get_service('report')->add_error('Не удалось подтвердить выбор сервера. Обновите список перед повтором. Администратору: проверьте server_choices и права API.');
+    return undef;
 }
 
 # Only these dedicated methods are routed to customers. No arbitrary API paths.
 sub _cabinet_read {
     my ($self,$row,$section)=@_;
     my $id=$self->_remna_id($row);
-    my $key='remna-cabinet-v1-'.sha256_hex(join(':',$self->_cfg->{url},$self->_cfg->{api_token},$self->user_id,$row->{user_service_id},$id,$section));
+    my $key='remna-cabinet-v2-'.sha256_hex(join(':',$self->_cfg->{url},$self->_cfg->{api_token},$self->user_id,$row->{user_service_id},$id,$section));
     my $cached=eval { $self->cache->get_json($key) };
     return $cached if ref($cached) eq 'HASH';
     my $result;
@@ -48,7 +108,12 @@ sub _cabinet_read {
                 eval { $self->cache->set_json($health_key,$health,20) };
             }
         }
-        $result={nodes=>[map { {name=>$_->{nodeName},country=>$_->{countryCode},status=>$health->{$_->{uuid}} || 'unknown'} } @{$allowed->{activeNodes}}]};
+        my $choices=$self->_server_choices($row);
+        my $u=@$choices ? $self->_cabinet_user($id) : {};
+        my %current=map { (ref($_) ? $_->{uuid} : $_)=>1 } @{$u->{activeInternalSquads} || []};
+        my %managed=map { map { $_=>1 } @{$_->{squad_uuids}} } @$choices;
+        my @selected=grep { $current{$_} } keys %managed;
+        $result={server_options=>[map { my $d=$_; my %wanted=map { $_=>1 } @{$d->{squad_uuids}}; {key=>$d->{key},title=>$d->{title} || $d->{key},selected=>(@selected==keys(%wanted) && !grep { !$wanted{$_} } @selected) ? 1 : 0} } @$choices],nodes=>[map { {name=>$_->{nodeName},country=>$_->{countryCode},status=>$health->{$_->{uuid}} || 'unknown'} } @{$allowed->{activeNodes}}]};
     } elsif ($section eq 'traffic') {
         my $end=strftime('%Y-%m-%d',gmtime(time));
         my $start=strftime('%Y-%m-%d',gmtime(time-29*86400));
@@ -156,19 +221,38 @@ sub api_addons {
         my $defs=$self->_cfg->{addons} || [];
         die 'Invalid addon configuration' unless ref($defs) eq 'ARRAY';
         my @list;
+        my @setup_issues;
+        if (@$defs) {
+            eval { $self->_addon_signature($self->user_id,$row->{user_service_id},0,'check'); 1 }
+                or push @setup_issues,'Не настроен ключ подписи расширений. Администратору: задайте addon_signing_key.';
+            eval { my ($ready)=$self->dbh->selectrow_array('SELECT COUNT(*) FROM remnawave_addon_ledger WHERE order_id=0'); die 'Schema missing' unless defined $ready; 1 }
+                or push @setup_issues,'Не установлен журнал выдачи. Администратору: импортируйте remnawave-addons.sql в базу SHM.';
+        }
         my $u=@$defs ? $self->_cabinet_user($self->_remna_id($row)) : {};
         for my $def (@$defs) {
             next unless ref($def) eq 'HASH' && ($def->{service_id} || '') =~ /^[1-9][0-9]*$/;
-            my $service=get_service('service',_id=>$def->{service_id});
-            next unless $service && $service->price_list_check_allow_to_order;
-            next if $service->get_period || !$service->get_cost;
-            next if ($def->{type} || '') eq 'devices' && !$u->{hwidDeviceLimit};
-            next if ($def->{type} || '') eq 'traffic' && !$u->{trafficLimitBytes};
-            next if ($def->{type} || '') eq 'locations' && grep { (ref($_) ? $_->{uuid} : $_) eq ($def->{squad_uuid} || '') } @{$u->{activeInternalSquads} || []};
             next if ref($def->{tariff_ids}) eq 'ARRAY' && !grep { $_ == $row->{service_id} } @{$def->{tariff_ids}};
-            push @list,{key=>$def->{key},title=>$def->{title},service_id=>$def->{service_id},cost=>$service->get_cost};
+            my $service=get_service('service',_id=>$def->{service_id});
+            unless ($service) {
+                push @list,{key=>$def->{key},title=>$def->{title},service_id=>$def->{service_id},cost=>0,unavailable_reason=>'Услуга расширения не найдена в SHM. Проверьте service_id.'};
+                next;
+            }
+            my $reason=$service->get_period ? 'В SHM нужен разовый тариф: период 0.' : $service->get_cost<=0 ? 'В SHM укажите цену больше нуля.' : '';
+            $reason='Заказ этой услуги запрещён в SHM.' unless $service->price_list_check_allow_to_order;
+            $reason='Неизвестный тип расширения.' unless ($def->{type} || '') =~ /^(devices|traffic|locations)$/;
+            $reason='Некорректный объём расширения.' if ($def->{type} || '') =~ /^(devices|traffic)$/ && ($def->{amount} || '') !~ /^[1-9][0-9]{0,15}$/;
+            $reason='Укажите настоящий UUID internal squad.' if ($def->{type} || '') eq 'locations' && ($def->{squad_uuid} || '') !~ /^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i;
+            $reason='У вас уже безлимитное количество устройств.' if ($def->{type} || '') eq 'devices' && !$u->{hwidDeviceLimit};
+            $reason='У вас уже безлимитный трафик.' if ($def->{type} || '') eq 'traffic' && !$u->{trafficLimitBytes};
+            $reason='Эта локация уже входит в подписку.' if ($def->{type} || '') eq 'locations' && grep { (ref($_) ? $_->{uuid} : $_) eq ($def->{squad_uuid} || '') } @{$u->{activeInternalSquads} || []};
+            if (($def->{type} || '') eq 'locations') {
+                my %free=map { map { $_=>1 } @{$_->{squad_uuids}} } @{$self->_server_choices($row)};
+                $reason='Эта группа уже входит в бесплатный выбор серверов. Исправьте настройки расширения.' if $free{$def->{squad_uuid} || ''};
+            }
+            $reason=$setup_issues[0] if @setup_issues;
+            push @list,{key=>$def->{key},title=>$def->{title},service_id=>$def->{service_id},cost=>$service->get_cost,unavailable_reason=>$reason};
         }
-        {addons=>\@list};
+        {addons=>\@list,setup_issues=>\@setup_issues};
     };
     return $result if $result;
     return $self->_api_error('Дополнительные возможности сейчас недоступны');
@@ -192,6 +276,8 @@ sub api_purchase_addon {
             die 'Addon limit too large' if $u->{$field}+$def->{amount}>9007199254740991;
         } else {
             die 'Invalid squad UUID' unless ($def->{squad_uuid} || '') =~ /^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i;
+            my %free=map { map { $_=>1 } @{$_->{squad_uuids}} } @{$self->_server_choices($row)};
+            die 'Paid location overlaps server choices' if $free{$def->{squad_uuid}};
             my $u=$self->_request(path=>'/api/users/'.$self->_remna_id($row))->{response};
             die 'Already accessible' if grep { (ref($_) ? $_->{uuid} : $_) eq $def->{squad_uuid} } @{$u->{activeInternalSquads} || []};
         }
@@ -207,7 +293,19 @@ sub api_purchase_addon {
         {ok=>1,order_id=>$us->id,paid=>$us->is_paid ? 1 : 0};
     };
     return $result if $result;
-    return $self->_api_error('Не удалось оформить расширение. Проверьте список услуг перед повторной покупкой.');
+    my $error=$@ || '';
+    my $message=$error =~ /signing key/ ? 'Администратору: настройте addon_signing_key (openssl rand -hex 32).'
+        : $error =~ /overlaps server choices/ ? 'Локация уже входит в бесплатный выбор серверов. Исправьте настройки расширения.'
+        : $error =~ /ledger|schema/ ? 'Администратору: установите SQL-схему remnawave-addons.sql в базе SHM.'
+        : $error =~ /Already unlimited/ ? 'Услуга уже безлимитная: это расширение не требуется.'
+        : $error =~ /Already accessible/ ? 'Эта локация уже входит в подписку.'
+        : $error =~ /Tariff not allowed/ ? 'Расширение недоступно для вашего тарифа: проверьте tariff_ids.'
+        : $error =~ /one-time service/ ? 'Проверьте услугу SHM: период 0, цена больше нуля, заказ разрешён.'
+        : $error =~ /Invalid squad/ ? 'Администратору: укажите настоящий UUID internal squad в расширении.'
+        : 'Не удалось подтвердить заказ. Проверьте список услуг перед повторной покупкой.';
+    get_service('report')->status(400);
+    get_service('report')->add_error($message);
+    return undef;
 }
 # Called by the paid SHM service's local activation event. Never routed to HTTP.
 sub fulfill_addon {
