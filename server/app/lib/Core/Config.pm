@@ -133,13 +133,13 @@ sub api_data_by_main {
     for my $field (qw(name description logo_url support_url intro title accent_title primary_button login_button secondary_button compatibility visual_caption benefits_title benefits_description connection_title faq_title faq_description nav_benefits nav_connection nav_questions support_label login_title register_title monitor_enabled)) {
         $public{$field} = $cfg->{$field} if defined($cfg->{$field}) && !ref($cfg->{$field});
     }
-    for my $field (qw(visual_steps benefits steps faq documents monitor_nodes)) {
+    for my $field (qw(visual_steps benefits steps faq documents monitor_nodes catalog plans)) {
         next unless ref($cfg->{$field}) eq 'ARRAY';
         my @items;
         for my $item (@{$cfg->{$field}}) {
             next unless ref($item) eq 'HASH';
             my %entry = map { defined($item->{$_}) && !ref($item->{$_}) ? ($_ => $item->{$_}) : () }
-                ($field eq 'documents' ? qw(label url) : $field eq 'monitor_nodes' ? qw(uuid title description ping_ip ping_port ping_url) : qw(title description));
+                ($field eq 'documents' ? qw(label url) : $field eq 'monitor_nodes' ? qw(uuid title description ping_ip ping_port ping_url) : $field eq 'plans' ? qw(title description price details) : qw(title description));
             push @items, \%entry;
             last if @items >= 20;
         }

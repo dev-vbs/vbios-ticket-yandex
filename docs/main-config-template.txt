@@ -25,6 +25,12 @@
     nav_connection = 'Как начать'
     nav_questions = 'Вопросы'
     support_label = 'Поддержка'
+    catalog = [
+        { title = 'Услуги и подписки' description = 'Выбор, подключение и продление в одном кабинете.' }
+        { title = 'Управление доступом' description = 'Настройки и инструкции для ваших устройств.' }
+        { title = 'Поддержка' description = 'История обращений и ответы специалистов всегда под рукой.' }
+    ]
+    plans = []
     monitor_enabled = 1
     monitor_nodes = [
         { uuid = 'REMNAWAVE_NODE_UUID_1' title = 'Москва' description = 'Россия' ping_ip = '203.0.113.10' ping_port = 443 }
