@@ -1,5 +1,6 @@
 import '@mantine/core/styles.css';
-import { BalancePage, OperationsPage } from './pages/AccountSections';
+const BalancePage = lazy(() => import('./pages/AccountSections').then(module => ({ default: module.BalancePage })));
+const OperationsPage = lazy(() => import('./pages/AccountSections').then(module => ({ default: module.OperationsPage })));
 import '@mantine/notifications/styles.css';
 import { lazy, Suspense, useEffect, useState } from 'react';
 import { isAxiosError } from 'axios';
@@ -17,9 +18,9 @@ import { isTelegramWebApp } from './constants/webapp';
 import { useEmailRequired } from './hooks/useEmailRequired';
 import { useTicketPoller } from './hooks/useTicketPoller';
 import { useNotificationFromUrl } from './hooks/useNotificationFromUrl';
-import PayHistoryModal from './components/PayHistoryModal';
-import PayModal from './components/PayModal';
-import WithdrawHistoryModal from './components/WithdrawHistoryModal';
+const PayHistoryModal = lazy(() => import('./components/PayHistoryModal'));
+const PayModal = lazy(() => import('./components/PayModal'));
+const WithdrawHistoryModal = lazy(() => import('./components/WithdrawHistoryModal'));
 import { PWAInstallBanner } from './components/PWAInstallBanner';
 import { LegalLinks } from './components/LegalLinks';
 import { theme } from './theme';
@@ -34,10 +35,10 @@ const Profile = lazy(() => import('./pages/Profile'));
 const Tickets = lazy(() => import('./pages/Tickets'));
 const NotificationsPage = lazy(() => import('./pages/NotificationsPage'));
 const HelpPage = lazy(() => import('./pages/HelpPage'));
-import Login from './pages/Login';
+const Login = lazy(() => import('./pages/Login'));
 import NotFound from './pages/NotFound';
-import AddToHomeScreen from './pages/AddToHomeScreen';
-import Dashboard from './pages/Dashboard';
+const AddToHomeScreen = lazy(() => import('./pages/AddToHomeScreen'));
+const Dashboard = lazy(() => import('./pages/Dashboard'));
 import { CabinetLayout } from './components/CabinetLayout';
 
 function AppContent() {
@@ -269,9 +270,9 @@ function AppContent() {
           <Route path="*" element={<NotFound />} />
         </Routes></Suspense>
       </CabinetLayout>
-      <PayHistoryModal opened={payHistoryOpen} onClose={() => setPayHistoryOpen(false)} />
-      <WithdrawHistoryModal opened={withdrawHistoryOpen} onClose={() => setWithdrawHistoryOpen(false)} />
-      <PayModal opened={payModalOpen} onClose={() => setPayModalOpen(false)} />
+      {payHistoryOpen && <Suspense fallback={null}><PayHistoryModal opened={payHistoryOpen} onClose={() => setPayHistoryOpen(false)} /></Suspense>}
+      {withdrawHistoryOpen && <Suspense fallback={null}><WithdrawHistoryModal opened={withdrawHistoryOpen} onClose={() => setWithdrawHistoryOpen(false)} /></Suspense>}
+      {payModalOpen && <Suspense fallback={null}><PayModal opened={payModalOpen} onClose={() => setPayModalOpen(false)} /></Suspense>}
       <PWAInstallBanner />
     </>
   );
@@ -298,7 +299,7 @@ function App() {
       <MantineProvider theme={theme} defaultColorScheme="dark" colorSchemeManager={colorSchemeManager}>
         <Notifications position="top-right" />
         <BrowserRouter basename={basePath}>
-          <AppContent />
+          <Suspense fallback={<Center mih="100vh"><Loader size="sm" /></Center>}><AppContent /></Suspense>
         </BrowserRouter>
       </MantineProvider>
     </DirectionProvider>

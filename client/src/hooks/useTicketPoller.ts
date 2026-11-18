@@ -10,14 +10,19 @@ export function useTicketPoller(enabled: boolean) {
 
   useEffect(() => {
     if (!enabled) return;
-
+    let stopped = false;
+    let pending = false;
     const check = async () => {
+      if (pending || document.hidden || !navigator.onLine) return;
+      pending = true;
       try {
         const response = await ticketApi.list({ status: 'waiting', limit: 1 });
         const data = response.data?.data;
-        setHasNewTicketMessages(Array.isArray(data) && data.length > 0);
+        if (!stopped) setHasNewTicketMessages(Array.isArray(data) && data.length > 0);
       } catch {
         // ignore polling errors silently
+      } finally {
+        pending = false;
       }
     };
 
@@ -25,6 +30,7 @@ export function useTicketPoller(enabled: boolean) {
     timerRef.current = setInterval(check, POLL_INTERVAL);
 
     return () => {
+      stopped = true;
       if (timerRef.current) clearInterval(timerRef.current);
     };
   }, [enabled, setHasNewTicketMessages]);

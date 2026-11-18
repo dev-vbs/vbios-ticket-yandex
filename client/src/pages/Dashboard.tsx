@@ -39,15 +39,23 @@ export default function Dashboard() {
   const [monitor, setMonitor] = useState<{ enabled?: boolean; state?: string; nodes?: MonitorNode[] }>({});
   const load = useCallback(async () => {
     setLoading(true);
-    const [servicesResult, paymentsResult, forecastResult, monitorResult] = await Promise.allSettled([userApi.getServices(), userApi.getPayments({ limit: 5, sort_field: 'created', sort_direction: 'desc', filter: { money: { '>': 0 } } }), userApi.getForecast(), monitorApi.get()]);
+    const [servicesResult, paymentsResult, forecastResult] = await Promise.allSettled([userApi.getServices(), userApi.getPayments({ limit: 5, sort_field: 'created', sort_direction: 'desc', filter: { money: { '>': 0 } } }), userApi.getForecast()]);
     if (servicesResult.status === 'fulfilled' && Array.isArray(servicesResult.value.data?.data)) { setServices(servicesResult.value.data.data); setServiceError(false); setServicesUpdated(new Date()); } else setServiceError(true);
     if (paymentsResult.status === 'fulfilled' && Array.isArray(paymentsResult.value.data?.data)) { setPayments(paymentsResult.value.data.data); setPaymentError(false); setPaymentsUpdated(new Date()); } else setPaymentError(true);
     if (forecastResult.status === 'fulfilled') { const data = forecastResult.value.data?.data; setForecast(Array.isArray(data) ? data[0] : data); setForecastError(false); } else setForecastError(true);
-    if (monitorResult.status === 'fulfilled') { const data = monitorResult.value.data?.data ?? monitorResult.value.data; setMonitor(Array.isArray(data) ? data[0] || {} : data || {}); }
+
     if (servicesResult.status === 'rejected') notifications.show({ title: 'Не удалось обновить кабинет', message: 'Проверьте соединение с сервером и повторите попытку.', color: 'red' });
     setLoading(false);
   }, []);
   useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    let cancelled = false;
+    void monitorApi.get().then(response => {
+      const raw = response.data?.data ?? response.data;
+      if (!cancelled) setMonitor(Array.isArray(raw) ? raw[0] || {} : raw || {});
+    }).catch(() => undefined);
+    return () => { cancelled = true; };
+  }, []);
   const activeServices = useMemo(() => services.filter((service) => service.status === 'ACTIVE' || service.status === 'active'), [services]);
   const hasBalance = Number(user?.balance || 0) > 0;
   const { hasNewTicketMessages } = useStore();
