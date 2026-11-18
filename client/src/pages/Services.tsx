@@ -462,10 +462,6 @@ function ServiceDetail({ service, onDelete, onChangeTariff }: ServiceDetailProps
             )}
           </Stack>
         </section>
-      {isProxy && <HwidDevices key={service.user_service_id} serviceId={service.user_service_id} subscriptionUrl={subscriptionUrl} onAddSubscription={() => urlSchema ? void handleOpenUrlSchema() : handleConfigure()} />}
-      {isProxy && <Suspense fallback={null}><RemnawaveFeatures serviceId={service.user_service_id} onRotated={url => { setSubscriptionUrl(url); setConnectionReload(v => v + 1); }} /></Suspense>}
-
-
         { service.status === 'ACTIVE' && isVpnOrProxy && (
           <details className="service-technical-details" open={activeTab === 'config'} onToggle={event => setActiveTab(event.currentTarget.open ? 'config' : 'info')}><summary>Ссылка подписки, QR-код и параметры подключения</summary>
             <Paper withBorder p="lg" radius="md" className="service-connection-card">
@@ -551,6 +547,8 @@ function ServiceDetail({ service, onDelete, onChangeTariff }: ServiceDetailProps
             <QrModal opened={qrModalOpen} onClose={() => setQrModalOpen(false)} data={isVpn ? (storageData || '') : (subscriptionUrl || '')} title={isVpn ? t('services.vpnQrTitle') : t('services.subscriptionQrTitle')} onDownload={isVpn ? downloadConfig : undefined} />
           </details>
         )}
+      {isProxy && <HwidDevices key={service.user_service_id} serviceId={service.user_service_id} subscriptionUrl={subscriptionUrl} onAddSubscription={() => urlSchema ? void handleOpenUrlSchema() : handleConfigure()} />}
+      {isProxy && <Suspense fallback={null}><RemnawaveFeatures serviceId={service.user_service_id} onRotated={url => { setSubscriptionUrl(url); setConnectionReload(v => v + 1); }} /></Suspense>}
       </div>
       <PayModal opened={paymentOpen} onClose={() => setPaymentOpen(false)} initialAmount={payAmount > 0 ? payAmount : service.service.cost} />
 
