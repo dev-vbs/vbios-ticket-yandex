@@ -60,7 +60,8 @@ sub api_monitor {
     for my $item (@$visible) {
         next unless ref($item) eq 'HASH' && $item->{uuid};
         my $node = $nodes{$item->{uuid}};
-        my $ip = $item->{ping_ip};
+        my $ip = $item->{ping_ip} || ($node && $node->{address});
+        my $port = ($node && $node->{port}) || $item->{ping_port};
         my $ip_url = defined($ip) && !ref($ip) && is_ipv4($ip) ? 'https://'.$ip.'/ping'
             : defined($ip) && !ref($ip) && is_ipv6($ip) ? 'https://['.$ip.']/ping' : undef;
         push @public, {
@@ -68,7 +69,7 @@ sub api_monitor {
             country => substr($item->{description} || '', 0, 100),
             ping_url => ($item->{ping_url} && !ref($item->{ping_url}) && $item->{ping_url} =~ m{^https://[^\s\@]+$}) ? $item->{ping_url} : $ip_url,
             status => !$node ? 'unknown' : $node->{isDisabled} ? 'maintenance' : $node->{isConnected} ? 'online' : 'offline',
-            latency_ms => $node ? _tcp_latency_ms($node->{address}, $node->{port}) : undef,
+            latency_ms => _tcp_latency_ms($ip, $port),
         };
         last if @public >= 30;
     }

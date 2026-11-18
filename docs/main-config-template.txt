@@ -27,7 +27,7 @@
     support_label = 'Поддержка'
     monitor_enabled = 1
     monitor_nodes = [
-        { uuid = 'REMNAWAVE_NODE_UUID_1' title = 'Москва' description = 'Россия' ping_ip = '203.0.113.10' }
+        { uuid = 'REMNAWAVE_NODE_UUID_1' title = 'Москва' description = 'Россия' ping_ip = '203.0.113.10' ping_port = 443 }
         { uuid = 'REMNAWAVE_NODE_UUID_2' title = 'Франкфурт' description = 'Германия' }
         { uuid = 'REMNAWAVE_NODE_UUID_3' title = 'Дронтен' description = 'Нидерланды' }
         { uuid = 'REMNAWAVE_NODE_UUID_4' title = 'Рига' description = 'Латвия' }

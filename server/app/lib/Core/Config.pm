@@ -139,7 +139,7 @@ sub api_data_by_main {
         for my $item (@{$cfg->{$field}}) {
             next unless ref($item) eq 'HASH';
             my %entry = map { defined($item->{$_}) && !ref($item->{$_}) ? ($_ => $item->{$_}) : () }
-                ($field eq 'documents' ? qw(label url) : $field eq 'monitor_nodes' ? qw(uuid title description ping_ip ping_url) : qw(title description));
+                ($field eq 'documents' ? qw(label url) : $field eq 'monitor_nodes' ? qw(uuid title description ping_ip ping_port ping_url) : qw(title description));
             push @items, \%entry;
             last if @items >= 20;
         }
