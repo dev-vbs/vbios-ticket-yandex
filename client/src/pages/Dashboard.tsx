@@ -1,3 +1,4 @@
+import NodeLatency from '../components/NodeLatency';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { notifications } from '@mantine/notifications';
@@ -10,7 +11,7 @@ import './Dashboard.css';
 type Payment = { amount?: number; sum?: number; cost?: number; money?: number; created?: string; date?: string };
 type Service = { user_service_id: number; status?: string; service?: { name?: string }; name?: string; expire?: string | null };
 type Forecast = { total?: number; dept?: number };
-type MonitorNode = { name: string; country?: string; status: 'online' | 'offline' | 'maintenance' | 'unknown' };
+type MonitorNode = { name: string; country?: string; ping_url?: string; status: 'online' | 'offline' | 'maintenance' | 'unknown' };
 const rubles = (value: number) => new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 2 }).format(value);
 const formatDate = (value?: string | null) => {
   const date = value ? new Date(value.replace(' ', 'T')) : null;
@@ -69,7 +70,7 @@ export default function Dashboard() {
       <Link to="/services" className="dashboard-stat dashboard-stat--warning"><span className="dashboard-stat__label">Истекают скоро</span><strong>{loading ? '—' : expiringServices.length}</strong><span className="dashboard-stat__hint">требуют внимания</span></Link>
       <Link to="/services" className="dashboard-stat dashboard-stat--muted"><span className="dashboard-stat__label">Приостановлены</span><strong>{loading ? '—' : blockedServices.length}</strong><span className="dashboard-stat__hint">проверить услуги</span></Link>
     </section>
-    {monitor.enabled && <section className="node-monitor" aria-labelledby="node-monitor-title"><div className="node-monitor__head"><div><span className="node-monitor__eyebrow"><IconActivity size={14} />Сеть</span><h2 id="node-monitor-title">Доступность серверов</h2></div><span className="node-monitor__live"><i />{monitor.state === 'ready' ? 'Работает' : 'Проверяем'}</span></div><div className="node-monitor__list">{(monitor.nodes || []).map((node) => <div className="node-monitor__row" key={node.name}><span className={`node-monitor__dot node-monitor__dot--${node.status}`} /><div><strong>{node.name}</strong><small>{node.country || 'Сервер Remnawave'}</small></div><span className={`node-monitor__status node-monitor__status--${node.status}`}>{node.status === 'online' ? 'РАБОТАЕТ' : node.status === 'maintenance' ? 'ТЕХРАБОТЫ' : node.status === 'offline' ? 'НЕДОСТУПЕН' : 'ПРОВЕРКА'}</span></div>)}</div></section>}
+    {monitor.enabled && <section className="node-monitor" aria-labelledby="node-monitor-title"><div className="node-monitor__head"><div><span className="node-monitor__eyebrow"><IconActivity size={14} />Сеть</span><h2 id="node-monitor-title">Доступность серверов</h2></div><span className="node-monitor__live"><i />{monitor.state === 'ready' && monitor.nodes?.length && monitor.nodes.every(node => node.status === 'online') ? 'Работает' : 'Есть ограничения'}</span></div><div className="node-monitor__list">{(monitor.nodes || []).map((node) => <div className="node-monitor__row" key={node.name}><span className={`node-monitor__dot node-monitor__dot--${node.status}`} /><div><strong>{node.name}</strong><small>{node.country || 'Сервер Remnawave'}</small></div><span className={`node-monitor__status node-monitor__status--${node.status}`}><NodeLatency url={node.ping_url} />{node.status === 'online' ? 'РАБОТАЕТ' : node.status === 'maintenance' ? 'ТЕХРАБОТЫ' : node.status === 'offline' ? 'НЕДОСТУПЕН' : 'ПРОВЕРКА'}</span></div>)}</div></section>}
     <div className="dashboard-primary">
       <section className="dashboard-funds" aria-label="Баланс аккаунта">
         <div className="dashboard-section-label"><IconWallet size={18} />Ваш баланс</div>

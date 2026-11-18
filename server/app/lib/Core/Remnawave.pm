@@ -43,6 +43,7 @@ sub api_monitor {
         push @public, {
             name => substr($item->{title} || 'Сервер', 0, 100),
             country => substr($item->{description} || '', 0, 100),
+            ping_url => ($item->{ping_url} && !ref($item->{ping_url}) && $item->{ping_url} =~ m{^https://[^\s\@]+$}) ? $item->{ping_url} : undef,
             status => !$node ? 'unknown' : $node->{isDisabled} ? 'maintenance' : $node->{isConnected} ? 'online' : 'offline',
         };
         last if @public >= 30;

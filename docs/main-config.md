@@ -11,3 +11,4 @@ cd /opt/shm
 docker compose pull client core
 docker compose up -d --force-recreate client core
 ```
+Для измерения HTTP-задержки от браузера пользователя добавьте каждому элементу monitor_nodes поле ping_url = 'https://node.example.com/ping'. Это публичный HTTPS endpoint именно на соответствующем сервере, без CDN, авторизации и перенаправлений. Он должен возвращать небольшой пустой ответ 200/204, Cache-Control: no-store и Access-Control-Allow-Origin: * (или домен кабинета). На фронтенде используется медиана до трёх запросов раз в минуту, без cookies. Это HTTP RTT, а не ICMP ping; TLS и сеть пользователя влияют на результат. При отсутствии endpoint/CORS/доступа показывается «—». Статус Remnawave и измерение HTTP независимы.
