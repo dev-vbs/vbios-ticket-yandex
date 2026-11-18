@@ -529,6 +529,19 @@ state $routes //= {
 '/user/service/connection-stats' => {
     GET => { controller => 'Remnawave', method => 'api_connection_stats', params => { user_service_id => { type => 'integer', required => 1, min => 1 } } },
 },
+'/user/service/remnawave' => {
+    GET => { controller => 'Remnawave', method => 'api_cabinet', params => { user_service_id => { type => 'integer', required => 1, min => 1 }, section => { type => 'string', max_length => 20 } } },
+},
+'/user/service/remnawave/revoke' => {
+    POST => { controller => 'Remnawave', method => 'api_rotate_subscription', params => { user_service_id => { type => 'integer', required => 1, min => 1 } } },
+},
+'/user/service/remnawave/access' => {
+    GET => { controller => 'Remnawave', method => 'api_subscription_access', params => { user_service_id => { type => 'integer', required => 1, min => 1 } } },
+},
+'/user/service/remnawave/addons' => {
+    GET => { controller => 'Remnawave', method => 'api_addons', params => { user_service_id => { type => 'integer', required => 1, min => 1 } } },
+    PUT => { controller => 'Remnawave', method => 'api_purchase_addon', params => { user_service_id => { type => 'integer', required => 1, min => 1 }, addon => { type => 'string', required => 1, max_length => 64 } } },
+},
 '/user/withdraw' => {
     swagger => { tags => 'Пользователи' },
     GET => {

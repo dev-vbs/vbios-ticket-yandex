@@ -1,0 +1,33 @@
+{{ IF !config.remna }}
+{{ THROW remna_config 'Сначала настройте config.remna: URL, API-токен и name_prefix' }}
+{{ END }}
+{{ remna = config.remna }}
+{{ remna.addon_signing_key = 'REPLACE_WITH_OUTPUT_OF_OPENSSL_RAND_HEX_32' }}
+{{ remna.addons = [
+    {
+        key = 'devices_2'
+        title = 'Ещё 2 устройства до окончания текущей услуги'
+        service_id = 201
+        tariff_ids = [10, 11]
+        type = 'devices'
+        amount = 2
+    }
+    {
+        key = 'traffic_50'
+        title = 'Ещё 50 ГБ к текущему лимиту'
+        service_id = 202
+        tariff_ids = [10, 11]
+        type = 'traffic'
+        amount = 53687091200
+    }
+    {
+        key = 'location_de'
+        title = 'Дополнительная локация до окончания текущей услуги'
+        service_id = 203
+        tariff_ids = [10, 11]
+        type = 'locations'
+        squad_uuid = 'REPLACE_WITH_INTERNAL_SQUAD_UUID'
+    }
+] }}
+{{ r = user.srv('config').id('remna').set_json('value', remna) }}
+Настройки расширений сохранены. Проверьте service_id, tariff_ids, ключ подписи и UUID перед включением продаж.

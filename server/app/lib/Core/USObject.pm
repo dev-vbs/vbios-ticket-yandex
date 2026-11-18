@@ -1015,6 +1015,11 @@ sub change {
     # пользуется ей бесконечно: order_only_once тут не помогает, эта проверка
     # живёт только в Core::Service::price_list, а change её не вызывает.
     unless ( $args{skip_check_allow_to_order} || get_service('user')->authenticated->is_admin ) {
+        if ($service->is_remna_addon) {
+            report->status(400);
+            report->add_error('Order this addon from the primary service card');
+            return undef;
+        }
         unless ( $service->get_cost && $service->get_cost > 0 ) {
             logger->warning(
                 sprintf "Denied change to free service %s for user service: %s", $args{service_id}, $self->id
@@ -1135,6 +1140,12 @@ sub create_for_api_safe {
         @_,
     );
 
+    my $requested=get_service('service',_id=>$args{service_id});
+    if ($requested && $requested->is_remna_addon) {
+        report->status(400);
+        report->add_error('Order this addon from the primary service card');
+        return undef;
+    }
     $self->set_user_fail_attempt( 'create_for_api_safe', 600 ); # 5 orders/10 mins
 
     my $us = $self->create_for_api(
@@ -1142,6 +1153,7 @@ sub create_for_api_safe {
         check_allow_to_order => 1,
     );
 
+    return undef unless $us && $us->{user_service_id};
     $self = $self->id( $us->{user_service_id} );
 
     return $self ? {

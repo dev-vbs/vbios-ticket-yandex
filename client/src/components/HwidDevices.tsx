@@ -47,6 +47,11 @@ export default function HwidDevices({ serviceId, subscriptionUrl, onAddSubscript
   const load = useCallback(() => setRevision(v => v + 1), []);
   useEffect(() => { window.addEventListener('online', load); return () => window.removeEventListener('online', load); }, [load]);
   useEffect(() => {
+    const changed = (event: Event) => { if ((event as CustomEvent<number>).detail === serviceId) load(); };
+    window.addEventListener('remna-devices-changed', changed);
+    return () => window.removeEventListener('remna-devices-changed', changed);
+  }, [load, serviceId]);
+  useEffect(() => {
     let active = true;
     setLoading(true); setError(''); setSelected(null);
     void userApi.getHwid(serviceId).then(response => {
@@ -95,7 +100,7 @@ export default function HwidDevices({ serviceId, subscriptionUrl, onAddSubscript
         <div><Text size="xs" c="dimmed">Ссылка на подписку</Text><Button mt={6} size="xs" variant="light" disabled={!subscriptionUrl || !onAddSubscription} onClick={onAddSubscription} leftSection={<IconDeviceMobile size={15} />}>Добавить в приложение</Button></div>
       </div>
       {stats.used_bytes != null && stats.limit_bytes != null && stats.limit_bytes > 0 && <Stack gap={5} mt="sm"><Text size="xs" c="dimmed">Использование трафика · {Math.round(Number(stats.used_bytes) / Number(stats.limit_bytes) * 100)}%</Text><Progress aria-label="Использование лимита трафика" value={Math.min(100, Math.max(0, Number(stats.used_bytes) / Number(stats.limit_bytes) * 100))} size="lg" radius="xl" /><Text size="xs" c="dimmed">Осталось: {bytes(Math.max(0, Number(stats.limit_bytes) - Number(stats.used_bytes)))}</Text></Stack>}
-      <Text mt="sm" size="xs" c="dimmed">Трафик и время подключения относятся ко всей подписке. История по дням в этом разделе пока не собирается.</Text>
+      <Text mt="sm" size="xs" c="dimmed">Трафик и время подключения относятся ко всей подписке. График по дням доступен в разделе «Ваша подписка под контролем».</Text>
     </>}
     {statsError && stats && <Alert mt="sm" color="orange">Не удалось обновить статистику. Показаны ранее загруженные данные.</Alert>}
     {error && devices.length > 0 && <Alert mt="sm" color="orange">{error} Показан предыдущий список.</Alert>}

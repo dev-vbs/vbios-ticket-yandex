@@ -2,7 +2,7 @@
 
 Услуги, подписки, устройства, оплата и поддержка в одном интерфейсе. Светлая и тёмная темы, адаптивная мобильная версия и AJAX-форма входа.
 
-[Установка на сервер](#установка-vbios-shm-на-новый-сервер) · [Галерея скриншотов](docs/screenshots/README.md)
+[Remnawave: возможности и настройка расширений](docs/remnawave-cabinet.md) · [Установка на сервер](#установка-vbios-shm-на-новый-сервер) · [Галерея скриншотов](docs/screenshots/README.md)
 
 ## Превью личного кабинета
 
@@ -13,6 +13,28 @@
 | ![Кабинет — тёмная тема](docs/screenshots/dashboard.png) | ![Кабинет — светлая тема](docs/screenshots/dashboard-light.png) |
 
 Раскройте нужный раздел, чтобы посмотреть остальные экраны. Нажмите на изображение для просмотра в полном размере.
+
+<details>
+<summary><strong>Remnawave: серверы, трафик и расширения</strong></summary>
+
+| Экран | Тёмная тема | Светлая тема |
+| --- | --- | --- |
+| Диагностика и лимиты | ![Диагностика и лимиты — тёмная тема](docs/screenshots/remna-diagnostics.png) | ![Диагностика и лимиты — светлая тема](docs/screenshots/remna-diagnostics-light.png) |
+| Серверы своего тарифа | ![Серверы своего тарифа — тёмная тема](docs/screenshots/remna-nodes.png) | ![Серверы своего тарифа — светлая тема](docs/screenshots/remna-nodes-light.png) |
+| График трафика | ![График трафика — тёмная тема](docs/screenshots/remna-traffic.png) | ![График трафика — светлая тема](docs/screenshots/remna-traffic-light.png) |
+| История обновлений подписки | ![История обновлений подписки — тёмная тема](docs/screenshots/remna-history.png) | ![История обновлений подписки — светлая тема](docs/screenshots/remna-history-light.png) |
+| Платные расширения | ![Платные расширения — тёмная тема](docs/screenshots/remna-addons.png) | ![Платные расширения — светлая тема](docs/screenshots/remna-addons-light.png) |
+| Замена ссылки доступа | ![Замена ссылки доступа — тёмная тема](docs/screenshots/remna-revoke.png) | ![Замена ссылки доступа — светлая тема](docs/screenshots/remna-revoke-light.png) |
+
+| На телефоне | Тёмная тема | Светлая тема |
+| --- | --- | --- |
+| Диагностика и лимиты | ![Диагностика и лимиты — мобильная тёмная тема](docs/screenshots/remna-diagnostics-mobile-dark.png) | ![Диагностика и лимиты — мобильная светлая тема](docs/screenshots/remna-diagnostics-mobile-light.png) |
+| Серверы своего тарифа | ![Серверы своего тарифа — мобильная тёмная тема](docs/screenshots/remna-nodes-mobile-dark.png) | ![Серверы своего тарифа — мобильная светлая тема](docs/screenshots/remna-nodes-mobile-light.png) |
+| График трафика | ![График трафика — мобильная тёмная тема](docs/screenshots/remna-traffic-mobile-dark.png) | ![График трафика — мобильная светлая тема](docs/screenshots/remna-traffic-mobile-light.png) |
+| История обновлений подписки | ![История обновлений подписки — мобильная тёмная тема](docs/screenshots/remna-history-mobile-dark.png) | ![История обновлений подписки — мобильная светлая тема](docs/screenshots/remna-history-mobile-light.png) |
+| Платные расширения | ![Платные расширения — мобильная тёмная тема](docs/screenshots/remna-addons-mobile-dark.png) | ![Платные расширения — мобильная светлая тема](docs/screenshots/remna-addons-mobile-light.png) |
+
+</details>
 
 <details>
 <summary><strong>Стартовая страница и AJAX-вход</strong></summary>

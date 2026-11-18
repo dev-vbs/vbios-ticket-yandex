@@ -1,5 +1,6 @@
 package Core::Remnawave;
 use v5.14;
+use utf8;
 use parent 'Core::Base';
 use Core::Base;
 use Core::System::ServiceManager qw(get_service);
@@ -9,8 +10,14 @@ use Data::Validate::IP qw(is_ipv4 is_ipv6);
 use IO::Socket::IP;
 use Time::HiRes qw(time);
 use Core::Remnawave::Operations;
+use Core::Remnawave::Cabinet;
 use URI;
 use URI::Escape qw(uri_escape_utf8);
+
+# External API mutations cannot participate in SHM's request transaction.
+# Persist the fulfillment ledger before sending a PATCH, including on task failure.
+# Billing creation still uses USObject's normal transaction.
+sub dbh { shift->dbh_auto_commit }
 
 # Server-side administration only. Never expose this dispatcher as a public API.
 sub operation {
@@ -131,41 +138,36 @@ sub _request {
 }
 sub _owned {
     # Service settings are stored on user_services in SHM; services has config, not settings.
-    my ($self,$uid,$usi)=@_; return $self->dbh->selectrow_hashref('SELECT us.user_service_id,us.user_id,us.service_id,us.settings,s.name,s.config FROM user_services us JOIN services s ON s.service_id=us.service_id WHERE us.user_service_id=? AND us.user_id=?',undef,$usi,$uid);
+    my ($self,$uid,$usi)=@_; return $self->dbh->selectrow_hashref('SELECT us.user_service_id,us.user_id,us.service_id,us.status,us.expire,us.settings,s.name,s.config FROM user_services us JOIN services s ON s.service_id=us.service_id WHERE us.user_service_id=? AND us.user_id=?',undef,$usi,$uid);
 }
 sub _owned_or_error {
     my ($self,$usi)=@_;
     die 'user_service_id is required' unless defined $usi && "$usi" =~ /^\d+$/ && $usi > 0;
     my $uid=$self->user_id;
     my $row=$self->_owned($uid,int($usi));
-    if ($row) { $self->_configure_service($row); return $row; }
-    my ($owner)=$self->dbh->selectrow_array('SELECT user_id FROM user_services WHERE user_service_id=?',undef,int($usi));
-    die 'service not found (user_service_id='.int($usi).', session_user_id='.(defined $uid ? $uid : 'NULL').', owner_user_id='.(defined $owner ? $owner : 'NULL').')';
+    if ($row && ($row->{status} || '') ne 'REMOVED') { $self->_configure_service($row); return $row; }
+    die 'Service not found';
 }
 sub _remna_id {
     my ($self,$row)=@_;
     my $cfg=$self->_cfg;
-    my $prefix=$cfg->{storage_prefix} || 'vpn_mrzb_';
     # Remnawave HWID endpoints require the numeric Remnawave user id. Resolve by
     # the SHM generated username first; storage may contain a subscription id.
-    my $stored=eval { $self->srv('storage')->read(name=>$prefix.$row->{user_service_id}) } || {};
-    return int($stored->{id}) if defined($stored->{id}) && $stored->{id} =~ /^[1-9][0-9]*$/;
+    # Storage is customer writable: it must never select the upstream account.
     my $username_prefix=$cfg->{name_prefix} || $cfg->{username_prefix} || 'vBios_us_';
-    my $resolved=eval { $self->_request(path=>'/api/users/by-username/'.$username_prefix.$row->{user_service_id}) } || {};
+    my $username=$username_prefix.$row->{user_service_id};
+    my $key='remna-binding-v1-'.sha256_hex(join(':',$cfg->{url} || '',$cfg->{api_token} || '',$self->user_id,$username));
+    my $cached=eval { $self->cache->get_json($key) };
+    return int($cached->{id}) if ref($cached) eq 'HASH' && ($cached->{id} || '') =~ /^[1-9][0-9]*$/;
+    my $resolved=$self->_request(path=>'/api/users/by-username/'.uri_escape_utf8($username));
     my $resolved_payload=$resolved->{response} || $resolved->{data} || $resolved;
     my $resolved_id=ref($resolved_payload) eq 'HASH' ? ($resolved_payload->{id} || $resolved_payload->{user}{id}) : undef;
-    return int($resolved_id) if defined $resolved_id && "$resolved_id" =~ /^\d+$/ && $resolved_id > 0;
-    my $data=$stored;
-    my $id=$data->{id} || $data->{uuid} || $data->{user}{id} || $data->{user}{uuid} || $data->{response}{user}{id} || $data->{response}{user}{uuid};
-    if (!$id && $data->{shortUuid}) {
-        my $resolved=$self->_request(path=>'/api/users/by-short-uuid/'.$data->{shortUuid});
-        $id=$resolved->{response}{id} || $resolved->{response}{uuid} || $resolved->{id} || $resolved->{uuid} || $resolved->{data}{id} || $resolved->{data}{uuid};
+    if (defined $resolved_id && "$resolved_id" =~ /^\d+$/ && $resolved_id > 0) {
+        die 'Unexpected Remnawave username' if defined($resolved_payload->{username}) && $resolved_payload->{username} ne $username;
+        eval { $self->cache->set_json($key,{id=>int($resolved_id)},30) };
+        return int($resolved_id);
     }
-    if (!$id) {
-        $id=$resolved_payload->{id} || $resolved_payload->{uuid} || $resolved_payload->{user}{id} || $resolved_payload->{user}{uuid};
-    }
-    die 'Remnawave numeric user id is not found for this service' unless defined $id && "$id" =~ /^\d+$/ && $id > 0;
-    return int($id);
+    die 'Remnawave account not found for service';
 }
 sub _limit {
     my ($self,$row)=@_;
@@ -198,7 +200,9 @@ sub api_hwid_list {
         $payload=$payload->{response} if ref($payload) eq 'HASH' && ref($payload->{response}) eq 'HASH';
         my $devices=ref($payload) eq 'ARRAY' ? $payload : ($payload->{devices});
         die 'unexpected Remnawave devices response' unless ref($devices) eq 'ARRAY';
-        $result={devices=>$devices,limit=>$self->_limit($row)};
+        my $user=eval { $self->_cabinet_user($self->_remna_id($row)) } || {};
+        my $limit=defined($user->{hwidDeviceLimit}) ? $user->{hwidDeviceLimit} : $self->_limit($row);
+        $result={devices=>$devices,limit=>$limit};
         1;
     };
     unless ($ok) {
@@ -215,8 +219,7 @@ sub api_connection_stats {
     my $result;
     my $ok=eval {
         my $row=$self->_owned_or_error($a{user_service_id});
-        my $response=$self->_request(path=>'/api/users/'.$self->_remna_id($row));
-        my $user=$response->{response} || $response->{data} || $response;
+        my $user=$self->_cabinet_user($self->_remna_id($row));
         die 'Invalid user statistics response' unless ref($user) eq 'HASH';
         my $traffic=ref($user->{userTraffic}) eq 'HASH' ? $user->{userTraffic} : $user;
         # Explicit allowlist: never expose subscription URLs, tokens or other users.

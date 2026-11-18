@@ -401,7 +401,15 @@ sub was_previously_used {
 
 sub api_price_list {
     my $self = shift;
-    return $self->price_list( @_ );
+    my $cfg=get_service('config')->data_by_name('remna') || {};
+    my %addons=map { ref($_) eq 'HASH' && $_->{service_id} ? ($_->{service_id}=>1) : () } @{ref($cfg->{addons}) eq 'ARRAY' ? $cfg->{addons} : []};
+    return grep { !$addons{$_->{service_id}} } $self->price_list( @_ );
+}
+
+sub is_remna_addon {
+    my $self=shift;
+    my $cfg=get_service('config')->data_by_name('remna') || {};
+    return scalar grep { ref($_) eq 'HASH' && ($_->{service_id} || 0)==$self->id } @{ref($cfg->{addons}) eq 'ARRAY' ? $cfg->{addons} : []};
 }
 
 # legacy: for backward compatible

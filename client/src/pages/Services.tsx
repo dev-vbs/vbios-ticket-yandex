@@ -11,6 +11,7 @@ import PayModal from '../components/PayModal';
 import QrModal from '../components/QrModal';
 import AppDownloadBlock from '../components/AppDownloadBlock';
 const OrderServiceModal = lazy(() => import('../components/OrderServiceModal'));
+const RemnawaveFeatures = lazy(() => import('../components/RemnawaveFeatures'));
 import ConfirmModal from '../components/ConfirmModal';
 import HwidDevices from '../components/HwidDevices';
 import { config } from '../config';
@@ -462,6 +463,7 @@ function ServiceDetail({ service, onDelete, onChangeTariff }: ServiceDetailProps
           </Stack>
         </section>
       {isProxy && <HwidDevices key={service.user_service_id} serviceId={service.user_service_id} subscriptionUrl={subscriptionUrl} onAddSubscription={() => urlSchema ? void handleOpenUrlSchema() : handleConfigure()} />}
+      {isProxy && <Suspense fallback={null}><RemnawaveFeatures serviceId={service.user_service_id} onRotated={url => { setSubscriptionUrl(url); setConnectionReload(v => v + 1); }} /></Suspense>}
 
 
         { service.status === 'ACTIVE' && isVpnOrProxy && (

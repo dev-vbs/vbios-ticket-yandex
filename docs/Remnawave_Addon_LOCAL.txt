@@ -1,0 +1,8 @@
+{{ result = user.srv('Remnawave').fulfill_addon(order_id = us.id) }}
+{{ IF result.ok }}
+{{ r = task.answer(status = SUCCESS) }}
+Расширение применено.
+{{ ELSE }}
+{{ r = task.answer(status = FAIL) }}
+Расширение не подтверждено. Проверьте журнал задания перед повторной покупкой.
+{{ END }}
