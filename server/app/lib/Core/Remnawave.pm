@@ -5,6 +5,8 @@ use Core::Base;
 use Core::System::ServiceManager qw(get_service);
 use Core::Utils qw(decode_json now);
 use Data::Validate::IP qw(is_ipv4 is_ipv6);
+use IO::Socket::IP;
+use Time::HiRes qw(time);
 
 sub _cfg {
     my $self = shift;
@@ -28,6 +30,23 @@ sub _configure_service {
 }
 sub _transport { get_service('Transport::Http') }
 sub found_rows { 1 }
+my %latency_cache;
+sub _tcp_latency_ms {
+    my ($address, $port) = @_;
+    return undef unless defined $address && defined $port && $port =~ /^\d+$/ && $port > 0 && $port < 65536;
+    my $host = $address;
+    $host =~ s/^\[//; $host =~ s/\]$//;
+    return undef if $host =~ /[^a-zA-Z0-9.:-]/;
+    my $key = "$host:$port";
+    return $latency_cache{$key}{value} if $latency_cache{$key} && time - $latency_cache{$key}{time} < 60;
+    my $started = time;
+    my $socket = eval { IO::Socket::IP->new(PeerHost => $host, PeerPort => $port, Proto => 'tcp', Timeout => 0.5) };
+    my $latency = $socket ? int((time - $started) * 1000 + 0.5) : undef;
+    close $socket if $socket;
+    %latency_cache = () if keys(%latency_cache) > 100;
+    $latency_cache{$key} = { time => time, value => $latency };
+    return $latency;
+}
 sub api_monitor {
     my $self = shift;
     my $main = get_service('config')->data_by_name('main') || {};
@@ -49,6 +68,7 @@ sub api_monitor {
             country => substr($item->{description} || '', 0, 100),
             ping_url => ($item->{ping_url} && !ref($item->{ping_url}) && $item->{ping_url} =~ m{^https://[^\s\@]+$}) ? $item->{ping_url} : $ip_url,
             status => !$node ? 'unknown' : $node->{isDisabled} ? 'maintenance' : $node->{isConnected} ? 'online' : 'offline',
+            latency_ms => $node ? _tcp_latency_ms($node->{address}, $node->{port}) : undef,
         };
         last if @public >= 30;
     }

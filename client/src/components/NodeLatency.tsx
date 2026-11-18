@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 
 // Browser-to-node HTTP RTT, never a fabricated ICMP or billing-server ping.
-export default function NodeLatency({ url }: { url?: string }) {
+export default function NodeLatency({ url, serverLatency }: { url?: string; serverLatency?: number | null }) {
   const [latency, setLatency] = useState<number | null>(null);
   const [probeState, setProbeState] = useState<'checking' | 'missing' | 'failed' | 'ready'>('checking');
   useEffect(() => {
@@ -39,6 +39,7 @@ export default function NodeLatency({ url }: { url?: string }) {
     void measure();
     return () => { stopped = true; controller?.abort(); window.clearTimeout(timer); };
   }, [url]);
-  const hint = probeState === 'missing' ? 'Адрес проверки не настроен' : probeState === 'failed' ? 'HTTPS-проверка недоступна: проверьте сертификат, CORS и /ping' : 'HTTP-задержка от вашего браузера до сервера; медиана до трёх измерений';
+  if (typeof serverLatency === 'number' && Number.isFinite(serverLatency)) return <span className="monitor-latency" title="TCP-задержка от сервера биллинга до порта узла Remnawave">~{Math.max(1, serverLatency)} мс<small>от биллинга</small></span>;
+  const hint = probeState === 'missing' ? 'TCP-порт узла недоступен для биллинга; адрес браузерной проверки не настроен' : probeState === 'failed' ? 'HTTPS-проверка недоступна: проверьте сертификат, CORS и /ping' : 'HTTP-задержка от вашего браузера до сервера; медиана до трёх измерений';
   return <span className="monitor-latency" title={hint}>{latency === null ? (probeState === 'checking' ? 'Проверка…' : probeState === 'missing' ? 'Не настроен' : 'Нет замера') : `~${latency} мс`}</span>;
 }
