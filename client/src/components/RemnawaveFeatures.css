@@ -64,3 +64,16 @@
     gap: 2px;
   }
 }
+.remna-features__body {
+  display: grid;
+  gap: 16px;
+}
+.vpn-cabinet .remna-features .remna-revoke-button {
+  background: #c92a2a;
+  color: #fff;
+  border: 1px solid #c92a2a;
+}
+.vpn-cabinet .remna-features .remna-revoke-button:hover:not(:disabled) {
+  background: #b02525;
+  border-color: #b02525;
+}

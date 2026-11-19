@@ -15,7 +15,7 @@
     squad_frankfurt = 'REPLACE_WITH_FRANKFURT_INTERNAL_SQUAD_UUID'
     squad_paid = 'REPLACE_WITH_PAID_INTERNAL_SQUAD_UUID'
     monitor_enabled = 1
-    server_choice_enabled = 1
+    server_choice_enabled = 0
     addons_enabled = 1
 } }}
 

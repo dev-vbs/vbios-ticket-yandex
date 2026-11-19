@@ -548,7 +548,7 @@ function ServiceDetail({ service, onDelete, onChangeTariff }: ServiceDetailProps
           </details>
         )}
       {isProxy && <HwidDevices key={service.user_service_id} serviceId={service.user_service_id} subscriptionUrl={subscriptionUrl} onAddSubscription={() => urlSchema ? void handleOpenUrlSchema() : handleConfigure()} />}
-      {isProxy && <Suspense fallback={null}><RemnawaveFeatures serviceId={service.user_service_id} onRotated={url => { setSubscriptionUrl(url); setConnectionReload(v => v + 1); }} /></Suspense>}
+      {isProxy && <Suspense fallback={null}><RemnawaveFeatures onChangeTariff={canChange && onChangeTariff ? () => onChangeTariff(service) : undefined} serviceId={service.user_service_id} onRotated={url => { setSubscriptionUrl(url); setConnectionReload(v => v + 1); }} /></Suspense>}
       </div>
       {paymentOpen && <Suspense fallback={<Text role="status">Открываем оплату…</Text>}><PayModal opened={paymentOpen} onClose={() => setPaymentOpen(false)} initialAmount={payAmount > 0 ? payAmount : service.service.cost} /></Suspense>}
 

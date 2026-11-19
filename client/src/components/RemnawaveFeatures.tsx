@@ -11,12 +11,12 @@ import {
   Text,
   Title,
 } from "@mantine/core";
+import { IconChevronDown, IconChevronUp, IconExchange, IconShieldExclamation } from "@tabler/icons-react";
 import { Link } from "react-router-dom";
 import { api } from "../api/client";
 import ConfirmModal from "./ConfirmModal";
 import "./RemnawaveFeatures.css";
 
-type Node = { name: string; country: string; status: string };
 type RecordItem = { at: string; client?: string; type?: string };
 type Diagnostics = {
   billing_status?: string;
@@ -31,11 +31,8 @@ type Diagnostics = {
   devices_unavailable?: boolean;
 };
 type Addon = { key: string; title: string; cost: number; service_id: number; unavailable_reason?: string };
-type ServerOption = { key: string; title: string; selected: number };
-type Section = "diagnostics" | "nodes" | "traffic" | "history" | "addons";
+type Section = "diagnostics" | "traffic" | "history" | "addons";
 type Data = Diagnostics & {
-  nodes?: Node[];
-  server_options?: ServerOption[];
   days?: string[];
   bytes?: number[];
   records?: RecordItem[];
@@ -74,12 +71,6 @@ const gb = (n?: number) =>
   n == null
     ? "Нет данных"
     : `${(n / 1073741824).toLocaleString("ru-RU", { maximumFractionDigits: 2 })} ГБ`;
-const status: Record<string, string> = {
-  online: "Доступен",
-  offline: "Недоступен",
-  maintenance: "Обслуживание",
-  unknown: "Нет данных",
-};
 const accountStatus: Record<string, string> = {
   ACTIVE: "Подписка активна",
   DISABLED: "Доступ отключён",
@@ -109,9 +100,6 @@ function SectionBody({
   const [busy, setBusy] = useState(false);
   const [order, setOrder] = useState<number>();
   const [purchaseError, setPurchaseError] = useState("");
-  const [serverChoice, setServerChoice] = useState<ServerOption | null>(null);
-  const [selectionMessage, setSelectionMessage] = useState("");
-  const [refresh, setRefresh] = useState(0);
   const [orderPaid, setOrderPaid] = useState(false);
   useEffect(() => {
     const controller = new AbortController();
@@ -139,7 +127,7 @@ function SectionBody({
         if (!controller.signal.aborted) setLoading(false);
       });
     return () => controller.abort();
-  }, [section, serviceId, revision, refresh]);
+  }, [section, serviceId, revision]);
   const purchase = async () => {
     if (!buy || busy) return;
     setBusy(true);
@@ -166,19 +154,6 @@ function SectionBody({
       setBusy(false);
     }
   };
-  const selectServer = async () => {
-    if (!serverChoice || busy) return;
-    setBusy(true); setSelectionMessage("");
-    try {
-      const r = remnaPayload((await api.put('/user/service/remnawave/server', { user_service_id: serviceId, server: serverChoice.key })).data);
-      if (!r.ok) throw new Error();
-      setSelectionMessage('Сервер выбран. Обновите подписку в приложении, чтобы получить новые настройки.');
-    } catch (error) {
-      setSelectionMessage(apiMessage(error, 'Не удалось подтвердить выбор. Обновляем текущие данные — проверьте их перед повтором.'));
-    } finally {
-      setBusy(false); setServerChoice(null); setRefresh(v => v + 1);
-    }
-  };
   if (loading && !data)
     return (
       <Group p="md">
@@ -192,51 +167,6 @@ function SectionBody({
         Раздел временно недоступен. Остальные функции кабинета продолжают
         работать. Нажмите «Обновить», чтобы повторить.
       </Alert>
-    );
-  if (section === "nodes")
-    return (
-      <Stack gap="sm">
-        {selectionMessage && <Alert role="status">{selectionMessage}</Alert>}
-        {!!data.server_options?.length ? <>
-          <Text fw={650}>Выберите локацию подписки</Text>
-          <Text size="sm" c="dimmed">После смены обновите подписку в приложении. Дополнительно купленные локации сохранятся.</Text>
-          <div className="remna-node-grid">{data.server_options.map(option => <Paper withBorder p="md" key={option.key}><Stack gap="sm"><Text fw={650}>{option.title}</Text><Button variant={option.selected ? "light" : "filled"} disabled={!!option.selected || busy} onClick={() => setServerChoice(option)}>{option.selected ? "Выбран" : "Выбрать сервер"}</Button></Stack></Paper>)}</div>
-        </> : <Alert color="gray">Выбор локации для этого тарифа ещё не настроен. Ниже показаны серверы вашей текущей подписки.</Alert>}
-        <ConfirmModal opened={!!serverChoice} onClose={() => !busy && setServerChoice(null)} onConfirm={() => void selectServer()} loading={busy} title="Сменить сервер подписки?" confirmLabel="Выбрать" message={`Локация: ${serverChoice?.title || ""}. Текущий набор переключаемых серверов будет заменён. Затем обновите подписку в приложении.`} />
-        {!data.nodes?.length && (
-          <Text c="dimmed">В тарифе пока нет доступных серверов.</Text>
-        )}
-        <div className="remna-node-grid">
-          {data.nodes?.map((node, i) => (
-            <Paper withBorder p="md" radius="md" key={`${node.name}-${i}`}>
-              <Group justify="space-between" gap="xs">
-                <div>
-                  <Text fw={650}>{node.name}</Text>
-                  <Text size="xs" c="dimmed">
-                    {node.country}
-                  </Text>
-                </div>
-                <Badge
-                  color={
-                    node.status === "online"
-                      ? "teal"
-                      : node.status === "offline"
-                        ? "red"
-                        : "gray"
-                  }
-                  variant="light"
-                >
-                  {status[node.status] || status.unknown}
-                </Badge>
-              </Group>
-            </Paper>
-          ))}
-        </div>
-        <Text size="xs" c="dimmed">
-          Только серверы, разрешённые вашей подписке. Состояние соединения узла
-          с панелью не является измерением пинга с вашего устройства.
-        </Text>
-      </Stack>
     );
   if (section === "traffic") {
     const values = (data.bytes || []).map((n) => Math.max(0, Number(n) || 0));
@@ -443,8 +373,7 @@ function SectionBody({
         />
       )}
       <Text size="sm" c="dimmed">
-        Если подписка активна и лимит не исчерпан, проверьте раздел «Серверы
-        тарифа», обновите подписку в приложении и убедитесь, что устройство
+        Если подписка активна и лимит не исчерпан, обновите подписку в приложении и убедитесь, что устройство
         имеет доступ к интернету.
       </Text>
       {data.devices_unavailable && (
@@ -458,14 +387,16 @@ function SectionBody({
 export default function RemnawaveFeatures({
   serviceId,
   onRotated,
+  onChangeTariff,
 }: {
   serviceId: number;
   onRotated: (url: string) => void;
+  onChangeTariff?: () => void;
 }) {
   const [opened, setOpened] = useState(false);
   const [section, setSection] = useState<Section>("diagnostics");
   const [revision, setRevision] = useState(0);
-  const [confirm, setConfirm] = useState<"rotate" | "devices" | null>(null);
+  const [confirm, setConfirm] = useState(false);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const action = async () => {
@@ -476,31 +407,27 @@ export default function RemnawaveFeatures({
       const r = remnaPayload(
         (
           await api.post(
-            confirm === "rotate"
-              ? "/user/service/remnawave/revoke"
-              : "/user/service/hwid/reset",
+            "/user/service/remnawave/revoke",
             { user_service_id: serviceId },
           )
         ).data,
       );
-      if (!r.ok || (confirm === "rotate" && !r.url)) throw new Error();
+      if (!r.ok || !r.url) throw new Error();
       if (r.url) onRotated(r.url);
       setMessage(
-        confirm === "rotate"
-          ? "Старая ссылка отозвана. Добавьте новую подписку на своих устройствах."
-          : "Привязки сброшены. Устройства могут зарегистрироваться снова при подключении.",
+        "Старая ссылка отозвана. Добавьте новую подписку на своих устройствах.",
       );
       window.dispatchEvent(
         new CustomEvent("remna-devices-changed", { detail: serviceId }),
       );
-      setConfirm(null);
+      setConfirm(false);
       setRevision((v) => v + 1);
     } catch {
-      setConfirm(null);
+      setConfirm(false);
       setMessage(
         "Сервер не подтвердил действие. Обновите данные перед повторной попыткой.",
       );
-      if (confirm === "rotate") {
+      {
         try {
           const current = remnaPayload(
             (
@@ -526,28 +453,30 @@ export default function RemnawaveFeatures({
   return (
     <Paper withBorder p="lg" radius="md" className="remna-features">
       <Stack>
-        <Group justify="space-between">
+        <Group justify="space-between" wrap="wrap" gap="sm">
           <div>
             <Title order={3}>Ваша подписка под контролем</Title>
             <Text size="sm" c="dimmed">
-              Серверы, трафик и помощь с подключением
+              Трафик, расширения и безопасность подписки
             </Text>
           </div>
           <Button
+            size="xs"
             variant="light"
+            leftSection={opened ? <IconChevronUp size={15} /> : <IconChevronDown size={15} />}
+            aria-controls={`remna-details-${serviceId}`}
             onClick={() => setOpened((v) => !v)}
             aria-expanded={opened}
           >
-            {opened ? "Свернуть" : "Открыть"}
+            {opened ? "Свернуть" : "Раскрыть"}
           </Button>
         </Group>
         {opened && (
-          <>
+          <div id={`remna-details-${serviceId}`} className="remna-features__body">
             <Group gap="xs" className="remna-tabs">
               {(
                 [
                   ["diagnostics", "Диагностика"],
-                  ["nodes", "Серверы тарифа"],
                   ["traffic", "Трафик"],
                   ["history", "Обновления"],
                   ["addons", "Расширения"],
@@ -563,6 +492,7 @@ export default function RemnawaveFeatures({
                   {label}
                 </Button>
               ))}
+              {onChangeTariff && <Button size="xs" variant="light" leftSection={<IconExchange size={15} />} onClick={onChangeTariff}>Сменить тариф</Button>}
               <Button
                 size="xs"
                 variant="default"
@@ -579,44 +509,31 @@ export default function RemnawaveFeatures({
             />
             <Group mt="sm">
               <Button
-                color="orange"
-                variant="subtle"
-                size="xs"
+                className="remna-revoke-button"
+                color="red"
+                variant="filled"
+                size="sm"
+                leftSection={<IconShieldExclamation size={17} />}
                 disabled={busy}
-                onClick={() => setConfirm("rotate")}
+                onClick={() => setConfirm(true)}
               >
                 Ссылка попала посторонним
               </Button>
-              <Button
-                color="red"
-                variant="subtle"
-                size="xs"
-                disabled={busy}
-                onClick={() => setConfirm("devices")}
-              >
-                Сбросить все устройства
-              </Button>
+
             </Group>
-          </>
+          </div>
         )}
         {message && <Alert>{message}</Alert>}
       </Stack>
       <ConfirmModal
         opened={!!confirm}
-        onClose={() => !busy && setConfirm(null)}
+        onClose={() => !busy && setConfirm(false)}
         onConfirm={() => void action()}
         loading={busy}
-        title={
-          confirm === "rotate"
-            ? "Заменить ссылку доступа?"
-            : "Сбросить все привязки?"
-        }
-        confirmLabel="Подтвердить"
-        message={
-          confirm === "rotate"
-            ? "Старая ссылка перестанет работать. Новую подписку потребуется добавить в приложения на всех ваших устройствах. Не передавайте её посторонним."
-            : "Все устройства будут удалены из списка. Это не отзывает ссылку доступа: устройство с действующей ссылкой сможет подключиться повторно."
-        }
+        title="Заменить ссылку доступа?"
+        confirmLabel="Заменить ссылку"
+        confirmColor="red"
+        message="Старая ссылка перестанет работать. Новую подписку потребуется добавить в приложения на всех ваших устройствах. Не передавайте её посторонним."
       />
     </Paper>
   );
