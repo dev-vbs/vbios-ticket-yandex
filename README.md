@@ -2,7 +2,7 @@
 
 Услуги, подписки, устройства, оплата и поддержка в одном интерфейсе. Светлая и тёмная темы, адаптивная мобильная версия и AJAX-форма входа.
 
-[Полный конфиг и применение](docs/cabinet-full-config.md) · [Remnawave: серверы и расширения](docs/remnawave-cabinet.md) · [Выбор серверов — шаблон local](docs/remnawave-servers-config-local.txt) · [Установка на сервер](#установка-vbios-shm-на-новый-сервер) · [Галерея скриншотов](docs/screenshots/README.md)
+[Полный мануал SHM и расширений](docs/SHM-REMNAWAVE-MANUAL-RU.md) · [Полный конфиг и применение](docs/cabinet-full-config.md) · [Remnawave: серверы и расширения](docs/remnawave-cabinet.md) · [Выбор серверов — шаблон local](docs/remnawave-servers-config-local.txt) · [Установка на сервер](#установка-vbios-shm-на-новый-сервер) · [Галерея скриншотов](docs/screenshots/README.md)
 
 ## Превью личного кабинета
 
