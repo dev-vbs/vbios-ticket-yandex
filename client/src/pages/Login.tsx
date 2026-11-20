@@ -2,6 +2,8 @@ import LandingSections, { LandingPlans } from '../components/LandingSections';
 import ServerMonitor from '../components/ServerMonitor';
 import './Login.css';
 import './LoginShowcase.css';
+import './LoginInfrastructure.css';
+import WelcomeInfrastructure from '../components/WelcomeInfrastructure';
 import { useAuthOptions } from '../hooks/useAuthOptions';
 import { useEffect, useRef, useState } from 'react';
 import { Card, Text, Stack, Button, ActionIcon, TextInput, PasswordInput, Divider, Title, Modal, Group, Loader, useMantineColorScheme, useComputedColorScheme, Checkbox, Tooltip } from '@mantine/core';
@@ -533,9 +535,10 @@ export default function Login() {
       <main id="welcome-main" className="welcome-wrap">
         <section className="welcome-hero">
           <div className="welcome-copy"><p className="welcome-intro">{main.intro || 'Простой доступ к вашим услугам'}</p><h1>{main.title || 'Всё важное'}<br /><span>{main.accent_title || 'в одном кабинете.'}</span></h1><p className="welcome-description">{main.description || config.APP_DESCRIPTION || 'Личный кабинет, в котором всё уже готово: услуги, оплата, устройства и помощь.'}</p><div className="welcome-actions"><Button size="lg" onClick={() => { setMode(registerEnabled ? 'register' : 'login'); setAuthOpen(true); }}>{main.primary_button || (registerEnabled ? 'Начать сейчас' : 'Войти в кабинет')}</Button><Button size="lg" variant="default" onClick={() => { setMode('login'); setAuthOpen(true); }}>{main.login_button || 'У меня уже есть аккаунт'}</Button></div><p className="welcome-compatibility">{main.compatibility || 'iPhone · Android · Windows · macOS'}</p></div>
-          <div className="welcome-hero-side"><div className="welcome-product"><div className="welcome-product__top"><span className="welcome-product__symbol"><IconKey size={23} /></span><strong>{main.name || config.APP_NAME}</strong><span className="welcome-product__tag">{main.preview_label || 'Ваш личный кабинет'}</span></div><div className="welcome-product__body"><h2>{main.preview_title || 'От выбора до подключения. Всё рядом.'}</h2><ol>{(main.visual_steps || [{title:'Выберите подписку',description:'Сравните условия и оплатите в кабинете.'},{title:'Подключите устройство',description:'Ссылка, QR-код и инструкция уже под рукой.'},{title:'Управляйте без сложностей',description:'Срок действия, устройства и помощь в одном месте.'}]).map((item: {title: string; description: string}, index: number) => <li key={index}><span>{index + 1}</span><div><strong>{item.title}</strong><p>{item.description}</p></div></li>)}</ol></div><div className="welcome-product__bottom"><IconShieldLock size={18}/><span>{main.visual_caption || 'Понятный сервис начинается с удобного кабинета.'}</span></div></div></div>
+          <div className="welcome-hero-side"><WelcomeInfrastructure cards={main.hero_cards} onStart={() => { setMode(registerEnabled ? 'register' : 'login'); setAuthOpen(true); }} /></div>
         </section>
 
+        <div className="welcome-service-rail" aria-label="Как работает сервис">{(main.visual_steps || [{title:'Выберите подписку'},{title:'Подключите устройство'},{title:'Управляйте в кабинете'}]).map((item: {title: string}, index: number) => <span key={index}><i aria-hidden="true">✦</i>{item.title}</span>)}</div>
         <LandingPlans main={main} onStart={() => { setMode(registerEnabled ? 'register' : 'login'); setAuthOpen(true); }} />
         {monitor.enabled && <div className="welcome-network"><ServerMonitor monitor={monitor} /></div>}
         <LandingSections main={main} nodes={monitor.nodes || []} onStart={() => { setMode(registerEnabled ? 'register' : 'login'); setAuthOpen(true); }} />

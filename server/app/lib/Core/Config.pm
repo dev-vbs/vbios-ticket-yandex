@@ -133,7 +133,7 @@ sub api_data_by_main {
     for my $field (qw(name description logo_url support_url intro title accent_title primary_button login_button secondary_button compatibility visual_caption benefits_title benefits_description connection_title faq_title faq_description nav_benefits nav_connection nav_questions support_label login_title register_title monitor_enabled preview_label preview_title catalog_title catalog_description catalog_button plans_title plans_description plan_button geography_title geography_description cta_title cta_description)) {
         $public{$field} = $cfg->{$field} if defined($cfg->{$field}) && !ref($cfg->{$field});
     }
-    for my $field (qw(visual_steps benefits steps faq documents monitor_nodes catalog plans)) {
+    for my $field (qw(visual_steps hero_cards benefits steps faq documents monitor_nodes catalog plans)) {
         next unless ref($cfg->{$field}) eq 'ARRAY';
         my @items;
         for my $item (@{$cfg->{$field}}) {

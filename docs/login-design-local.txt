@@ -1,0 +1,11 @@
+{{ IF !config.main }}
+{{ r = user.srv('config').add(key = 'main') }}
+{{ END }}
+{{ main = config.main }}
+{{ main.title = 'Ваши услуги.' }}
+{{ main.accent_title = 'Под вашим контролем.' }}
+{{ main.hero_cards = [
+    { title = 'Подписка для ваших устройств.' description = 'Выберите услугу и начните пользоваться.' }
+    { title = 'Состояние вашей сети.' description = 'Доступность серверов и история проверок.' }
+] }}
+{{ r = user.srv('config').id('main').set_json('value', main) }}
