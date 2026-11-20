@@ -25,6 +25,10 @@
 | --- | --- |
 | ![Стартовая страница](docs/screenshots/current-landing-desktop-light.png) | ![Главная кабинета](docs/screenshots/current-dashboard-desktop-dark.png) |
 
+| Страница подписки на компьютере | Страница подписки на телефоне |
+| --- | --- |
+| ![Страница подписки — компьютер](docs/screenshots/subscription-page-desktop-dark.png) | ![Страница подписки — телефон](docs/screenshots/subscription-page-mobile-dark.png) |
+
 | Подписка на компьютере | Подписка на телефоне |
 | --- | --- |
 | ![Новый график трафика](docs/screenshots/traffic-detail-desktop-light.png) | ![График трафика на телефоне](docs/screenshots/traffic-detail-mobile-dark.png) |
