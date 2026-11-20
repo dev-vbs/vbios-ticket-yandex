@@ -30,7 +30,7 @@ async function readBody(req) {
 async function userId(req) {
   const session = req.headers.session_id || /(?:^|;\s*)session_id=([^;]+)/.exec(req.headers.cookie || '')?.[1];
   if (!session || !/^[A-Za-z0-9._~-]{10,512}$/.test(session)) throw Object.assign(Error('Войдите в кабинет'), { status: 401 });
-  const response = await fetch(`${env.SHM_URL || 'http://api'}/shm/v1/user`, { headers: { session_id: session }, signal: AbortSignal.timeout(8000), redirect: 'error' });
+  const response = await fetch(`${env.SHM_URL || 'http://api'}/shm/v1/user`, { headers: { cookie: `session_id=${session}` }, signal: AbortSignal.timeout(8000), redirect: 'error' });
   const result = await response.json();
   const user = Array.isArray(result.data) ? result.data[0] : result.data;
   if (!response.ok || result.error || !Number.isSafeInteger(Number(user?.user_id)) || Number(user.user_id) < 1) throw Object.assign(Error('Войдите в кабинет'), { status: 401 });

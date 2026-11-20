@@ -23,7 +23,7 @@ test('Push endpoints and navigation cannot target arbitrary hosts', () => {
 
 test('SHM authentication, same-origin writes and subscription ownership', async () => {
   const dir = mkdtempSync(join(tmpdir(), 'vbios-push-'));
-  const shm = createServer((req, res) => { res.setHeader('Content-Type','application/json'); res.end(JSON.stringify(req.headers.session_id === 'session-user-2' ? {data:[{user_id:2}]} : req.headers.session_id === 'session-user-3' ? {data:[{user_id:3}]} : {error:'unauthorized'})); });
+  const shm = createServer((req, res) => { res.setHeader('Content-Type','application/json'); res.end(JSON.stringify(req.headers.cookie === 'session_id=session-user-2' ? {data:[{user_id:2}]} : req.headers.cookie === 'session_id=session-user-3' ? {data:[{user_id:3}]} : {error:'unauthorized'})); });
   shm.listen(0, '127.0.0.1'); await once(shm, 'listening');
   const reservation = createServer(); reservation.listen(0, '127.0.0.1'); await once(reservation,'listening'); const port = reservation.address().port; await new Promise(r=>reservation.close(r));
   const keys=webpush.generateVAPIDKeys(), secret='b'.repeat(64), origin='https://bill.example.com';
