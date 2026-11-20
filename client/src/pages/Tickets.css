@@ -139,3 +139,80 @@
  .vpn-cabinet .ticket-operator-row .mantine-Text-root { width:auto; }
 }
 .ticket-message-link{color:var(--mantine-primary-color-4);text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:2px;overflow-wrap:anywhere}.ticket-message-link:hover{color:var(--mantine-primary-color-3)}
+/* Support: list, conversation and a quiet composer. */
+.vpn-cabinet .tickets-page .page-header { margin-bottom:4px; }
+.vpn-cabinet .tickets-page .page-header h1 { margin:0; }
+.ticket-search-bar { display:flex; align-items:center; gap:16px; }
+.ticket-search-bar > .mantine-TextInput-root { flex:1; max-width:440px; }
+.vpn-cabinet .ticket-layout { gap:20px; }
+.vpn-cabinet .tickets-page .ticket-list-panel { width:300px!important; padding:8px!important; border-radius:18px!important; }
+.vpn-cabinet .tickets-page .ticket-chat-panel { padding:24px!important; border-radius:18px!important; }
+.vpn-cabinet .ticket-list-panel .ticket-list-item,.vpn-cabinet .ticket-mobile-list .ticket-list-item { margin:0 0 6px; border:0!important; border-radius:12px!important; padding:16px!important; background:transparent; }
+.vpn-cabinet .ticket-list-panel .ticket-list-item--selected { background:var(--ui-accent-soft)!important; box-shadow:none; }
+.vpn-cabinet .ticket-list-item .mantine-Badge-root { flex-shrink:0; font-size:9px; }
+.vpn-cabinet .ticket-list-item .mantine-Text-root:first-child { padding-right:0; }
+.vpn-cabinet .ticket-list-item .mantine-Stack-root { gap:8px; }
+.vpn-cabinet .ticket-list-panel .ticket-list-item:hover { background:var(--ui-surface-hover)!important; }
+.vpn-cabinet .ticket-mobile-list { border:1px solid var(--ui-border); background:var(--ui-surface); padding:8px; border-radius:18px; }
+.ticket-chat-title { min-width:0; }
+.ticket-chat-title > .mantine-Text-root:last-child { margin-top:3px; }
+.ticket-conversation__header { flex-shrink:0; padding:0 0 16px; border-bottom:1px solid var(--mantine-color-default-border); }
+.ticket-conversation__header > .mantine-Group-root { align-items:flex-start; gap:12px; }
+.ticket-conversation__header .mantine-Badge-root { margin-top:5px; }
+.ticket-conversation__header > .mantine-Button-root { align-self:flex-start; background:transparent!important; color:var(--mantine-color-dimmed)!important; border:1px solid var(--mantine-color-default-border); font-size:11px; }
+.vpn-cabinet .ticket-operator-row,.ticket-mobile-chat .ticket-operator-row { padding:4px 0; border:0; background:transparent; border-radius:0; gap:8px; flex-shrink:0; }
+.ticket-operator-row > .mantine-Text-root::before { content:''; display:inline-block; width:6px; height:6px; margin:0 8px 2px 0; border-radius:50%; background:var(--mantine-color-blue-5); }
+.vpn-cabinet .ticket-operator-row > .mantine-Text-root,.ticket-mobile-chat .ticket-operator-row > .mantine-Text-root { font-size:12px; font-weight:400; }
+.vpn-cabinet .ticket-operator-row .mantine-Button-root,.ticket-mobile-chat .ticket-operator-row .mantine-Button-root { min-height:34px; font-size:11px; }
+.vpn-cabinet .ticket-conversation .mantine-ScrollArea-root,.ticket-mobile-chat .ticket-conversation .mantine-ScrollArea-root { background:transparent; padding:16px 0; min-height:120px; }
+.vpn-cabinet .ticket-message,.ticket-mobile-chat .ticket-message { padding:14px 16px!important; max-width:88%!important; border:0!important; box-shadow:none; border-radius:16px!important; }
+.vpn-cabinet .ticket-message--user { background:var(--ui-accent-soft)!important; border-bottom-right-radius:4px!important; }
+.vpn-cabinet .ticket-message--admin { background:var(--ui-surface-soft)!important; border-bottom-left-radius:4px!important; }
+.ticket-mobile-chat .ticket-message--user { background:var(--mantine-primary-color-light)!important; border-bottom-right-radius:4px!important; }
+.ticket-mobile-chat .ticket-message--admin { background:var(--mantine-color-default-hover)!important; border-bottom-left-radius:4px!important; }
+.ticket-message .mantine-Avatar-root { display:none; }
+.ticket-message .mantine-Text-root { line-height:1.65; }
+.ticket-message-link { color:var(--mantine-color-blue-text); }
+.vpn-cabinet .ticket-reply-box,.ticket-mobile-chat .ticket-reply-box { border-top:1px solid var(--mantine-color-default-border); padding-top:14px; gap:8px; border-radius:0; background:transparent; }
+.ticket-reply-box .mantine-Textarea-input { padding:14px!important; min-height:84px; max-height:180px; background:var(--mantine-color-body); border-radius:12px; font-size:14px; }
+.ticket-composer-actions .mantine-Button-root { min-height:40px; border-radius:10px; font-size:12px; }
+.ticket-composer-actions .mantine-Button-root[data-variant="subtle"] { color:var(--mantine-color-dimmed); }
+.ticket-create-layout { display:block; }
+.ticket-create__options { grid-template-columns:1fr; }
+.ticket-priority { font-size:12px; color:var(--mantine-color-dimmed); }
+.ticket-priority summary { cursor:pointer; padding:4px 0; }
+.ticket-priority[open] summary { margin-bottom:8px; }
+.ticket-create .mantine-Modal-title { font-size:18px; }
+.ticket-create .mantine-Input-input { min-height:44px; }
+.ticket-create .mantine-InputWrapper-label { font-size:13px; font-weight:600; }
+.ticket-create .mantine-Input-input,.ticket-create .mantine-Textarea-input { border-radius:10px; }
+.ticket-create .mantine-Textarea-input { font-size:16px; }
+.ticket-create__attachments { padding:14px; border-radius:12px; }
+.ticket-create__attachments > .mantine-Button-root { align-self:flex-start; }
+.ticket-create__actions { padding-bottom:env(safe-area-inset-bottom,0px); }
+.ticket-create__actions .mantine-Button-root { min-height:44px; border-radius:10px; }
+.ticket-mobile-chat { display:flex; flex-direction:column; height:100dvh; }
+.ticket-mobile-chat .mantine-Modal-header { flex-shrink:0; border-bottom:1px solid var(--mantine-color-default-border); min-height:62px; }
+.ticket-mobile-chat__body { flex:1; min-height:0; overflow:hidden; display:flex; flex-direction:column; padding:16px; }
+.ticket-mobile-chat .ticket-conversation { flex:1; min-height:0; }
+.ticket-mobile-chat .ticket-conversation__header { gap:10px; }
+.ticket-mobile-chat .ticket-conversation__header > .mantine-Group-root { flex-basis:auto; }
+.ticket-mobile-chat .ticket-conversation__header > .mantine-Button-root { min-height:36px; }
+.ticket-mobile-chat .ticket-operator-row { flex-direction:row; align-items:center!important; }
+.ticket-mobile-chat .ticket-operator-row .mantine-Button-root { width:auto; }
+.ticket-mobile-chat .ticket-reply-box { flex-shrink:0; padding-bottom:env(safe-area-inset-bottom,0px); }
+.ticket-mobile-chat .ticket-composer-actions .mantine-Button-root { min-height:44px; }
+@media(max-width:1000px) and (min-width:769px){.vpn-cabinet .ticket-layout{gap:12px}.vpn-cabinet .tickets-page .ticket-list-panel{width:230px!important}.vpn-cabinet .tickets-page .ticket-chat-panel{padding:16px!important}}
+@media(max-width:768px){
+ .vpn-cabinet .tickets-page .page-header__description{display:block;font-size:13px}
+ .vpn-cabinet .tickets-page .page-header{gap:12px;align-items:flex-start}
+ .vpn-cabinet .tickets-page .page-header>div{width:auto;min-width:0;flex:1}
+ .vpn-cabinet .tickets-page .page-header>.mantine-Button-root{width:100%}
+ .ticket-search-bar{gap:10px;flex-wrap:wrap}.ticket-search-bar>.mantine-TextInput-root{max-width:none;min-width:100%}
+ .ticket-mobile-chat .ticket-message{max-width:94%!important;padding:12px 14px!important}
+ .ticket-mobile-chat .ticket-chat-title .mantine-Text-root:last-child{font-size:14px}
+ .ticket-mobile-chat .ticket-conversation__header>.mantine-Group-root{flex:1;min-width:0}
+ .ticket-create .mantine-Modal-header{padding:16px}
+ .ticket-create .mantine-Modal-body{padding:16px}
+ .ticket-create-note{line-height:1.6}
+}

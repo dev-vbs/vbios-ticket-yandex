@@ -35,6 +35,8 @@ import {
   IconPlus,
   IconSend,
   IconTrash,
+  IconSearch,
+  IconHeadset,
 } from '@tabler/icons-react';
 import { ticketApi, userApi, type TicketItem, type TicketMedia } from '../api/client';
 import { DEFAULT_AVATAR_URL, useStore } from '../store/useStore';
@@ -218,7 +220,7 @@ function formatDate(value?: string): string {
   if (!value) return '';
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleString();
+  return date.toLocaleString(undefined, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 }
 
 function apiErrorMessage(error: unknown, fallback: string): string {
@@ -792,6 +794,8 @@ export default function Tickets() {
     return (
       <UnstyledButton
         key={ticket.ticket_id}
+        aria-label={`${getTicketSubject(ticket, 100)} · ${getTicketIdText(ticket)}`}
+        aria-current={isSelected ? true : undefined}
         onClick={() => openTicket(ticket)}
         ref={(node) => {
           ticketButtonRefs.current[ticket.ticket_id] = node;
@@ -823,7 +827,7 @@ export default function Tickets() {
             />
           )}
           <Stack gap={4}>
-            <Text fw={600} size="sm" lineClamp={1}>{getTicketSubject(ticket)}</Text>
+            <Group justify="space-between" gap="xs" wrap="nowrap"><Text fw={600} size="sm" lineClamp={2}>{getTicketSubject(ticket, 100)}</Text><Badge size="xs" variant="light" color={statusColor(ticket.status)}>{getTicketStatusLabel(ticket.status)}</Badge></Group>
             {lastMessage?.message && (
               <Text size="xs" c="dimmed" lineClamp={2}>
                 {lastMessage.message}
@@ -849,7 +853,7 @@ export default function Tickets() {
       <Stack gap="sm" className="ticket-conversation" style={{ height: '100%', overflow: 'hidden' }}>
         <Group justify="space-between" align="center" className="ticket-conversation__header">
           <Group gap="xs" style={{ minWidth: 0 }}>
-            <Text fw={600} size="sm" lineClamp={1}>{getTicketIdText(selectedTicket)} {getTicketSubject(selectedTicket)}</Text>
+            <div className="ticket-chat-title"><Text size="xs" c="dimmed">Обращение {getTicketIdText(selectedTicket)}</Text><Text fw={650} size="md" lineClamp={2}>{getTicketSubject(selectedTicket, 150)}</Text></div>
             <Badge size="sm" color={statusColor(selectedTicket.status)}>{getTicketStatusLabel(selectedTicket.status)}</Badge>
           </Group>
 
@@ -861,21 +865,20 @@ export default function Tickets() {
               onClick={closeTicket}
               loading={closing}
             >
-              {t('tickets.closeTicket')}
+              Вопрос решён
             </Button>
           )}
         </Group>
 
         {!ticketIsClosed(selectedTicket.status) && <Group justify="space-between" align="center" gap="sm" className="ticket-operator-row">
           <Text size="sm" c="dimmed" style={{ flex: 1 }}>
-            {selectedTicket.responder === 'ai' ? 'Отвечает ИИ' : 'Ожидаем оператора'}
+            {selectedTicket.responder === 'ai' ? 'Вам помогает ИИ-помощник' : 'Обращение у поддержки'}
           </Text>
           {(selectedTicket.responder !== 'human' || selectedTicket.telegram_error) && <Button
             size="sm" variant="light" fullWidth={isMobile} leftSection={<IconMessageCircle size={16} />}
             onClick={() => void changeResponder('human')} loading={changingResponder} disabled={sending}
           >{selectedTicket.telegram_error ? 'Повторить связь с оператором' : 'Связаться с оператором'}</Button>}
         </Group>}
-        <Divider />
 
         <ScrollArea style={{ flex: 1 }} offsetScrollbars viewportRef={messagesViewportRef}>
           <Stack gap="sm" pr="xs" ref={messagesContentRef}>
@@ -936,42 +939,30 @@ export default function Tickets() {
 
             <Box style={{ position: 'relative' }}>
               <Textarea
-                placeholder={t('tickets.messagePlaceholder')}
+                placeholder="Напишите сообщение…"
                 value={replyMessage}
                 onChange={(event) => setReplyMessage(event.currentTarget.value.slice(0, MAX_MESSAGE_LENGTH))}
                 onKeyDown={(event) => {
-                  if (event.key !== 'Enter' || event.shiftKey || event.nativeEvent.isComposing || event.nativeEvent.keyCode === 229) return;
+                  if (isMobile || event.key !== 'Enter' || event.shiftKey || event.nativeEvent.isComposing || event.nativeEvent.keyCode === 229) return;
                   event.preventDefault();
                   if (!event.repeat && !sending && (replyMessage.trim() || replyFiles.length)) void sendMessage();
                 }}
-                enterKeyHint="send"
+                enterKeyHint={isMobile ? "enter" : "send"}
                 aria-label={t('tickets.messagePlaceholder')}
                 maxLength={MAX_MESSAGE_LENGTH}
                 autosize
                 minRows={1}
-                styles={{ input: { paddingRight: 68 } }}
+                maxRows={5}
               />
-              <Group gap={4} style={{ position: 'absolute', bottom: 7, right: 8 }}>
-                <FileButton onChange={onPickFiles} accept={IMAGE_ACCEPT} multiple>
-                  {(props) => (
-                    <ActionIcon {...props} disabled={sending} variant="subtle" color="gray" size="sm" aria-label="Прикрепить изображение">
-                      <IconPaperclip size={16} />
-                    </ActionIcon>
-                  )}
-                </FileButton>
-                <ActionIcon
-                  onClick={sendMessage}
-                  loading={sending}
-                  disabled={!replyMessage.trim() && replyFiles.length === 0}
-                  variant="subtle"
-                  color="blue"
-                  size="sm"
-                  aria-label="Отправить сообщение"
-                >
-                  <IconSend size={16} />
-                </ActionIcon>
-              </Group>
             </Box>
+            <Group justify="space-between" wrap="nowrap" className="ticket-composer-actions">
+              <FileButton onChange={onPickFiles} accept={IMAGE_ACCEPT} multiple>
+                {(props) => <Button {...props} disabled={sending} variant="subtle" color="gray" leftSection={<IconPaperclip size={18} />} aria-label="Прикрепить изображение">Фото</Button>}
+              </FileButton>
+              <Button onClick={sendMessage} loading={sending} disabled={!replyMessage.trim() && replyFiles.length === 0} leftSection={<IconSend size={17} />} aria-label="Отправить сообщение">Отправить</Button>
+            </Group>
+            {!isMobile && <Text size="xs" c="dimmed">Enter — отправить · Shift + Enter — новая строка</Text>}
+
           </Stack>
         )}
       </Stack>
@@ -988,18 +979,19 @@ export default function Tickets() {
       } : undefined}
     >
       <Group className="page-header" justify="space-between" align="center" wrap="nowrap">
-        <div><span className="cabinet-breadcrumb">Личный кабинет</span><Text className="page-header__title" fw={700}>{t('tickets.title')}</Text><p className="page-header__description">Здесь можно задать вопрос и отслеживать ответы поддержки.</p></div>
+        <div><span className="cabinet-breadcrumb">Личный кабинет</span><Text component="h1" className="page-header__title" fw={700}>{t('tickets.title')}</Text><p className="page-header__description">Поможем с подключением, оплатой и настройками.</p></div>
         <Button leftSection={<IconPlus size={16} />} radius="xl" onClick={openCreate}>
-          {t('tickets.createTicket')}
+          Задать вопрос
         </Button>
       </Group>
 
-      {!loading && activeTickets.length === 0 && closedTickets.length === 0 ? (
+      {tickets.length > 0 && <div className="ticket-search-bar"><TextInput leftSection={<IconSearch size={17} />} placeholder="Найти обращение" aria-label="Поиск обращений" value={searchQuery} onChange={event => setSearchQuery(event.currentTarget.value)} /><Text size="xs" c="dimmed">Открытых: {tickets.filter(ticket => !ticketIsClosed(ticket.status)).length}</Text></div>}
+      {!loading && tickets.length === 0 ? (
         <Card withBorder radius="lg" p="xl">
           <Stack align="center" gap="md" py={48}>
             <ThemeIcon size={56} radius="xl" variant="light"><IconMessageCircle size={28} /></ThemeIcon>
             <Text fw={700} size="xl" ta="center">Как мы можем помочь?</Text>
-            <Text c="dimmed" size="sm" ta="center" maw={430}>Опишите вопрос и укажите услугу. Можно приложить скриншот, видео или файл — вся переписка останется в обращении.</Text>
+            <Text c="dimmed" size="sm" ta="center" maw={430}>Расскажите, что не получается. Если есть ошибка, приложите скриншот — так будет проще разобраться.</Text>
             <Button leftSection={<IconPlus size={17} />} onClick={openCreate} size="md">Создать первое обращение</Button>
           </Stack>
         </Card>
@@ -1010,7 +1002,7 @@ export default function Tickets() {
           </Center>
         ) : activeTickets.length === 0 && closedTickets.length === 0 ? (
           <Card withBorder radius="lg" p="lg">
-            <Text ta="center" c="dimmed">{t('tickets.noTickets')}</Text>
+            <Text ta="center" c="dimmed">Ничего не найдено. Попробуйте другой запрос.</Text>
           </Card>
         ) : (
           <Stack gap="md" className="ticket-mobile-list">
@@ -1030,29 +1022,16 @@ export default function Tickets() {
           </Stack>
         )
       ) : (
-        <Group className="ticket-layout" align="stretch" grow={false} wrap="nowrap" style={{ height: 'calc(100dvh - 226px)', minHeight: 520 }}>
+        <Group className="ticket-layout" align="stretch" grow={false} wrap="nowrap" style={{ height: 'calc(100dvh - 280px)', minHeight: 540 }}>
           <Card className="ticket-list-panel" withBorder radius="lg" p={0} style={{ width: 320, display: 'flex', flexDirection: 'column' }}>
             <Stack gap="0" style={{ height: '100%' }}>
-              <TextInput
-                placeholder={t('tickets.search')}
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.currentTarget.value)}
-                size="sm"
-                styles={{
-                  input: {
-                    borderRadius: 'var(--mantine-radius-lg) var(--mantine-radius-lg) 0 0',
-                    border: 'none',
-                    borderBottom: '1px solid var(--mantine-color-default-border)',
-                  },
-                }}
-              />
               {loading ? (
                 <Center py="xl" style={{ flex: 1 }}>
                   <Loader size="md" />
                 </Center>
               ) : activeTickets.length === 0 && closedTickets.length === 0 ? (
                 <Card withBorder radius="lg" p="lg">
-                  <Text ta="center" c="dimmed">{t('tickets.noTickets')}</Text>
+                  <Text ta="center" c="dimmed">Ничего не найдено. Попробуйте другой запрос.</Text>
                 </Card>
               ) : (
                 <>
@@ -1089,8 +1068,8 @@ export default function Tickets() {
             {selectedTicket ? renderChatContent() : (
               <Center style={{ flex: 1 }}>
                 <Stack gap={6} align="center">
-                  <IconMessageCircle size={28} />
-                  <Text c="dimmed">{t('tickets.selectTicket')}</Text>
+                  <ThemeIcon size={64} radius="xl" variant="light"><IconHeadset size={30} /></ThemeIcon>
+                  <Text fw={650} mt="md">Вся помощь — в одной переписке</Text><Text c="dimmed" size="sm" ta="center" maw={280}>Выберите обращение слева или задайте новый вопрос.</Text>
                 </Stack>
               </Center>
             )}
@@ -1106,12 +1085,12 @@ export default function Tickets() {
         classNames={{ content: 'ticket-create', header: 'ticket-create__header' }}
         radius="lg"
         fullScreen={!!isMobile}
-        size="lg"
+        size="md"
       >
         <Stack gap="md">
           <Text size="sm" c="dimmed">Опишите вопрос и приложите скриншот, если он поможет разобраться.</Text>
           {(creating || sending) && <Progress value={uploadProgress} aria-label="Передача вложения" />}
-          <Text size="xs" c="dimmed">{aiAvailable ? 'Сначала вам ответит ИИ-помощник. Кнопка «Связаться с оператором» доступна внутри обращения.' : 'Ваше обращение получит сотрудник поддержки.'}</Text>
+          <Text className="ticket-create-note" size="xs" c="dimmed">{aiAvailable ? 'Сначала вам ответит ИИ-помощник. Кнопка «Связаться с оператором» доступна внутри обращения.' : 'Ваше обращение получит сотрудник поддержки.'}</Text>
           <div className="ticket-create-layout">
           <Stack gap="md" className="ticket-create-fields">
           <TextInput
@@ -1140,7 +1119,7 @@ export default function Tickets() {
             ]}
           />
 
-          <Select
+          <details className="ticket-priority"><summary>Важность обращения</summary><Select
             label={t('tickets.priorityLabel')}
             value={newPriority}
             onChange={(value) => setNewPriority(value || 'normal')}
@@ -1150,7 +1129,7 @@ export default function Tickets() {
               { value: 'high', label: t('tickets.priority.high') },
               { value: 'urgent', label: t('tickets.priority.urgent') },
             ]}
-          />
+          /></details>
 
           </div>
 
@@ -1221,7 +1200,7 @@ export default function Tickets() {
             </FileButton>
           </Stack>
           </Stack>
-          <aside className="ticket-create-summary"><ThemeIcon size={42} radius="md" variant="light"><IconMessageCircle size={22} /></ThemeIcon><Text size="sm" c="dimmed" mt="md">Ваше обращение</Text><Text className="ticket-create-summary__title">{newSubject.trim() || 'Тема не указана'}</Text><Divider my="md" /><Text size="xs" c="dimmed" lh={1.6}>{aiAvailable ? 'ИИ-помощник ответит первым. При необходимости можно подключить оператора.' : 'Обращение будет передано специалисту поддержки.'}</Text><Group gap="xs" mt="md"><Badge color="blue" variant="light">Ответ в кабинете</Badge>{newFiles.length > 0 && <Badge color="teal" variant="light">Файлов: {newFiles.length}</Badge>}</Group></aside>
+
           </div>
           <Group justify="space-between" className="ticket-create__actions"><Button variant="default" onClick={() => setCreateOpen(false)} disabled={creating}>{t('common.cancel')}</Button><Button onClick={createTicket} loading={creating} leftSection={<IconSend size={16} />}>{t('tickets.send')}</Button></Group>
         </Stack>
@@ -1233,7 +1212,8 @@ export default function Tickets() {
           closeOnEscape={!mediaPreview}
           trapFocus={!mediaPreview}
           onClose={() => setTicketOpen(false)}
-          title={selectedTicket ? `${getTicketIdText(selectedTicket)} ${getTicketSubject(selectedTicket)}` : t('tickets.title')}
+          title="Поддержка"
+          classNames={{ content: 'ticket-mobile-chat', body: 'ticket-mobile-chat__body' }}
           fullScreen
           size="xl"
         >
