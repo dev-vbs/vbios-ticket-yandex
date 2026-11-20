@@ -70,3 +70,5 @@ P0: backend-enforced granular admin permissions и audit log. Перед реа�
 - Client build passed after the change; PayModal/PromoModal became separate async chunks.
 - Monitoring refresh changes and configuration are documented in MONITORING.md.
 - A full redesign of every business module is not claimed complete; remaining roadmap covers backend RBAC, CRM/finance expansion, Server Intelligence history and tenant architecture.
+
+Обновление контейнеров и откат описаны в [PRODUCTION-UPDATE-RU.md](PRODUCTION-UPDATE-RU.md). Для текущего обновления кода vBios пересоздавайте `core spool api client admin`; MySQL и Redis не трогайте без отдельной причины.
