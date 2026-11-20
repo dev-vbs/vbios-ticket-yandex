@@ -139,4 +139,8 @@ ok(!exists($plans->[0]{config}),'service config is never public');
 $storefront->public_shm_plans({plan_service_ids=>[1,'bad',{},-1]});
 is_deeply($storefront->{catalog}{query}{where},{allow_to_order=>1,deleted=>0,service_id=>{'-in'=>[1]}},'explicit IDs cannot bypass public service filters');
 is_deeply($storefront->public_shm_plans({plan_service_ids=>[]}),[],'empty explicit selection hides all tariffs');
+eval 'package MonitorBoundary; '.method('server/app/lib/Core/Remnawave.pm','_monitor_uuid'); die $@ if $@;
+is(MonitorBoundary::_monitor_uuid(" ABC-123\r\n"),'abc-123','monitor trims whitespace and normalizes UUID case');
+is(MonitorBoundary::_monitor_uuid('abc-123\n'),'abc-123','monitor handles pasted literal newline suffix');
+is(MonitorBoundary::_monitor_uuid({}), '','monitor rejects structured UUID');
 done_testing();

@@ -78,6 +78,14 @@ sub _tcp_latency_ms {
     $latency_cache{$key} = { time => time, value => $latency };
     return $latency;
 }
+sub _monitor_uuid {
+    my $uuid = shift;
+    return '' unless defined($uuid) && !ref($uuid);
+    $uuid =~ s/^\s+|\s+$//g;
+    $uuid =~ s/(?:\\[rn])+$//;
+    $uuid =~ s/\s+$//;
+    return lc($uuid);
+}
 sub api_monitor {
     my $self = shift;
     my $main = get_service('config')->data_by_name('main') || {};
@@ -85,18 +93,18 @@ sub api_monitor {
     my $visible = $main->{monitor_nodes};
     return { enabled => 1, state => 'empty', nodes => [] } unless ref($visible) eq 'ARRAY' && @$visible;
     my $monitor_cfg = get_service('config')->data_by_name('remna') || {};
-    my $cache_key = 'SHM:Remnawave:Monitor:v2:'.sha256_hex(encode_json($visible).($monitor_cfg->{url} || '').($monitor_cfg->{api_token} || ''));
+    my $cache_key = 'SHM:Remnawave:Monitor:v3:'.sha256_hex(encode_json($visible).($monitor_cfg->{url} || '').($monitor_cfg->{api_token} || ''));
     my $cached = eval { $self->cache->get_json($cache_key) };
     return $cached if ref($cached) eq 'HASH' && ref($cached->{nodes}) eq 'ARRAY';
     my $response = eval { $self->_request(path => '/api/nodes') };
     return { enabled => 1, state => 'unknown', nodes => [] } if $@ || ref($response) ne 'HASH' || ref($response->{response}) ne 'ARRAY';
-    my %nodes = map { ref($_) eq 'HASH' && $_->{uuid} ? ($_->{uuid} => $_) : () } @{$response->{response}};
+    my %nodes = map { ref($_) eq 'HASH' && $_->{uuid} ? (_monitor_uuid($_->{uuid}) => $_) : () } @{$response->{response}};
     my @public;
     for my $item (@$visible) {
         next unless ref($item) eq 'HASH' && $item->{uuid};
-        my $node = $nodes{$item->{uuid}};
+        my $node = $nodes{_monitor_uuid($item->{uuid})};
         my $ip = $item->{ping_ip} || ($node && $node->{address});
-        my $port = ($node && $node->{port}) || $item->{ping_port};
+        my $port = $item->{ping_port} || ($node && $node->{port});
         my $ip_url = defined($ip) && !ref($ip) && is_ipv4($ip) ? 'https://'.$ip.'/ping'
             : defined($ip) && !ref($ip) && is_ipv6($ip) ? 'https://['.$ip.']/ping' : undef;
         push @public, {
