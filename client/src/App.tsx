@@ -80,6 +80,7 @@ function AppContent() {
   const [payModalOpen, setPayModalOpen] = useState(false);
   const [versionOpen, setVersionOpen] = useState(false);
   const [authError, setAuthError] = useState(false);
+  const [authAttempt, setAuthAttempt] = useState(0);
 
 
   useEffect(() => {
@@ -112,13 +113,18 @@ function AppContent() {
 
   useEffect(() => {
     if (hasAddToHomeScreen) { setIsLoading(false); return; }
+    let cancelled = false;
     const checkAuth = async () => {
+      setAuthError(false);
+      setIsLoading(true);
       try {
         const response = await auth.getCurrentUser();
+        if (cancelled) return;
         const responseData = response.data.data;
         const userData: any = Array.isArray(responseData) ? responseData[0] : responseData;
         setUser(userData);
       } catch (error) {
+        if (cancelled) return;
         if (!navigator.onLine) {
           try {
             const cachedUser = JSON.parse(localStorage.getItem('shm_offline_user_v1') || 'null');
@@ -130,11 +136,12 @@ function AppContent() {
           setAuthError(true);
         }
       } finally {
-        setIsLoading(false);
+        if (!cancelled) setIsLoading(false);
       }
     };
-    checkAuth();
-  }, [setUser, setIsLoading, hasAddToHomeScreen]);
+    void checkAuth();
+    return () => { cancelled = true; };
+  }, [setUser, setIsLoading, hasAddToHomeScreen, authAttempt]);
 
   useEffect(() => {
     if (!config.SUPPORT_WIDGET_URL || !user) return;
@@ -172,7 +179,7 @@ function AppContent() {
   }
 
   if (authError && !isAuthenticated) {
-    return <Center mih="100vh" p="lg"><Stack maw={400} align="center" gap="md"><Text fw={600}>Не удалось связаться с сервером</Text><Text size="sm" c="dimmed" ta="center">Проверьте интернет и повторите загрузку. Ваша сессия сохранена.</Text><Button onClick={() => window.location.reload()}>Повторить</Button></Stack></Center>;
+    return <Center mih="100vh" p="lg"><Stack maw={400} align="center" gap="md"><Text fw={600}>Не удалось связаться с сервером</Text><Text size="sm" c="dimmed" ta="center">Проверьте подключение и повторите попытку. Ваша сессия сохранена.</Text><Button onClick={() => setAuthAttempt(attempt => attempt + 1)}>Повторить</Button></Stack></Center>;
   }
 
   if (!isAuthenticated) {

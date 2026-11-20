@@ -43,7 +43,11 @@ elif [ ! -z "$SHM_HOST" ]; then
 fi
 
 if [ ! -z "$PROXY_URL" ]; then
-    sed -i "s|#SHM_URL|$PROXY_URL|" /etc/nginx/conf.d/default.conf
+    if [ "$PROXY_URL" = "http://api" ]; then
+        sed -i 's|proxy_pass #SHM_URL;|resolver 127.0.0.11 valid=5s ipv6=off;\n        set $shm_api http://api;\n        proxy_pass $shm_api$request_uri;|' /etc/nginx/conf.d/default.conf
+    else
+        sed -i "s|#SHM_URL|$PROXY_URL|" /etc/nginx/conf.d/default.conf
+    fi
 fi
 
 if [ ! -z "$SHM_BASE_PATH" ] && [ "$SHM_BASE_PATH" != "/" ]; then
