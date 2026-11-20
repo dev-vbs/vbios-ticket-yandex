@@ -4,7 +4,7 @@ import axios from 'axios';
 import { useAuthOptions } from '../hooks/useAuthOptions';
 import { useState, useEffect, useCallback } from 'react';
 import { Card, Text, Stack, Group, Divider, Grid, Button, TextInput, Tooltip, ActionIcon, Avatar, Title, Modal, Loader, Center, Collapse, Alert, Skeleton, useMantineColorScheme, FileButton } from '@mantine/core';
-import { IconUser, IconPhone, IconCopy, IconCheck, IconBrandTelegram, IconCreditCard, IconChevronDown, IconChevronUp, IconMail, IconAlertCircle, IconEdit, IconCamera, IconTrash } from '@tabler/icons-react';
+import { IconUser, IconPhone, IconCopy, IconCheck, IconBrandTelegram, IconCreditCard, IconChevronDown, IconChevronUp, IconMail, IconAlertCircle, IconEdit, IconCamera, IconTrash, IconLock } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 import { useClipboard } from '@mantine/hooks';
 import { useTranslation } from 'react-i18next';
@@ -533,8 +533,9 @@ export default function Profile() {
       <header className="page-header"><div><span className="cabinet-breadcrumb">Личный кабинет</span><Title className="page-header__title" order={2}>{t('profile.title')}</Title><p className="page-header__description">Управляйте данными аккаунта, безопасностью и оплатой.</p></div></header>
 
 
+      <nav className="profile-shortcuts" aria-label="Настройки профиля"><a href="#profile-contacts"><IconUser size={18} /><span>Личные данные<small>Имя, телефон и почта</small></span></a><a href="#profile-security"><IconLock size={18} /><span>Безопасность<small>Пароль и способы входа</small></span></a><Link to="/balance"><IconCreditCard size={18} /><span>Баланс и оплата<small>Пополнение и история</small></span></Link></nav>
       <Grid>
-        <Grid.Col span={{ base: 12, md: 6 }} style={{ display: 'flex' }}>
+        <Grid.Col span={{ base: 12, md: 4 }} style={{ display: 'flex' }}>
           <Card className="profile-card profile-card--account" withBorder radius="lg" p="lg" style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
             <Group className="profile-identity">
               <Avatar
@@ -606,8 +607,8 @@ export default function Profile() {
 
         </Grid.Col>
 
-        <Grid.Col span={{ base: 12, md: 6 }} style={{ display: 'flex' }}>
-          <Card className="profile-card profile-card--details" withBorder radius="lg" p="lg" style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+        <Grid.Col span={{ base: 12, md: 8 }} style={{ display: 'flex' }}>
+          <Card id="profile-contacts" className="profile-card profile-card--details" withBorder radius="lg" p="lg" style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
             <Group justify="space-between" mb="md">
               <Text fw={500}>{t('profile.personalData')}</Text>
               {!editing ? (
@@ -827,7 +828,7 @@ export default function Profile() {
         </Card>
       )}
 
-      <SecuritySettings />
+      <section id="profile-security"><SecuritySettings /></section>
 
       <PayModal opened={payModalOpen} onClose={() => setPayModalOpen(false)} initialAmount={payModalAmount} />
 

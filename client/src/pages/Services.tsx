@@ -411,20 +411,20 @@ function ServiceDetail({ service, onDelete, onChangeTariff }: ServiceDetailProps
 
           <Stack gap="xs">
             <Paper withBorder radius="lg" p="lg" className="service-primary-card">
-              <Stack gap="md">
-                <Group justify="space-between" gap="md">
-                  <Text fw={650} size="xl">{service.service.name}</Text>
+              <Stack gap="md" className="service-detail-summary">
+                <Group justify="space-between" gap="md" className="service-detail-summary__heading">
+                  <div><Text size="xs" c="dimmed">Подписка · №{service.user_service_id}</Text><Title order={2}>{service.service.name}</Title></div>
                   <Badge color={statusColor} variant="light" size="sm" radius="sm">{statusLabel}</Badge>
                 </Group>
                 <Divider />
-                <Group justify="space-between" gap="md" align="center">
-                  <Group gap="xs" c="dimmed"><IconWallet size={18} /><Text size="sm">{t('services.cost')}</Text></Group>
+                <Group justify="space-between" gap="md" align="center" className="service-detail-summary__metric">
+                  <Group gap="xs" c="dimmed"><IconWallet size={18} /><Text size="sm">Стоимость продления</Text></Group>
                   <Text fw={700} size="xl" style={{ fontVariantNumeric: 'tabular-nums' }}>{service.service.cost} <Text component="span" size="sm" fw={500} c="dimmed">{t('common.currency')}</Text></Text>
                 </Group>
                 {service.expire && (
                   <>
                     <Divider />
-                    <Group justify="space-between" gap="md" align="center">
+                    <Group justify="space-between" gap="md" align="center" className="service-detail-summary__metric">
                       <Group gap="xs" c="dimmed"><IconCalendarTime size={18} /><Text size="sm">{t('services.validUntil')}</Text></Group>
                       <Text size="sm" fw={600} style={{ fontVariantNumeric: 'tabular-nums' }}>{new Date(service.expire as string).toLocaleDateString(i18n.language === 'ru' ? 'ru-RU' : 'en-US')}</Text>
                     </Group>
@@ -474,7 +474,7 @@ function ServiceDetail({ service, onDelete, onChangeTariff }: ServiceDetailProps
                   <Badge color="green" variant="light">{statusLabel}</Badge>
                 </Group>
 
-                <Paper withBorder p="sm" radius="sm" className="connection-diagnostics">
+                <details className="connection-check-details"><summary>Проверить данные подключения</summary><Paper withBorder p="sm" radius="sm" className="connection-diagnostics">
                   <Group justify="space-between" align="center" wrap="nowrap">
                     <Stack gap={3}>
                       <Group gap="xs"><Text size="sm" fw={600}>Диагностика подключения</Text><Badge color={isOnline ? 'green' : 'orange'} variant="light" leftSection={isOnline ? <IconWifi size={12} /> : <IconWifiOff size={12} />}>{isOnline ? 'Сеть доступна' : 'Нет сети'}</Badge></Group>
@@ -483,7 +483,7 @@ function ServiceDetail({ service, onDelete, onChangeTariff }: ServiceDetailProps
                     </Stack>
                     <Button variant="light" size="xs" leftSection={<IconRefresh size={14} />} loading={connectionStatus === 'loading'} disabled={!isOnline} onClick={() => setConnectionReload((value) => value + 1)}>Проверить</Button>
                   </Group>
-                </Paper>
+                </Paper></details>
 
                 {isProxy && showProxySubscription && subscriptionUrl && (
                   <Paper withBorder p="sm" radius="sm" bg="var(--mantine-color-default-hover)">
@@ -491,7 +491,7 @@ function ServiceDetail({ service, onDelete, onChangeTariff }: ServiceDetailProps
                     <Group wrap="nowrap">
                       <Code style={{ flex: 1, wordBreak: 'break-all', whiteSpace: 'normal' }}>{subscriptionUrl}</Code>
                       <Tooltip label={clipboard.copied ? t('common.copied') : t('common.copy')}>
-                        <ActionIcon color={clipboard.copied ? 'teal' : 'blue'} variant="light" onClick={() => clipboard.copy(subscriptionUrl)}>
+                        <ActionIcon aria-label="Скопировать ссылку подписки" color={clipboard.copied ? 'teal' : 'blue'} variant="light" onClick={() => clipboard.copy(subscriptionUrl)}>
                           {clipboard.copied ? <IconCheck size={17} /> : <IconCopy size={17} />}
                         </ActionIcon>
                       </Tooltip>
