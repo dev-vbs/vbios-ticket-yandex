@@ -1,10 +1,10 @@
-import NodeLatency from '../components/NodeLatency';
+import ServerMonitor from '../components/ServerMonitor';
 import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { notifications } from '@mantine/notifications';
 import { monitorApi, userApi } from '../api/client';
 import { useStore } from '../store/useStore';
-import { IconAlertCircle, IconArrowRight, IconCalendarEvent, IconCircleCheck, IconCreditCard, IconRefresh, IconServer, IconWallet, IconPlus, IconHeadset, IconActivity, IconShieldLock, IconHelpCircle } from '@tabler/icons-react';
+import { IconAlertCircle, IconArrowRight, IconCalendarEvent, IconCircleCheck, IconCreditCard, IconRefresh, IconServer, IconWallet, IconPlus, IconHeadset, IconShieldLock, IconHelpCircle } from '@tabler/icons-react';
 const PayModal = lazy(() => import('../components/PayModal'));
 import './Dashboard.css';
 
@@ -36,7 +36,7 @@ export default function Dashboard() {
   const [servicesUpdated, setServicesUpdated] = useState<Date | null>(null);
   const [paymentsUpdated, setPaymentsUpdated] = useState<Date | null>(null);
   const [payModalOpen, setPayModalOpen] = useState(false);
-  const [monitor, setMonitor] = useState<{ enabled?: boolean; state?: string; nodes?: MonitorNode[] }>({});
+  const [monitor, setMonitor] = useState<{ enabled?: boolean; state?: string; checked_at?: number; nodes?: MonitorNode[] }>({});
   const load = useCallback(async () => {
     setLoading(true);
     // Render each section independently of slower billing requests.
@@ -81,7 +81,6 @@ export default function Dashboard() {
     return () => { cancelled = true; window.clearInterval(timer); document.removeEventListener('visibilitychange', visible); };
   }, []);
   const activeServices = useMemo(() => services.filter((service) => service.status === 'ACTIVE' || service.status === 'active'), [services]);
-  const monitorHealth = monitor.state !== 'ready' || !monitor.nodes?.length || monitor.nodes.some(node => node.status === 'unknown') ? 'unknown' : monitor.nodes.every(node => node.status === 'online') ? 'online' : 'warning';
   const hasBalance = Number(user?.balance || 0) > 0;
   const { hasNewTicketMessages } = useStore();
   const expiringServices = activeServices.filter((service) => expiry(service.expire));
@@ -126,7 +125,7 @@ export default function Dashboard() {
       <Link to="/services" className="dashboard-stat dashboard-stat--muted"><span className="dashboard-stat__label">Приостановлены</span><strong>{!servicesUpdated ? '—' : blockedServices.length}</strong><span className="dashboard-stat__hint">проверить услуги</span></Link>
     </section>
 
-    {monitor.enabled && <section className="node-monitor" aria-labelledby="node-monitor-title"><div className="node-monitor__head"><div><span className="node-monitor__eyebrow"><IconActivity size={14} />Сеть</span><h2 id="node-monitor-title">Доступность серверов</h2></div><span className={`node-monitor__live node-monitor__live--${monitorHealth}`}><i />{monitorHealth === 'online' ? 'Все работают' : monitorHealth === 'warning' ? 'Есть ограничения' : 'Нет свежих данных'}</span></div><div className="node-monitor__list">{(monitor.nodes || []).map((node, index) => <div className="node-monitor__row" key={`${node.name}-${node.country}-${index}`}><span className={`node-monitor__dot node-monitor__dot--${node.status}`} /><div><strong>{node.name}</strong><small>{node.country || 'Сервер Remnawave'}</small></div><span className={`node-monitor__status node-monitor__status--${node.status}`}><NodeLatency url={node.ping_url} serverLatency={node.latency_ms} />{node.status === 'online' ? 'РАБОТАЕТ' : node.status === 'maintenance' ? 'ТЕХРАБОТЫ' : node.status === 'offline' ? 'НЕДОСТУПЕН' : 'ПРОВЕРКА'}</span></div>)}</div></section>}
+    {monitor.enabled && <ServerMonitor monitor={monitor} />}
     <section className="cabinet-panel dashboard-payments" aria-labelledby="payments-heading">
       <div className="panel-title"><h2 id="payments-heading">Последние пополнения</h2><Link className="dashboard-text-action" to="/operations">Все операции<IconArrowRight size={16} /></Link></div>
       {paymentError && <div role="alert" className="dashboard-inline-error">Не удалось обновить платежи.{paymentsUpdated ? ' Показаны ранее загруженные данные.' : ' Нажмите «Обновить» для повторной попытки.'}</div>}
