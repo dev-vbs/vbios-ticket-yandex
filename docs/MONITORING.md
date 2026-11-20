@@ -1,0 +1,137 @@
+# Мониторинг серверов vBios и Remnawave
+
+Этот документ описывает фактически поддерживаемый мониторинг в текущей версии проекта. Он разделяет два разных показателя:
+
+- **Статус узла** — состояние узла в панели Remnawave: подключён, отключён или выключен.
+- **Задержка** — TCP-проверка от сервера SHM до адреса/порта узла или HTTP RTT от браузера пользователя до `ping_url`.
+
+CPU, RAM, disk, RX/TX и число подключений не подставляются в карточку автоматически. Они требуют отдельного безопасного backend endpoint и хранения истории; текущий код не должен показывать выдуманные значения.
+
+## Быстрая настройка доступности
+
+### 1. Подготовьте Remnawave
+
+1. Убедитесь, что все нужные Nodes подключены в панели и не выключены.
+2. Скопируйте UUID Node из панели. Это значение используется в публичном списке мониторинга.
+3. Создайте API token с правом чтения списка Nodes. Токен хранится только в `config.remna` SHM.
+4. Проверьте адрес панели: HTTPS URL без завершающего `/`.
+
+### 2. Добавьте config.remna
+
+В административном SHM выполните шаблон через транспорт `local` или добавьте поля в существующий `config.remna`:
+
+```text
+{{ IF !config.remna }}{{ r = user.srv('config').add(key = 'remna') }}{{ END }}
+{{ remna = config.remna }}
+{{ remna.url = 'https://remna.example.com' }}
+{{ remna.api_token = 'REPLACE_WITH_READ_ONLY_API_TOKEN' }}
+{{ remna.name_prefix = 'vBios_us_' }}
+{{ r = user.srv('config').id('remna').set_json('value', remna) }}
+Готово.
+```
+
+Не помещайте этот токен в `config.main`, браузерный `.env`, README или GitHub. `config.main` публикуется через `/system/main`.
+
+### 3. Настройте config.main
+
+`monitor_enabled = 1` включает мониторинг на стартовой странице и в кабинете. `monitor_nodes` задаёт белый список отображаемых узлов:
+
+```text
+{{ IF !config.main }}{{ r = user.srv('config').add(key = 'main') }}{{ END }}
+{{ main = config.main }}
+{{ main.monitor_enabled = 1 }}
+{{ main.monitor_nodes = [
+    { uuid = '11111111-1111-4111-8111-111111111111' title = 'Москва' description = 'Россия' ping_ip = '203.0.113.10' ping_port = 443 ping_url = 'https://node.example.com/ping' }
+    { uuid = '22222222-2222-4222-8222-222222222222' title = 'Франкфурт' description = 'Германия' ping_url = 'https://frankfurt.example.com/ping' }
+] }}
+{{ r = user.srv('config').id('main').set_json('value', main) }}
+Мониторинг сохранён.
+```
+
+Замените UUID, названия, IP и URL. `ping_ip` — реальный IPv4/IPv6 адрес узла для TCP-проверки от биллинга; `ping_port` обычно 443. Для проверки из браузера добавьте `ping_url`.
+
+### 4. Настройте HTTP endpoint для браузерского замера
+
+На каждом сервере разместите HTTPS endpoint `/ping`, который:
+
+- отвечает `200` или `204` без авторизации;
+- возвращает пустой небольшой ответ;
+- передаёт `Cache-Control: no-store`;
+- разрешает CORS с домена кабинета или `*`;
+- использует действующий TLS-сертификат;
+- не перенаправляет запрос на другой домен.
+
+Проверка выполняется браузером пользователя и является HTTP RTT. Это не ICMP ping. Если endpoint не настроен, карточка показывает «Не настроен» или «Нет замера», а статус Remnawave продолжает работать независимо.
+
+Пример проверки с сервера:
+
+```sh
+curl -i --max-time 3 https://node.example.com/ping
+```
+
+Ожидайте `200/204`, CORS и `Cache-Control: no-store`.
+
+## Как читать статусы
+
+| Статус | Источник | Значение |
+| --- | --- | --- |
+| `online` | `/api/nodes` → `isConnected` | Узел подключён к панели |
+| `offline` | `/api/nodes` → `isConnected` | Панель видит узел отключённым |
+| `maintenance` | `/api/nodes` → `isDisabled` | Узел выключен в панели |
+| `unknown` | API не вернул соответствующий UUID | UUID неверен, узел удалён или API недоступен |
+| `Нет замера` | TCP/HTTP probe | Статус панели известен, задержка не измерена |
+
+Ответ мониторинга кэшируется Redis на 15 секунд. После изменения `config.main` подождите этот интервал и обновите страницу. Если API Remnawave недоступен, состояние `unknown` не должно трактоваться как «сервер работает».
+
+## Диагностика
+
+Проверьте конфигурацию без вывода токена:
+
+```sh
+docker compose ps api core client redis
+
+docker compose logs --tail=100 core api
+```
+
+В админке проверяйте, что:
+
+- `config.main.monitor_enabled` равно `1`;
+- каждый `monitor_nodes[].uuid` существует в Remnawave;
+- `config.remna.url` доступен из контейнера core;
+- API token имеет чтение Nodes;
+- Redis доступен, если нужен общий cache;
+- `ping_url` отвечает с устройства пользователя и имеет CORS.
+
+Пример запроса из SHM API:
+
+```sh
+curl -sS -b 'session_id=YOUR_SESSION' https://billing.example.com/shm/v1/system/monitor
+```
+
+Публичный endpoint не возвращает API token. В ответе смотрите `state`, `checked_at`, `nodes[].status` и `nodes[].latency_ms`.
+
+## Почему CPU/RAM/disk пока не показываются
+
+Remnawave описывает для этого отдельные endpoints `/api/system/stats/nodes` и `/api/system/nodes/metrics`. Подключение должно выполняться на backend с кэшем, allowlist UUID, ограничением частоты и хранением snapshots. Нельзя запрашивать эти данные из браузера с секретным токеном и нельзя выдавать метрики, которых API не вернул.
+
+Следующий этап Server Intelligence должен добавить:
+
+1. backend read-only endpoint для разрешённых администратором UUID;
+2. нормализацию только фактически возвращаемых полей;
+3. Redis cache для текущего состояния;
+4. MySQL историю snapshots и изменений статуса;
+5. пороги и дедупликацию уведомлений;
+6. подтверждение инцидента и восстановление;
+7. Telegram transport через существующий SHM механизм.
+
+Автоматический restart узлов не включается без отдельной настройки и подтверждения администратора.
+
+## Частые ошибки
+
+- **Все узлы `unknown`** — проверьте API token, URL и UUID.
+- **Статус online, а ping `—`** — нет `ping_ip/ping_port` или закрыт TCP-порт.
+- **Статус online, а браузерный ping не измеряется** — нет `ping_url`, CORS, TLS или endpoint отвечает редиректом.
+- **Показывается не тот сервер** — в `monitor_nodes` указан UUID другого узла или старый cache; подождите 15 секунд.
+- **После редактирования ничего не меняется** — обновите именно config через SHM local и не переопределяйте `config.main` старым шаблоном.
+
+Мониторинг доступности уже пригоден для production после проверки URL, прав токена и endpoint `/ping` на вашем staging. История нагрузки и Telegram-инциденты относятся к следующему этапу и в этой версии не заявляются готовыми.

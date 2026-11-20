@@ -48,3 +48,17 @@ P0: backend-enforced granular admin permissions и audit log. Перед реа�
 
 - Client production build завершена успешно (TypeScript + Vite + PWA). Остались прежние предупреждения config.js non-module и общего JS chunk >500 kB.
 - docs/ARCHITECTURE.md, docs/MULTI-TENANT.md и docs/SECURITY.md описывают фактические границы и незавершённые задачи.
+
+## Мониторинг серверов
+
+Настройка статусов узлов, TCP/HTTP задержки, `monitor_enabled`, `monitor_nodes`, CORS `/ping` и диагностика описаны в [MONITORING.md](MONITORING.md). Нагрузка CPU/RAM/disk/network требует отдельного Server Intelligence этапа и не подменяется фиктивными значениями.
+
+## Server Intelligence: фактически сделано
+
+- Публичная настройка и диагностика статусов описана в `docs/MONITORING.md`.
+- Client Dashboard и Login обновляют мониторинг раз в 60 секунд и при возврате вкладки из background.
+- Повторный запрос не запускается параллельно; API timeout — 15 секунд.
+- При ошибке API предыдущий online state заменяется на `unknown` / «Нет свежих данных».
+- Mock browser QA проверяет dashboard и login refresh/error state.
+- Remnawave `/api/nodes` остаётся источником status; TCP/HTTP latency явно подписана по источнику.
+- CPU/RAM/disk/network history, thresholds, incidents и Telegram alerts ещё не реализованы: для них нужен отдельный backend контракт, storage и staging проверка.

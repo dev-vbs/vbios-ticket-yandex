@@ -62,11 +62,23 @@ export default function Dashboard() {
   useEffect(() => { void load(); }, [load]);
   useEffect(() => {
     let cancelled = false;
-    void monitorApi.get().then(response => {
-      const raw = response.data?.data ?? response.data;
-      if (!cancelled) setMonitor(Array.isArray(raw) ? raw[0] || {} : raw || {});
-    }).catch(() => undefined);
-    return () => { cancelled = true; };
+    let pending = false;
+    const loadMonitor = async () => {
+      if (pending || document.hidden) return;
+      pending = true;
+      try {
+        const response = await monitorApi.get();
+        const raw = response.data?.data ?? response.data;
+        if (!cancelled) setMonitor(Array.isArray(raw) ? raw[0] || {} : raw || {});
+      } catch {
+        if (!cancelled) setMonitor(previous => ({ enabled: previous.enabled, state: 'unknown', nodes: [] }));
+      } finally { pending = false; }
+    };
+    const visible = () => { if (!document.hidden) void loadMonitor(); };
+    void loadMonitor();
+    const timer = window.setInterval(visible, 60000);
+    document.addEventListener('visibilitychange', visible);
+    return () => { cancelled = true; window.clearInterval(timer); document.removeEventListener('visibilitychange', visible); };
   }, []);
   const activeServices = useMemo(() => services.filter((service) => service.status === 'ACTIVE' || service.status === 'active'), [services]);
   const monitorHealth = monitor.state !== 'ready' || !monitor.nodes?.length || monitor.nodes.some(node => node.status === 'unknown') ? 'unknown' : monitor.nodes.every(node => node.status === 'online') ? 'online' : 'warning';

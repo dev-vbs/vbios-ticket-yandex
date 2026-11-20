@@ -74,7 +74,24 @@ export default function Login() {
   const [main, setMain] = useState<Record<string, any>>({});
   useEffect(() => { void fetch('/shm/v1/system/main').then(response => response.ok ? response.json() : null).then(body => { const value = body?.data ?? body; if (value && typeof value === 'object') setMain(Array.isArray(value) ? value[0] || {} : value); }).catch(() => undefined); }, []);
   const [monitor, setMonitor] = useState<{ enabled?: boolean; state?: string; nodes?: Array<{ name: string; country?: string; ping_url?: string; latency_ms?: number | null; status: string }> }>({});
-  useEffect(() => { let cancelled = false; const load = () => void monitorApi.get().then(response => { if (!cancelled) { const value = response.data?.data ?? response.data; setMonitor(Array.isArray(value) ? value[0] || {} : value || {}); } }).catch(() => undefined); load(); const timer = window.setInterval(load, 60000); return () => { cancelled = true; window.clearInterval(timer); }; }, []);
+  useEffect(() => {
+    let cancelled = false;
+    let pending = false;
+    const load = () => {
+      if (pending || document.hidden) return;
+      pending = true;
+      void monitorApi.get().then(response => {
+        if (cancelled) return;
+        const value = response.data?.data ?? response.data;
+        setMonitor(Array.isArray(value) ? value[0] || {} : value || {});
+      }).catch(() => { if (!cancelled) setMonitor(previous => ({ enabled: previous.enabled, state: 'unknown', nodes: [] })); }).finally(() => { pending = false; });
+    };
+    const handleVisibility = () => { if (document.visibilityState === 'visible') load(); };
+    load();
+    const timer = window.setInterval(load, 60000);
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => { cancelled = true; window.clearInterval(timer); document.removeEventListener('visibilitychange', handleVisibility); };
+  }, []);
   const isMobile = window.matchMedia('(max-width: 768px)').matches;
   const [loading, setLoading] = useState(false);
   const [passkeyLoading, setPasskeyLoading] = useState(false);
@@ -514,7 +531,7 @@ export default function Login() {
       <main id="welcome-main" className="welcome-wrap">
         <section className="welcome-hero">
           <div className="welcome-copy"><p className="welcome-intro">{main.intro || 'Простой доступ к вашим услугам'}</p><h1>{main.title || 'Всё важное'}<br /><span>{main.accent_title || 'в одном кабинете.'}</span></h1><p className="welcome-description">{main.description || config.APP_DESCRIPTION || 'Личный кабинет, в котором всё уже готово: услуги, оплата, устройства и помощь.'}</p><div className="welcome-actions"><Button size="lg" onClick={() => { setMode(registerEnabled ? 'register' : 'login'); setAuthOpen(true); }}>{main.primary_button || (registerEnabled ? 'Начать сейчас' : 'Войти в кабинет')}</Button><Button size="lg" variant="default" onClick={() => { setMode('login'); setAuthOpen(true); }}>{main.login_button || 'У меня уже есть аккаунт'}</Button></div><p className="welcome-compatibility">{main.compatibility || 'iPhone · Android · Windows · macOS'}</p></div>
-          <div className="welcome-hero-side">        {monitor.enabled && <section className="welcome-monitor" aria-label="Доступность серверов"><div className="welcome-monitor__head"><span>СЕТЬ</span><b><i />{monitor.state === 'ready' && monitor.nodes?.length && monitor.nodes.every(node => node.status === 'online') ? 'РАБОТАЕТ' : 'ЕСТЬ ОГРАНИЧЕНИЯ'}</b></div>{(monitor.nodes || []).map((node) => <div className="welcome-monitor__row" key={node.name}><i className={`welcome-monitor__dot welcome-monitor__dot--${node.status}`} /><div><strong>{node.name}</strong><small>{node.country || 'Сервер Remnawave'}</small></div><b><NodeLatency url={node.ping_url} serverLatency={node.latency_ms} />{node.status === 'online' ? 'РАБОТАЕТ' : node.status === 'maintenance' ? 'ТЕХРАБОТЫ' : node.status === 'offline' ? 'НЕДОСТУПЕН' : 'ПРОВЕРКА'}</b></div>)}</section>}</div>
+          <div className="welcome-hero-side">        {monitor.enabled && <section className="welcome-monitor" aria-label="Доступность серверов"><div className="welcome-monitor__head"><span>СЕТЬ</span><b className={monitor.state === 'unknown' ? 'is-unknown' : ''}><i />{monitor.state === 'ready' && monitor.nodes?.length && monitor.nodes.every(node => node.status === 'online') ? 'РАБОТАЕТ' : monitor.state === 'unknown' ? 'НЕТ СВЕЖИХ ДАННЫХ' : 'ЕСТЬ ОГРАНИЧЕНИЯ'}</b></div>{(monitor.nodes || []).map((node) => <div className="welcome-monitor__row" key={node.name}><i className={`welcome-monitor__dot welcome-monitor__dot--${node.status}`} /><div><strong>{node.name}</strong><small>{node.country || 'Сервер Remnawave'}</small></div><b><NodeLatency url={node.ping_url} serverLatency={node.latency_ms} />{node.status === 'online' ? 'РАБОТАЕТ' : node.status === 'maintenance' ? 'ТЕХРАБОТЫ' : node.status === 'offline' ? 'НЕДОСТУПЕН' : 'ПРОВЕРКА'}</b></div>)}</section>}</div>
         </section>
 
         <LandingSections main={main} nodes={monitor.nodes || []} onStart={() => { setMode(registerEnabled ? 'register' : 'login'); setAuthOpen(true); }} />

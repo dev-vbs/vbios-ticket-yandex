@@ -208,7 +208,7 @@ export const userApi = {
 };
 
 export const monitorApi = {
-  get: () => api.get('/system/monitor'),
+  get: () => api.get('/system/monitor', { timeout: 15000 }),
 };
 
 export interface TicketMedia {

@@ -174,3 +174,5 @@
   .welcome-auth-modal .auth-card { padding: 14px !important; }
   .welcome-auth-modal .auth-heading { font-size: 20px; }
 }
+
+.welcome-monitor__head b.is-unknown { color: #8a96a8; }
