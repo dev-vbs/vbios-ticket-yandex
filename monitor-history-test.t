@@ -13,7 +13,7 @@ use Test::More;
     sub cache { $_[0]{cache} }
     sub _request { +{response=>[{uuid=>'abc',address=>'example.com',port=>443,isConnected=>1}]} }
     package MonitorConfig;
-    sub data_by_name { $_[1] eq 'main' ? {monitor_enabled=>1,monitor_nodes=>[{uuid=>'abc',title=>'Node'}]} : {url=>'https://example.com'} }
+    sub data_by_name { $_[1] eq 'main' ? {monitor_enabled=>1,monitor_nodes=>[{uuid=>'abc',title=>'Node',ping_ip=>'example.com',ping_port=>443}]} : {url=>'https://example.com'} }
     package MonitorCache;
     sub get_json { undef }
     sub set_json { }
@@ -55,5 +55,21 @@ ok(!exists($redis->{$key}{5880}),'missing minutes are not fabricated');
     local *MonitorRedis::hgetall = sub { () };
     my $result=$monitor->api_monitor;
     is(scalar @{$result->{nodes}[0]{history}},1,'silent Redis fallback also preserves current sample');
+}
+{
+    no warnings 'redefine';
+    local *MonitorTest::_request = sub { +{response=>[]} };
+    $redis->{$key}{5880}=JSON::PP::encode_json({at=>5880,status=>'unknown',latency_ms=>76});
+    my $result=$monitor->api_monitor;
+    is($result->{nodes}[0]{status},'unknown','missing panel UUID stays unknown in panel status');
+    is($result->{nodes}[0]{panel_reason},'node_not_found','missing panel UUID explained separately');
+    is($result->{nodes}[0]{history}[-1]{status},'online','successful independent probe is available despite missing panel UUID');
+    is($result->{nodes}[0]{history}[0]{status},'online','legacy measured unknown sample recovered');
+}
+{
+    no warnings 'redefine';
+    local *MonitorTest::_request = sub { +{response=>[{uuid=>'abc',isConnected=>0}]} };
+    my $result=$monitor->api_monitor;
+    is($result->{nodes}[0]{history}[-1]{status},'offline','explicit panel failure is not overridden by TCP success');
 }
 done_testing();

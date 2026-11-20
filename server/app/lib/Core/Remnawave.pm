@@ -93,7 +93,7 @@ sub api_monitor {
     my $visible = $main->{monitor_nodes};
     return { enabled => 1, state => 'empty', nodes => [] } unless ref($visible) eq 'ARRAY' && @$visible;
     my $monitor_cfg = get_service('config')->data_by_name('remna') || {};
-    my $cache_key = 'SHM:Remnawave:Monitor:v4:'.sha256_hex(encode_json($visible).($monitor_cfg->{url} || '').($monitor_cfg->{api_token} || ''));
+    my $cache_key = 'SHM:Remnawave:Monitor:v5:'.sha256_hex(encode_json($visible).($monitor_cfg->{url} || '').($monitor_cfg->{api_token} || ''));
     my $cached = eval { $self->cache->get_json($cache_key) };
     return $cached if ref($cached) eq 'HASH' && ref($cached->{nodes}) eq 'ARRAY';
     my $response = eval { $self->_request(path => '/api/nodes') };
@@ -114,6 +114,7 @@ sub api_monitor {
             country => substr($item->{description} || '', 0, 100),
             ping_url => ($item->{ping_url} && !ref($item->{ping_url}) && $item->{ping_url} =~ m{^https://[^\s\@]+$}) ? $item->{ping_url} : $ip_url,
             status => !$node ? 'unknown' : $node->{isDisabled} ? 'maintenance' : $node->{isConnected} ? 'online' : 'offline',
+            panel_reason => !$node ? 'node_not_found' : undef,
             latency_ms => _tcp_latency_ms($ip, $port),
         };
         last if @public >= 30;
@@ -121,7 +122,7 @@ sub api_monitor {
     for my $node (@public) {
         my $state = $node->{status} eq 'offline' ? 'offline'
             : $node->{status} eq 'maintenance' ? 'maintenance'
-            : $node->{status} eq 'online' && defined($node->{latency_ms}) ? 'online' : 'unknown';
+            : defined($node->{latency_ms}) ? 'online' : 'unknown';
         my $minute = int(time() / 60) * 60;
         my $sample = { at => $minute, status => $state, latency_ms => $node->{latency_ms} };
         $node->{history} = [$sample];
@@ -136,6 +137,12 @@ sub api_monitor {
             $node->{history} = [map { decode_json($rows{$_}) } sort { $a <=> $b } grep { $_ >= $minute - 3540 } keys %rows] if %rows;
         };
         delete $node->{_history_scope};
+        # Older snapshots required a matched panel node even after a successful
+        # TCP probe. Recover those measured samples without filling any gaps.
+        for my $sample (@{$node->{history}}) {
+            $sample->{status} = 'online' if $sample->{status} eq 'unknown'
+                && defined($sample->{latency_ms}) && $sample->{latency_ms} >= 0;
+        }
     }
     my $result = { enabled => 1, state => 'ready', checked_at => time(), nodes => \@public };
     eval { $self->cache->set_json($cache_key, $result, 15) };

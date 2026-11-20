@@ -6,13 +6,14 @@ import { config } from '../config';
 import './StatusPage.css';
 
 type Sample = { at: number; status: string; latency_ms?: number | null };
-type Node = { id?: string; name: string; country?: string; status?: string; latency_ms?: number | null; history?: Sample[] };
+type Node = { id?: string; name: string; country?: string; status?: string; panel_reason?: string; latency_ms?: number | null; history?: Sample[] };
 type Monitor = { enabled?: boolean; state?: string; checked_at?: number; nodes?: Node[] };
 const labels: Record<string, string> = { online: 'Доступен', offline: 'Недоступен', maintenance: 'Техработы', unknown: 'Нет данных' };
+const measured = (value?: number | null) => typeof value === 'number' && Number.isFinite(value) && value >= 0;
 function nodeState(node: Node, stale: boolean) {
   if (stale) return 'unknown';
   if (node.status === 'offline' || node.status === 'maintenance') return node.status;
-  return node.status === 'online' && typeof node.latency_ms === 'number' && Number.isFinite(node.latency_ms) && node.latency_ms >= 0 ? 'online' : 'unknown';
+  return measured(node.latency_ms) ? 'online' : 'unknown';
 }
 export default function StatusPage() {
   const [data, setData] = useState<Monitor>({});
@@ -59,10 +60,11 @@ export default function StatusPage() {
           <div className="status-bars" aria-label="История проверок за последние 60 минут">{Array.from({ length: 60 }, (_, i) => {
             const at = currentMinute - (59 - i) * 60;
             const sample = samples.get(at);
-            const status = sample && labels[sample.status] ? sample.status : 'unknown';
+            const status = sample?.status === 'unknown' && measured(sample.latency_ms) ? 'online' : sample && labels[sample.status] ? sample.status : 'unknown';
             const title = new Date(at * 1000).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }) + ' · ' + (sample ? labels[status] : 'Нет проверки') + (typeof sample?.latency_ms === 'number' ? ' · ' + sample.latency_ms + ' мс' : '');
             return <span key={at} data-state={status} title={title} aria-label={title} />;
           })}</div><div className="status-node__footer"><span>60 минут назад</span><strong>{state === 'online' ? node.latency_ms + ' мс · от биллинга' : labels[state]}</strong><span>Сейчас</span></div>
+          {node.panel_reason === 'node_not_found' && <p className="status-node__notice">Нода не найдена в панели по UUID. {state === 'online' ? 'TCP-проверка настроенного адреса успешна.' : 'Проверьте UUID Node и настройки проверки.'}</p>}
         </article>;
       })}</section>
       {!loading && !nodes.length && <p className="status-empty">{error ? 'Повторите проверку позже.' : 'Администратору нужно настроить monitor_nodes в config.main и доступ к Remnawave.'}</p>}
