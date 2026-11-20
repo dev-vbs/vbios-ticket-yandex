@@ -21,5 +21,6 @@ export function equalSecret(value, expected) {
 }
 export function notification(body) {
   return { title: String(body.title || 'vBios').slice(0, 80), body: String(body.body || '').slice(0, 300),
-    url: safePath(body.url), tag: String(body.tag || 'vbios').slice(0, 80) };
+    url: safePath(body.url), tag: String(body.tag || 'vbios').slice(0, 80),
+    ...(Number.isSafeInteger(body.media_id) && body.media_id > 0 ? { media_id: body.media_id } : {}) };
 }

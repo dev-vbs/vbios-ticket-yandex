@@ -76,7 +76,7 @@ sub _notify_safe {
 }
 
 sub _push_reply_safe {
-    my ($self, $ticket_id, $message_id, $message, $source) = @_;
+    my ($self, $ticket_id, $message_id, $message, $source, $media_id) = @_;
     return unless ($ENV{WEB_PUSH_ENABLE} || '') eq 'true';
     return unless $ticket_id && $ticket_id =~ /^\d+$/ && $message_id && $message_id =~ /^\d+$/;
 
@@ -93,6 +93,7 @@ sub _push_reply_safe {
             body => $body,
             url => '/tickets',
             tag => 'ticket-' . $ticket_id,
+            (defined($media_id) && $media_id =~ /^[1-9]\d*$/ ? (media_id => $media_id) : ()),
         );
         die 'Push provider delivery failed' if ref($result) eq 'HASH' && ($result->{failed} || 0) > 0;
         1;

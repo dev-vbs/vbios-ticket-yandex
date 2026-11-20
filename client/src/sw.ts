@@ -1,5 +1,6 @@
 /// <reference lib="webworker" />
 import { cleanupOutdatedCaches, precacheAndRoute } from 'workbox-precaching'
+import { loadNotificationImage } from './push-image'
 
 declare const self: ServiceWorkerGlobalScope
 
@@ -12,7 +13,7 @@ self.addEventListener('fetch', (event) => {
 })
 
 self.addEventListener('push', (event) => {
-  let data: { title?: string; body?: string; icon?: string; badge?: string; url?: string; tag?: string } = {}
+  let data: { title?: string; body?: string; url?: string; tag?: string; media_id?: number } = {}
   try {
     data = event.data?.json() || {}
   } catch {
@@ -21,15 +22,24 @@ self.addEventListener('push', (event) => {
 
   const { title = 'Новое уведомление', body = 'Откройте кабинет, чтобы узнать подробности.', url = '/notifications', tag } = data
 
-  event.waitUntil(
-    self.registration.showNotification(title, {
+  event.waitUntil((async () => {
+    const image = await loadNotificationImage(data.media_id)
+    const options: NotificationOptions & { image?: string } = {
       body,
       icon: '/icon-192.png',
       badge: '/icon-192.png',
       ...(tag ? { tag } : {}),
+      ...(image ? { image } : {}),
       data: { url, title, body },
-    })
-  )
+    }
+    try {
+      await self.registration.showNotification(title, options)
+    } catch (error) {
+      if (!image) throw error
+      delete options.image
+      await self.registration.showNotification(title, options)
+    }
+  })())
 })
 
 self.addEventListener('notificationclick', (event) => {

@@ -30,6 +30,7 @@ jobs:
         run: |
           npm ci --prefix push
           npm test --prefix push
+          node --test client/push-image.test.mjs
       - name: Check ticket delivery and responder selection
         run: prove help-apps-test.t media-multipart-test.t media-private-copy-test.t ticket-delivery-test.t support-caption-test.t oidc-cabinet-test.t security-boundaries-test.t telegram-binding-test.t telegram-oidc-identity-test.t telegram-widget-binding-test.t telegram-oidc-verification-test.t
       - name: Check Remnawave customer access and paid fulfillment

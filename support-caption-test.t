@@ -101,6 +101,7 @@ is_deeply($group->{links}[0],[123456,901,7,2],'native Reply on photo maps to cor
 is(scalar @SupportGroup::pushes,1,'support reply sends one push');
 is($SupportGroup::pushes[0][0]{user_id},2,'push is addressed to the ticket owner');
 is_deeply([@{$SupportGroup::pushes[0]}[1..4]],[7,42,$caption,'human'],'push uses the saved reply and caption');
+is($SupportGroup::pushes[0][5],88,'support attachment ID is sent for the notification preview');
 $group->{calls}=[];
 $group->{links}=[];
 $group->{owner}{settings}={};

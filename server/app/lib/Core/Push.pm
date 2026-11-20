@@ -18,7 +18,8 @@ sub send {
     my $request = HTTP::Request->new(POST => 'http://push:8090/internal/send');
     $request->header('Authorization' => 'Bearer ' . $ENV{PUSH_INTERNAL_TOKEN});
     $request->header('Content-Type' => 'application/json');
-    $request->content(encode_json({ user_id => int($uid), title => $args{title} || 'vBios', body => $args{body} || '', url => $args{url} || '/notifications', tag => $args{tag} || 'vbios' }));
+    $request->content(encode_json({ user_id => int($uid), title => $args{title} || 'vBios', body => $args{body} || '', url => $args{url} || '/notifications', tag => $args{tag} || 'vbios',
+        (defined($args{media_id}) && $args{media_id} =~ /^[1-9]\d*$/ ? (media_id => int($args{media_id})) : ()) }));
     my $response = LWP::UserAgent->new(timeout => 65)->request($request);
     die 'Push service did not confirm request' unless $response->is_success;
     return decode_json($response->decoded_content);
