@@ -61,6 +61,7 @@ export const SubscriptionLinkWidget = ({ supportUrl, hideGetLink, buttonOnly = f
 
         return (
             <ActionIcon
+                aria-label="Поддержка"
                 c={color}
                 component="a"
                 href={supportUrl}

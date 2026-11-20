@@ -1,5 +1,5 @@
 .modalContent {
-    background: rgba(22, 27, 35, 0.95);
+    background: var(--subscription-panel);
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
     border: 1px solid var(--mantine-color-default-border);
@@ -11,7 +11,7 @@
 
 .modalTitle {
     font-weight: 600;
-    color: white;
+    color: var(--mantine-color-text);
 }
 
 .actionIcon {

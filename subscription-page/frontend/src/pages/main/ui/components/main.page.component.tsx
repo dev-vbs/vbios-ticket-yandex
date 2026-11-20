@@ -1,6 +1,6 @@
 import { ActionIcon, Anchor, Badge, Box, Button, Center, Container, Group, Image, Paper, Stack, Text, Title, useMantineColorScheme } from '@mantine/core'
 import { useClipboard } from '@mantine/hooks'
-import { IconArrowLeft, IconArrowRight, IconCheck, IconCopy, IconDeviceMobile, IconWallet, IconSun, IconMoon, IconShieldCheck } from '@tabler/icons-react'
+import { IconArrowLeft, IconArrowRight, IconCheck, IconCopy, IconDeviceMobile, IconWallet, IconSun, IconMoon, IconShieldCheck, IconQrcode } from '@tabler/icons-react'
 import { TSubscriptionPagePlatformKey } from '@remnawave/subscription-page-types'
 import { useSubscription } from '@entities/subscription-info-store'
 import { useAppConfig, useAppConfigStoreActions, useCurrentLang } from '@entities/app-config-store'
@@ -62,7 +62,7 @@ export const MainPageComponent = ({ isMobile, platform }: IMainPageComponentProp
     return (
         <Page>
             <Box className="header-wrapper" py="sm">
-                <Container maw={1120} px={{ base: 'md', sm: 'lg' }}>
+                <Container maw={1240} px={{ base: 'md', sm: 'lg' }}>
                     <Group justify="space-between" wrap="nowrap">
                         <Group gap="sm" wrap="nowrap">
                             {hasCustomLogo ? <Image alt="" fit="contain" src={config.brandingSettings.logoUrl} w={32} h={32} /> : <RemnawaveLogo c="blue" size={32} />}
@@ -77,18 +77,18 @@ export const MainPageComponent = ({ isMobile, platform }: IMainPageComponentProp
                 </Container>
             </Box>
 
-            <Container maw={1120} px={{ base: 'md', sm: 'lg' }} py="xl">
-                <Stack gap="lg">
+            <Container maw={1240} px={{ base: 'md', sm: 'lg' }} py="xl" className="subscription-content">
+                <Stack gap="xl">
                     {serviceUrl && <Anchor href={serviceUrl} size="sm" className="subscription-back"><IconArrowLeft size={16} /> Моя услуга</Anchor>}
                     <div className="subscription-hero">
                     <section className="subscription-hero-copy">
-                        <Text className="subscription-kicker">ВАШЕ ПОДКЛЮЧЕНИЕ</Text>
-                        <Title order={1} className="subscription-hero-title">Подключение<br /><span>без сложностей.</span></Title>
-                        <Text className="subscription-hero-description">Выберите устройство, добавьте подписку в приложение и пользуйтесь сервисом.</Text>
+                        <Title order={1} className="subscription-hero-title">Всё готово<br /><span>к подключению.</span></Title>
+                        <Text className="subscription-hero-description">Ваша подписка, ссылка и инструкция по настройке — всё на одной странице.</Text>
                         {hasGuide && <Button component="a" href="#installation-guide" size="md" radius="md" rightSection={<IconArrowRight size={17} />}>Как подключиться</Button>}
                     </section>
+                    <div className="subscription-hero-panels">
                     <Paper withBorder radius="lg" p={{ base: 'md', sm: 'xl' }} className="subscription-panel subscription-summary">
-                        <Group justify="space-between" mb="xl" align="flex-start"><IconShieldCheck className="subscription-shield" size={42} stroke={1.4} /><Text size="sm" c="dimmed">Моя подписка</Text></Group>
+                        <Group justify="space-between" className="subscription-panel-top" align="flex-start"><IconShieldCheck className="subscription-shield" size={46} stroke={1.35} /><IconArrowRight className="subscription-panel-arrow" size={23} stroke={1.5} /></Group>
                         <Group justify="space-between" align="flex-start" gap="xs">
                             <Box>
                                 <Text size="sm" c="dimmed">Подписка</Text>
@@ -99,6 +99,13 @@ export const MainPageComponent = ({ isMobile, platform }: IMainPageComponentProp
                         {SubscriptionInfoBlockRenderer && <Box mt="lg"><SubscriptionInfoBlockRenderer isMobile={isMobile} /></Box>}
                         {serviceUrl && <Button component="a" href={serviceUrl} variant="filled" fullWidth mt="lg" rightSection={<IconArrowRight size={17} />}>Управлять услугой</Button>}
                     </Paper>
+                    {!config.baseSettings.hideGetLinkButton && <Paper withBorder radius="lg" p={{ base: 'md', sm: 'xl' }} className="subscription-panel subscription-quick-connect">
+                        <Group justify="space-between" className="subscription-panel-top" align="flex-start"><IconQrcode className="subscription-shield" size={46} stroke={1.35} /><IconArrowRight className="subscription-panel-arrow" size={23} stroke={1.5} /></Group>
+                        <Title order={2} className="subscription-quick-title">Подключить устройство</Title>
+                        <Text className="subscription-quick-description">Откройте QR-код или скопируйте ссылку для приложения.</Text>
+                        <SubscriptionLinkWidget buttonOnly hideGetLink={false} supportUrl="" />
+                    </Paper>}
+                    </div>
                     </div>
 
                     {!config.baseSettings.hideGetLinkButton && <Paper withBorder radius="lg" p={{ base: 'md', sm: 'xl' }} className="subscription-panel">
