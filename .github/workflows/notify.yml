@@ -24,44 +24,6 @@ jobs:
           COMMIT_SHA: ${{ github.event.workflow_run.head_sha }}
           COMMIT_URL: ${{ github.server_url }}/${{ github.repository }}/commit/${{ github.event.workflow_run.head_sha }}
           BRANCH: ${{ github.event.workflow_run.head_branch }}
-        run: |
-          set -euo pipefail
-          if [[ "${{ github.event.workflow_run.conclusion }}" != "success" || "${{ github.event.workflow_run.head_branch }}" != "main" ]]; then
-            echo "Сборка ветки main не завершилась успешно; уведомление пропущено."
-            exit 0
-          fi
-          if [[ -z "${TELEGRAM_BOT_TOKEN}" || -z "${TELEGRAM_CHAT_ID}" ]]; then
-            echo "Не заданы TELEGRAM_BOT_TOKEN или TELEGRAM_CHAT_ID; уведомление пропущено."
-            exit 0
-          fi
-          SUBJECT="$(git log -1 --pretty=%s)"
-          AUTHOR="$(git log -1 --pretty='%an')"
-          FILES="$(git diff-tree --no-commit-id --name-only -r HEAD | sed -n '1,20p')"
-          [[ -n "${FILES}" ]] || FILES="Изменения опубликованы в Docker-образах."
-          MESSAGE=$(cat <<EOF
-          🔔 Обновление личного кабинета
-
-          📦 Репозиторий: ${REPOSITORY}
-          🌿 Ветка: ${BRANCH}
-          🔖 Коммит: ${COMMIT_SHA:0:7}
-          👤 Автор: ${AUTHOR}
-
-          📝 Что изменилось:
-          ${SUBJECT}
-          ${FILES}
-
-          🚀 Как обновить кабинет:
-          docker compose pull client admin core api
-          docker compose up -d --no-deps --force-recreate client admin core api
-
-          🔎 Проверить состояние:
-          docker compose ps
-          docker compose logs --tail=50 client admin core api
-
-          🔗 ${COMMIT_URL}
-          EOF
-          )
-          curl --fail-with-body --silent --show-error \
-            --request POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
-            --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
-            --data-urlencode "text=${MESSAGE}"
+          BUILD_URL: ${{ github.event.workflow_run.html_url }}
+          BUILD_CONCLUSION: ${{ github.event.workflow_run.conclusion }}
+        run: node .github/scripts/notify.cjs
