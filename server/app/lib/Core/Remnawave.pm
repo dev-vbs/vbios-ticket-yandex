@@ -113,7 +113,8 @@ sub api_monitor {
             name => substr($item->{title} || 'Сервер', 0, 100),
             country => substr($item->{description} || '', 0, 100),
             ping_url => ($item->{ping_url} && !ref($item->{ping_url}) && $item->{ping_url} =~ m{^https://[^\s\@]+$}) ? $item->{ping_url} : $ip_url,
-            status => !$node ? 'unknown' : $node->{isDisabled} ? 'maintenance' : $node->{isConnected} ? 'online' : 'offline',
+            status => !$node ? 'unknown' : $node->{isDisabled} ? 'maintenance'
+                : !defined($node->{isConnected}) ? 'unknown' : $node->{isConnected} ? 'online' : 'offline',
             panel_reason => !$node ? 'node_not_found' : undef,
             latency_ms => _tcp_latency_ms($ip, $port),
         };
