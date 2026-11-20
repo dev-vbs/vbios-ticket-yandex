@@ -1,726 +1,483 @@
-# Установка vBios SHM на новый сервер
+# Полный мануал установки и эксплуатации vBios / SHM
 
-Документ предназначен для пользователя без опыта администрирования Linux. Все команды ниже выполняются на Ubuntu-сервере через SSH.
+Инструкция для **чистого Ubuntu Server 24.04 LTS**, Docker Compose v2 и одного сервера биллинга. Команды выполняются в Bash от root (`sudo -i`). Панель Remnawave и её ноды устанавливаются отдельно: этот репозиторий содержит биллинг, кабинет и интеграцию, а не установщик Remnawave.
 
-## 1. Что понадобится
+Примеры доменов: `bill.example.com` — кабинет, `admin.example.com` — админка. Замените их своими **во всех файлах и командах**. Нужны 2 vCPU, 4 ГБ RAM, SSD от 30 ГБ, доступ SSH, DNS и исходящий HTTPS. Для продаж нужны платёжный провайдер и рабочие шаблоны жизненного цикла услуг SHM.
 
-- Ubuntu Server 22.04 или 24.04 LTS;
-- 2 vCPU, 4 ГБ RAM, 30 ГБ SSD;
-- домен, направленный на IP сервера;
-- доступ root или пользователь с `sudo`;
-- Telegram-бот;
-- Yandex Object Storage для изображений;
-- платёжные ключи, если будут подключаться оплаты.
+## Содержание
 
-Пример домена в инструкции: `pbalka.ru`.
+1. [Состав и подготовка](#1-состав-и-подготовка)
+2. [Docker и файлы проекта](#2-docker-и-файлы-проекта)
+3. [Переменные окружения](#3-переменные-окружения)
+4. [База и первый администратор](#4-база-и-первый-администратор)
+5. [Домен и HTTPS](#5-домен-и-https)
+6. [Настройки SHM и страницы входа](#6-настройки-shm-и-страницы-входа)
+7. [Тарифы, Remnawave и расширения](#7-тарифы-remnawave-и-расширения)
+8. [Оплата через SHM](#8-оплата-через-shm)
+9. [Telegram, поддержка и файлы](#9-telegram-поддержка-и-файлы)
+10. [Мониторинг](#10-мониторинг)
+11. [Проверка перед продажами](#11-проверка-перед-продажами)
+12. [Обновления и публикация](#12-обновления-и-публикация)
+13. [Резервные копии и восстановление](#13-резервные-копии-и-восстановление)
+14. [Диагностика](#14-диагностика)
 
-## 2. DNS
+## 1. Состав и подготовка
 
-Создайте записи типа `A`:
+| Сервис Compose | Назначение | Доступ снаружи |
+| --- | --- | --- |
+| client | React-кабинет, AJAX-вход, прокси `/shm/` | Через Nginx, локально 9082 |
+| admin | Административный интерфейс | Через Nginx, локально 9081 |
+| api | Внутренний HTTP-шлюз SHM | Без публикации порта |
+| core | API, запуск схемы/миграций SHM | Внутренняя сеть |
+| spool | Два обработчика заданий | Внутренняя сеть |
+| mysql | Данные клиентов, конфигурация, платежи | Только внутренняя сеть |
+| redis | Кэш и история мониторинга | Только внутренняя сеть |
+| phpmyadmin | Необязательная SQL-панель | Только localhost:9083 |
 
-```text
-pbalka.ru       SERVER_IP
-www.pbalka.ru   SERVER_IP
-admin.pbalka.ru SERVER_IP
-```
-
-Подождите обновления DNS и проверьте:
-
-```bash
-ping -c 3 pbalka.ru
-```
-
-## 3. Установка Docker
-
-Подключитесь к серверу:
-
-```bash
-ssh root@SERVER_IP
-```
-
-Установите Docker и необходимые программы:
+Создайте A-записи двух доменов на IP сервера. Если есть AAAA, IPv6 тоже должен вести на этот сервер. Откройте входящие TCP 80/443 и свой SSH-порт в firewall провайдера. Не открывайте 3306, 6379 и 9081–9083 в Интернет. Не меняйте SSH/firewall вслепую из единственного соединения.
 
 ```bash
 apt update
-apt install -y ca-certificates curl git nginx certbot python3-certbot-nginx
-curl -fsSL https://get.docker.com | sh
-systemctl enable --now docker
-docker compose version
+apt install -y ca-certificates curl git openssl nginx certbot dnsutils nano cron
+getent ahosts bill.example.com
+getent ahosts admin.example.com
+timedatectl status
 ```
 
-## 4. Загрузка проекта
+Правильное время важно для OIDC, сертификатов и подписей. До создания администратора публичный прокси не включаем.
+
+## 2. Docker и файлы проекта
+
+Установка из официального APT-репозитория Docker для Ubuntu:
 
 ```bash
+install -m 0755 -d /etc/apt/keyrings
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+chmod a+r /etc/apt/keyrings/docker.asc
+. /etc/os-release
+printf '%s\n' "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu ${VERSION_CODENAME} stable" > /etc/apt/sources.list.d/docker.list
+apt update
+apt install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+systemctl enable --now docker
+docker compose version
 mkdir -p /opt/shm
+git clone https://github.com/dev-vbs/vbios-ticket-yandex.git /opt/shm
 cd /opt/shm
-git clone https://github.com/dev-vbs/vbios-ticket-yandex.git .
 cp .env.example .env
 chmod 600 .env
 ```
 
-## 5. Заполнение `.env`
+Если `/opt/shm` уже содержит установку, остановитесь: используйте раздел обновления. Не импортируйте начальную базу поверх данных клиентов.
 
-Откройте файл:
+## 3. Переменные окружения
 
 ```bash
-nano /opt/shm/.env
+cd /opt/shm
+openssl rand -hex 32
+openssl rand -hex 32
+nano .env
 ```
 
-Минимальная конфигурация:
+Сохраните два разных результата в менеджере паролей и задайте `MYSQL_PASS` и `MYSQL_ROOT_PASS`. Шестнадцатеричные строки не требуют экранирования `$` в Compose.
 
-```env
-SHM_REPO=ghcr.io/dev-vbs
-CORE_VERSION=latest
-CLIENT_VERSION=ghcr.io/dev-vbs/vbios-clients:latest
-ADMIN_VERSION=ghcr.io/dev-vbs/vbios-admin:latest
+Минимально проверьте следующие значения; остальные оставьте из `.env.example`:
 
+```dotenv
 TZ=Europe/Moscow
-WORKERS_COUNT=4
-
-MYSQL_DATABASE=webface
 MYSQL_USER=webface
-MYSQL_PASS=СИЛЬНЫЙ_ПАРОЛЬ_БАЗЫ
-MYSQL_ROOT_PASS=СИЛЬНЫЙ_ROOT_ПАРОЛЬ
+MYSQL_DATABASE=webface
+MYSQL_PASS=REPLACE_WITH_FIRST_RANDOM_HEX
+MYSQL_ROOT_PASS=REPLACE_WITH_SECOND_RANDOM_HEX
 MYSQL_HOST=mysql
 MYSQL_PORT=3306
-
-TICKET_S3_ACCESS_KEY=YCAxxxxxxxx
-TICKET_S3_SECRET_KEY=СЕКРЕТНЫЙ_S3_КЛЮЧ
-
+ADMIN_PORT=127.0.0.1:9081
+CLIENT_PORT=127.0.0.1:9082
+PHPMYADMIN_PORT=127.0.0.1:9083
+SHM_REPO=ghcr.io/dev-vbs
+CORE_VERSION=latest
+ADMIN_VERSION=ghcr.io/dev-vbs/vbios-admin:latest
+CLIENT_VERSION=ghcr.io/dev-vbs/vbios-clients:latest
+WORKERS_COUNT=4
 ENABLE_RATE_LIMIT=true
-TRUSTED_IPS=
-CORS_ALLOWED_ORIGINS=https://pbalka.ru
+CORS_ALLOWED_ORIGINS=https://bill.example.com,https://admin.example.com
+APP_NAME=vBios
+TELEGRAM_BOT_AUTH_ENABLE=false
+TELEGRAM_OIDC_AUTH_ENABLE=false
+TELEGRAM_WEBAPP_AUTH_ENABLE=false
+TELEGRAM_WEBAPP_AUTO_AUTH_ENABLE=false
 ```
 
-Не публикуйте `.env` и не передавайте S3-ключи frontend-контейнеру.
+Telegram включаем после настройки, а не с пустыми credentials. `CORE_VERSION` — **тег**, `ADMIN_VERSION` и `CLIENT_VERSION` — **полные имена образов**. Для воспроизводимой установки замените latest согласованными опубликованными тегами одной сборки; MySQL и Redis в Compose тоже используют подвижные теги, поэтому перед их обновлением отдельно изучайте совместимость версий.
 
-## 6. Запуск контейнеров
+`TRUSTED_IPS` не заполняйте произвольными сетями. Не публикуйте вывод `docker compose config`: он содержит секреты. Проверка без вывода значений:
 
 ```bash
-cd /opt/shm
+docker compose config --quiet
 docker compose pull
-docker compose up -d
-docker compose ps
 ```
 
-Проверка состояния:
+Если GHCR сообщает denied, проверьте видимость пакетов и существование тегов. Для закрытых пакетов нужен `docker login ghcr.io` с токеном `read:packages`; используйте `--password-stdin`.
 
-```bash
-docker compose ps
-```
+## 4. База и первый администратор
 
-Сервисы `mysql`, `redis`, `core`, `api`, `client` должны быть `running` или `healthy`.
-
-## 7. Создание таблиц тикетов и аватаров
+Этот путь использует **штатную инициализацию core**, не полный SQL-дамп. `init.pl` создаёт базовую схему в пустой базе; при последующих запусках применяет подходящие версии миграций. Дополнительные таблицы проекта устанавливаем отдельно идемпотентными SQL-файлами, чтобы не зависеть от исходной версии схемы.
 
 ```bash
 cd /opt/shm
-mkdir -p sql
+docker compose up -d mysql redis
+docker compose ps
+docker compose up -d core
+docker compose logs --tail=150 core
 ```
 
-Загрузите миграции:
+Дождитесь завершения `Creating structure of database` / `Loading data` без SQL-ошибок. Не запускайте второй core параллельно инициализации. Проверьте наличие пользователя:
 
 ```bash
-for file in ticket-3.7.0.sql ticket-object-storage.sql ticket-telegram-images.sql ticket-responder.sql user-avatars.sql; do
-  curl -fsSL "https://raw.githubusercontent.com/dev-vbs/vbios-ticket-yandex/main/server/app/sql/$file" -o "sql/$file"
-  docker compose cp "sql/$file" mysql:/tmp/$file
+docker compose exec -T mysql sh -c 'MYSQL_PWD="$MYSQL_PASSWORD" mysql -u "$MYSQL_USER" "$MYSQL_DATABASE" -e "SELECT user_id,login FROM users WHERE user_id=1;"'
+```
+
+Ожидается `1 admin`. Установите таблицы поддержки, аватаров и журнал расширений:
+
+```bash
+set -e
+for file in ticket-3.7.0.sql ticket-object-storage.sql ticket-telegram-images.sql ticket-responder.sql user-avatars.sql remnawave-addons.sql; do
+  docker compose exec -T mysql sh -c 'MYSQL_PWD="$MYSQL_PASSWORD" mysql -u "$MYSQL_USER" "$MYSQL_DATABASE"' < "server/app/sql/$file"
 done
+docker compose exec -T mysql sh -c 'MYSQL_PWD="$MYSQL_PASSWORD" mysql -u "$MYSQL_USER" "$MYSQL_DATABASE" -e "SHOW TABLES LIKE '\''ticket%'\''; SHOW TABLES LIKE '\''user_avatars'\''; SHOW TABLES LIKE '\''remnawave_addon_ledger'\'';"'
 ```
 
-Импортируйте их:
+При ошибке прекратите установку и изучите её; не добавляйте `mysql --force`. Файл `vbios-full-install.sql` — альтернативный импорт **только в пустую базу**, он не нужен в описанном пути и не должен запускаться после core.
+
+Смените начальный пароль **до открытия сайта**. Скрипт проверяет, что меняется именно исходный admin, использует штатный метод и фиксирует транзакцию:
 
 ```bash
-for file in ticket-3.7.0.sql ticket-object-storage.sql ticket-telegram-images.sql ticket-responder.sql user-avatars.sql; do
-  docker compose exec -T mysql sh -lc "mysql -u root -p\"\$MYSQL_ROOT_PASSWORD\" \"\$MYSQL_DATABASE\" < /tmp/$file"
-done
+docker compose cp docs/new-server/reset-admin.pl core:/tmp/reset-admin.pl
+read -r -s -p 'Новый пароль admin (минимум 16 символов): ' VB_ADMIN_PASSWORD
+printf '\n'
+printf '%s\n' "$VB_ADMIN_PASSWORD" | docker compose exec -T core perl /tmp/reset-admin.pl
+unset VB_ADMIN_PASSWORD
 ```
 
-Проверьте таблицы:
+Ожидается `Admin password updated`. Если этого нет, не открывайте админку. Не изменяйте password-хэши вручную SQL-запросом.
 
 ```bash
-docker compose exec mysql mysql -u webface -p webface -e \
-"SHOW TABLES LIKE 'ticket%'; SHOW TABLES LIKE 'user_avatars';"
+docker compose up -d api admin client spool
+docker compose ps
+curl --fail --silent --show-error http://127.0.0.1:9082/shm/healthcheck.cgi
 ```
 
-## 8. Yandex Object Storage
+`phpmyadmin` для работы кабинета не нужен. При необходимости запускается отдельно: `docker compose up -d phpmyadmin`, доступ через SSH-туннель, а не публичный порт.
 
-Создайте бакет с DNS-совместимым именем, например:
+## 5. Домен и HTTPS
+
+Сначала создаём только HTTP-конфиг для ACME, поскольку TLS-файл не загрузится до выпуска сертификата:
+
+```bash
+mkdir -p /var/www/letsencrypt
+cat > /etc/nginx/sites-available/vbios <<'NGINX'
+server {
+    listen 80;
+    server_name admin.example.com bill.example.com;
+    location ^~ /.well-known/acme-challenge/ { root /var/www/letsencrypt; }
+    location / { return 404; }
+}
+NGINX
+ln -s /etc/nginx/sites-available/vbios /etc/nginx/sites-enabled/vbios
+nginx -t
+systemctl reload nginx
+certbot certonly --webroot -w /var/www/letsencrypt --cert-name admin.example.com -d admin.example.com -d bill.example.com
+```
+
+Введите действующий email и подтвердите условия Certbot. Если проверка домена не прошла, исправьте DNS/порт 80 до продолжения. Далее установите готовый прокси, заменив домены:
+
+```bash
+cd /opt/shm
+sed -e 's/admin\.example\.com/admin.example.com/g' -e 's/bill\.example\.com/bill.example.com/g' docs/new-server/nginx-vbios.conf.example > /etc/nginx/sites-available/vbios
+nginx -t
+systemctl reload nginx
+certbot renew --dry-run
+install -d /etc/letsencrypt/renewal-hooks/deploy
+printf '#!/bin/sh\nnginx -t && systemctl reload nginx\n' > /etc/letsencrypt/renewal-hooks/deploy/reload-nginx
+chmod 755 /etc/letsencrypt/renewal-hooks/deploy/reload-nginx
+curl --fail -I https://bill.example.com
+curl --fail --silent --show-error https://bill.example.com/shm/healthcheck.cgi
+```
+
+В `sed` меняется **правая часть** подстановки на ваши домены. Путь сертификата должен совпадать с `--cert-name`. Готовый конфиг направляет весь кабинет, включая `/shm/`, через client, админку — через admin; дополнительный публичный порт api не требуется. Ограничьте административный домен доверенными IP, если они постоянные, сохранив доступ ACME по HTTP.
+
+## 6. Настройки SHM и страницы входа
+
+Войдите на `https://admin.example.com` как admin с новым паролем. Конфигурация хранится в БД SHM, `.env` задаёт окружение контейнеров.
+
+В разделе конфигурации отредактируйте соответствующие ключи, **сохраняя остальные поля**:
+
+| Ключ | Что установить |
+| --- | --- |
+| api | `url`: `https://bill.example.com` |
+| cli | `url`: `https://bill.example.com` |
+| company | Реальное название компании/сервиса |
+| billing | Валюта RUB, нужная политика биллинга; `allow_user_register_api`: 1 для открытой регистрации |
+| mail | Реальный отправитель и рабочий почтовый транспорт для восстановления |
+| pay_systems | Только настроенные рабочие провайдеры; отключите показ начального примера ЮMoney с нулевым счётом |
+
+Для оформления используйте [полный config.main](main-config-template.txt) и [инструкцию local](main-config.md). Создайте шаблон в SHM, вставьте содержимое файла, замените данные и выполните **транспортом `local` от администратора**. Это Template Toolkit, не Bash, не содержимое `.env` и не JSON для терминала. Проверьте результат задания в SHM.
+
+Полный шаблон **заменяет весь `config.main`**. Для существующего сайта используйте [частичное обновление Login](login-design-local.txt). В публичном `config.main` запрещены токены, ключи и пароли. После применения проверьте `/shm/v1/system/main` и `/login`, обе темы, регистрацию и мобильную версию.
+
+Тарифы из API SHM, внутри объекта main:
 
 ```text
-vbios-ticket-images-2026-48291
+plans_source = 'shm'
+plans_currency = 'RUB'
+plans = []
+plan_service_ids = [ 6 7 8 ]
 ```
 
-Бакет должен быть закрытым. Создайте сервисный аккаунт и статический S3-ключ. Выдайте доступ к бакету:
+Замените 6/7/8 реальными `service_id`. Без `plan_service_ids` показываются доступные к заказу тарифы; пустой массив скрывает все. Нужен `allow_to_order = 1`. Это публичная базовая цена; индивидуальную скидку и окончательное списание рассчитывает SHM.
 
-- просмотр объектов;
-- загрузка объектов;
-- удаление объектов.
+## 7. Тарифы, Remnawave и расширения
 
-В конфигурации SHM создайте или измените ключ `ticket`:
+### Основные услуги
+
+1. В отдельной панели Remnawave создайте ноды, профили, hosts и Internal Squads; проверьте рабочую подписку в приложении.
+2. Получите API-токен панели. В SHM создайте приватный `config.remna` через [шаблон конфигурации](remnawave-config-local.txt). Укажите реальный HTTPS URL, токен, префиксы и параметры доступа. Префиксы должны совпадать с шаблоном выдачи.
+3. Выполните [Remnawave_LOCAL](Remnawave_LOCAL.txt) транспортом local от администратора: это **только проверка чтения API**, не создание пользователей.
+4. Создайте основной тариф SHM: название, цена, период, `allow_to_order`, категория интеграции и события управления подпиской.
+5. Подключите ваш рабочий основной обработчик выдачи: создание/активация после оплаты, блокировка при неоплате, продление, удаление. Проверьте каждый переход тестовой услугой.
+
+**Важная граница комплекта:** универсального готового обработчика полного жизненного цикла основного тарифа в `Remnawave_LOCAL.txt` нет. Модуль предоставляет API, но правила создания пользователей, сроки и squads зависят от вашей схемы услуг SHM. Нельзя считать установку готовой к продаже после одного теста чтения нод. Если такого обработчика у вас ещё нет, это отдельный обязательный этап интеграции до приёма оплат.
+
+`service_id` — тариф, `user_service_id` — купленная услуга. Имя Remnawave должно соответствовать `name_prefix + user_service_id`, storage — выбранному `storage_prefix`. Node UUID применяется для мониторинга; **Internal Squad UUID** — для выдачи доступа. Они невзаимозаменяемы.
+
+[Полный конфиг кабинета](cabinet-full-config-local.txt) настраивает main/remna и расширения, но **не создаёт** тарифы, squads, платёжные системы и события. Перед выполнением заполните settings и сохраните предыдущие конфиги.
+
+### Платные расширения
+
+Следуйте [полному руководству с полями услуг и событиями](SHM-REMNAWAVE-MANUAL-RU.md). Обязательный порядок:
+
+1. Создайте отдельные простые услуги SHM категории `remna_addon`: устройства, трафик, локация. `period=0`, `pay_in_credit=0`, `is_composite=0`, `allow_to_order=1`, config: `{"no_auto_renew":1}`.
+2. Внесите фактические ID и размеры прибавки в `config.remna.addons`, используя [готовый local-шаблон](remnawave-addons-config-local.txt). Для локации нужен Internal Squad UUID.
+3. Получите `openssl rand -hex 32` и сохраните результат в приватный `config.remna.addon_signing_key`. Строка REPLACE_WITH... не является ключом. Не меняйте ключ при незавершённых заказах.
+4. Проверьте наличие `remnawave_addon_ledger` (создан в разделе 4).
+5. Создайте шаблон `Remnawave_Addon_LOCAL` из [файла](Remnawave_Addon_LOCAL.txt).
+6. Для категории remna_addon создайте два события UserService: CREATE и ACTIVATE, transport local, template_id Remnawave_Addon_LOCAL. Не назначайте выдачу на NOT_ENOUGH_MONEY или PROLONGATE; устраните пересечения с широкими правилами `%`.
+7. Покупайте расширение из карточки основной услуги: так SHM получает подписанную привязку заказа. После оплаты проверьте задание и фактический лимит Remnawave. При сбое повторяют **то же задание**, а не покупку.
+
+Все деньги списывает SHM. Remnawave изменяет только технические параметры после подтверждения оплаты. При безлимитном исходном лимите прибавка может не иметь смысла. Наследование расширений при продлении/смене тарифа проверяется с вашим основным обработчиком отдельно.
+
+## 8. Оплата через SHM
+
+В SHM установите/настройте выбранную платёжную систему, её merchant ID, секреты, callback и return URL **по документации именно этого модуля и провайдера**. Единого callback для всех провайдеров нет. Секреты хранятся в закрытой конфигурации, не в main или frontend.
+
+До открытия продаж проведите тестовый платёж и проверьте цепочку:
+
+- платёж подтверждён серверным callback, а не только возвратом браузера;
+- в SHM есть ровно одно зачисление и правильная сумма/валюта;
+- неоплаченная услуга не выдаётся, оплаченная запускает нужное задание;
+- повтор callback не удваивает платёж/расширение;
+- отказ/отмена и недостаточный баланс показываются корректно;
+- продление и смена тарифа выполняются через SHM и отражаются в Remnawave.
+
+Заранее заполните реквизиты, правила сервиса, политику персональных данных и контакт поддержки своими данными.
+
+## 9. Telegram, поддержка и файлы
+
+### Вход Telegram OIDC — необязательный
+
+В BotFather настройте Telegram Login / OIDC, Allowed URLs:
+
+```text
+https://bill.example.com
+https://bill.example.com/shm/v1/telegram/web/callback
+```
+
+В конфигурации SHM `telegram` добавьте профиль, сохраняя остальные профили:
 
 ```json
-{
-  "storage": {
-    "provider": "yandex",
-    "bucket": "vbios-ticket-images-2026-48291"
-  }
-}
+{"vBios_BOT":{"token":"BOT_TOKEN","oidc_enabled":true,"client_id":"OIDC_CLIENT_ID","client_secret":"OIDC_CLIENT_SECRET"}}
 ```
 
-Структура хранения:
+Client Secret и токен бота — разные секреты. Настройте RS256 для получения Telegram id в используемом проектом сценарии. В `.env`: имя бота без @, `TELEGRAM_BOT_AUTH_PROFILE=vBios_BOT`, `TELEGRAM_OIDC_AUTH_ENABLE=true`; старый Widget оставьте выключенным. Пересоздайте client/core и начинайте новую авторизацию с `/login`. Для нового клиента должна быть разрешена регистрация SHM. Проверку подписи JWT отключать нельзя.
+
+### Тикеты и Telegram-группа
+
+Создайте закрытую супергруппу с Topics, добавьте бота администратором с правами отправки сообщений/фото/файлов и управления темами. В `config.ticket` задайте `id` группы (`-100...`), `telegram_profile=vBios_BOT`, `forum_topics=1`; [пример JSON](new-server/ticket.example.json).
+
+Для входящих ответов нужен установленный бот-шаблон SHM и Telegram webhook с секретом; один group ID не включает обработку ответов. Настройте их через установленный Telegram-модуль SHM, используя его **реальный template_id**, профиль и URL кабинета. Путь обработчика проекта: `/shm/v1/telegram/bot/<template_id>?tg_profile=vBios_BOT`. Сгенерируйте `openssl rand -hex 32` и сохраните значение в `config.telegram.vBios_BOT.secret`; при регистрации webhook передайте тот же `secret_token`. Секрет webhook должен совпадать с конфигурацией профиля; запросы без настроенного секрета отклоняются. Не подставляйте OIDC callback вместо bot webhook.
+
+### Вложения, аватары, ИИ
+
+[Пошаговая настройка Yandex Object Storage](new-server/YANDEX-CLOUD-TICKETS.md): закрытый бакет, сервисный аккаунт и статические S3-ключи. В `.env` задайте TICKET_S3_ACCESS_KEY / TICKET_S3_SECRET_KEY; в config.ticket.storage — provider yandex и имя бакета. Не делайте бакет публичным. Ключи передаются только core/spool.
+
+```bash
+docker compose up -d --no-deps --force-recreate core spool client
+```
+
+Проверьте текстовый тикет, вложение, тему Telegram, ответ оператора, закрытие тикета и аватар. Необязательный ИИ включайте только после настройки используемого провайдера; `TIMEWEB_AI_KEY` хранится в `.env`, а не в main. Отсутствие ключа не должно заменять живую поддержку.
+
+## 10. Мониторинг
+
+Внутри main включите мониторинг и задайте свои Node UUID:
 
 ```text
-avatars/<user_id>/<random>.jpg
- tickets/<user_id>/<random>.jpg
+monitor_enabled = 1
+monitor_nodes = [
+    { uuid = 'REAL_NODE_UUID' title = 'Франкфурт' description = 'Германия' ping_ip = 'REAL_PUBLIC_IP' ping_port = 443 ping_url = 'https://node.example.com/ping' }
+]
 ```
 
-Проверьте передачу ключей:
+IP и порт должны соответствовать реально доступному сервису. Не копируйте чужие UUID из примеров. Приватные URL/токен Remnawave остаются в remna. Откройте `/status` и проверьте:
 
 ```bash
-docker compose exec core sh -lc '
-test -n "$TICKET_S3_ACCESS_KEY" && echo ACCESS_OK || echo ACCESS_MISSING
-test -n "$TICKET_S3_SECRET_KEY" && echo SECRET_OK || echo SECRET_MISSING
-'
+curl --fail --silent --show-error --max-time 45 https://bill.example.com/shm/v1/system/monitor
 ```
 
-## 9. Telegram-бот и группа
-
-1. Откройте `@BotFather`.
-2. Создайте бота.
-3. Сохраните токен в конфигурации Telegram-профиля SHM.
-4. Создайте закрытую супергруппу.
-5. Включите Topics.
-6. Добавьте бота администратором.
-7. Разрешите боту отправлять сообщения, фото и файлы, а также управлять темами.
-
-В конфигурации `ticket` укажите:
-
-```json
-{
-  "id": -1001234567890,
-  "telegram_profile": "vBios_BOT",
-  "forum_topics": 1,
-  "storage": {
-    "provider": "yandex",
-    "bucket": "vbios-ticket-images-2026-48291"
-  }
-}
-```
-
-После изменения:
+Для сбора без посетителей создайте cron (замените домен):
 
 ```bash
-docker compose up -d --force-recreate core spool
+cat > /etc/cron.d/vbios-monitor <<'CRON'
+*/5 * * * * root curl --fail --silent --show-error --max-time 45 https://bill.example.com/shm/v1/system/monitor > /dev/null 2>&1
+CRON
+chmod 644 /etc/cron.d/vbios-monitor
+systemctl enable --now cron
 ```
 
-Изображение профиля пользователя отправляется отдельным фото в теме. Если пользователь не загрузил аватар, используется стандартный fallback Icons8:
+История не появляется задним числом. `/status` обновляется каждые 5 минут и при возвращении к вкладке; Redis хранит реальные проверки за последний час. В текущем Compose у Redis **нет постоянного тома**, после пересоздания история может пропасть. Это не журнал SLA.
 
-```text
-https://img.icons8.com/fluency/96/user-male-circle.png
-```
+**Откуда задержка:** backend `latency_ms` — TCP-замер от сервера SHM, не от клиента. `ping_url` позволяет браузеру проверить HTTPS RTT: установите [location /ping](node-ping-nginx.conf) на каждой ноде с действующим TLS и CORS, без CDN и кеширования. В текущем интерфейсе браузерная проверка используется как fallback при отсутствии серверного замера; при наличии backend latency не следует выдавать её за пользовательскую. Постоянный приоритет замеров от посетителя потребует изменения клиентской логики. Браузер не умеет ICMP ping по IP; HTTPS по IP требует подходящего сертификата. TCP/HTTPS-доступность не подтверждает работу всего протокола подписки.
 
-## 10. HTTPS и Nginx
+Полные пояснения статусов, истории и причин отсутствия данных: [мониторинг](MONITORING.md).
 
-Создайте reverse proxy для клиента и API. После настройки получите сертификат:
+## 11. Проверка перед продажами
 
-```bash
-certbot --nginx -d pbalka.ru -d www.pbalka.ru
-```
+- В `docker compose ps` нет перезапусков и unhealthy; очереди spool обрабатываются.
+- HTTPS и автопродление сертификата работают на двух доменах.
+- Новый admin-пароль проверен; обычный пользователь не имеет административного доступа.
+- Регистрация, выход, повторный вход, восстановление и смена пароля проверены отдельным клиентом.
+- Login, услуги, карточка подписки, профиль, поддержка работают на телефоне и в двух темах.
+- В каталоге реальные тарифы SHM; нет пустых обещаний и демонстрационных цен.
+- Пройдена реальная цепочка оплата → задание → Remnawave → подключение приложения.
+- Проверены неоплата, блокировка, продление, смена тарифа и разовые расширения.
+- Мониторинг не рисует выдуманные значения; ссылки и QR принадлежат правильному клиенту.
+- Проверены вложения, Telegram-ответы и восстановление резервной копии на отдельном стенде.
 
-Проверьте:
+Не считайте установку принятой по одному HTTP 200 или скриншоту.
 
-```bash
-curl -I https://pbalka.ru
-```
+## 12. Обновления и публикация
 
-## 11. Первый вход
-
-Откройте:
-
-```text
-https://pbalka.ru
-```
-
-Создайте администратора или используйте предусмотренную проектом первоначальную учётную запись. Сразу смените пароль и включите 2FA.
-
-## 12. Проверка тикетов
-
-Проверьте последовательно:
-
-1. создание обращения в кабинете;
-2. отправку текста;
-3. отправку фотографии;
-4. появление темы в Telegram-группе;
-5. ответ сотрудника из темы;
-6. доставку ответа пользователю в бот;
-7. закрытие тикета кнопкой.
-
-Логи:
-
-```bash
-docker compose logs --since=10m core spool api --tail=300
-```
-
-## 13. Проверка аватаров
-
-```sql
-SELECT user_id, bucket, object_key, mime_type, size
-FROM user_avatars;
-```
-
-Правильный путь:
-
-```text
-avatars/2/....jpg
-```
-
-Если тема Telegram была удалена:
-
-```sql
-UPDATE tickets
-SET telegram_chat_id = NULL,
-    telegram_thread_id = NULL,
-    telegram_error = NULL
-WHERE ticket_id = 13;
-```
-
-После нового сообщения тема создастся заново.
-
-## 14. Обновление проекта
-
-Перед обновлением сделайте резервную копию:
+Сначала дождитесь успешной сборки **Build and publish vBios images** в Actions и сделайте резервную копию (раздел 13). Сохраните текущие image IDs/digests и Git commit. Подвижный latest не обеспечивает откат.
 
 ```bash
 cd /opt/shm
-docker compose exec -T mysql sh -lc \
-'mysqldump -u root -p"$MYSQL_ROOT_PASSWORD" --single-transaction "$MYSQL_DATABASE"' > backup-$(date +%F).sql
+git status --short
+git rev-parse HEAD
+docker compose images
+git pull --ff-only origin main
+docker compose config --quiet
+docker compose pull api core spool admin client
+docker compose stop spool
+docker compose up -d --no-deps --force-recreate core
+docker compose logs --tail=150 core
 ```
 
-Обновите проект:
+После успешной инициализации/миграций:
 
 ```bash
-git pull origin main
-docker compose pull
-docker compose up -d --force-recreate
-```
-
-## 15. Резервное копирование
-
-Храните отдельно:
-
-- дампы MySQL;
-- `.env`;
-- настройки Nginx;
-- содержимое Object Storage.
-
-Периодически проверяйте восстановление дампа на тестовом сервере.
-
-## 16. Частые ошибки
-
-### `Ticket S3 credentials are missing`
-
-Ключи не переданы в `core` или `spool`. Проверьте `.env` и пересоздайте контейнеры.
-
-### `403 Forbidden`
-
-У сервисного аккаунта нет прав на бакет или используются неправильные ключи.
-
-### `404 Not Found`
-
-Объект удалён или указан неправильный бакет/ключ.
-
-### `message thread not found`
-
-Telegram-тема удалена. Сбросьте `telegram_thread_id` в таблице `tickets`.
-
-### Белый экран кабинета
-
-```bash
-docker compose pull client
-docker compose up -d --force-recreate client
-```
-
-Затем очистите данные сайта в браузере и выполните `Ctrl + Shift + R`.
-
-### API недоступен
-
-```bash
+docker compose up -d --no-deps --force-recreate api admin client spool
 docker compose ps
-docker compose logs api core --tail=200
-docker compose exec api wget -qO- http://127.0.0.1/shm/healthcheck.cgi
+curl --fail --silent --show-error https://bill.example.com/shm/healthcheck.cgi
+docker compose logs --since=10m --tail=100 core spool api client admin
 ```
 
-## 17. Production-безопасность
+Это обновляет **все пять прикладных сервисов**, включая spool из того же образа core. Для обновления только интерфейса можно пересоздать client/admin. `restart` не подтягивает новый образ и не применяет изменённый `.env`. MySQL/Redis обновляйте отдельно, а не случайно вместе с кабинетом. Не используйте `down -v` и очистку volumes.
 
-- используйте HTTPS;
-- не открывайте MySQL и Redis наружу;
-- не делайте Object Storage публичным;
-- не храните секреты в Git;
-- используйте длинные пароли;
-- ограничьте доступ к админке по IP/VPN;
-- включите rate limit;
-- регулярно обновляйте Docker-образы;
-- проверяйте резервные копии.
+При неудачной миграции не возвращайте старое приложение к неизвестной новой схеме: сохраните проблемную БД для разбора, восстанавливайте совместимую пару БД + версии образов на отдельной установке.
 
-## 18. Как изменять конфигурацию SHM
+### Свой GitHub и уведомления о публикации
 
-Большая часть настроек хранится в базе данных SHM. Изменяйте их через админку, а не вручную в контейнере.
+В собственном fork включите Actions и разрешите публикацию Packages. Workflow использует GITHUB_TOKEN с packages:write. Проверьте, что опубликованы vbios-core, vbios-api, vbios-clients, vbios-admin, а owner в `.env` соответствует вашему GHCR. Для анонимного pull пакеты должны быть публичными.
 
-Основные разделы админки:
+В Settings → Secrets and variables → Actions добавьте `TELEGRAM_BOT_TOKEN` (Secret), `TELEGRAM_CHAT_ID` (Secret или Variable), например ID группы `-100...`. Бот должен иметь право писать в эту группу. Уведомление отправляется после успешной сборки main; отправки в произвольную группу только по имени нет. Описания изменений берутся из заголовков коммитов — пишите их по-русски. Группа уведомлений сборки и группа тикетов — независимые настройки.
 
-- **Конфигурация** — ключи `ticket`, `telegram`, `oauth2`, общие настройки;
-- **Пользователи** — пользователи, группы, роли и блокировки;
-- **Услуги** — тарифы, стоимость и срок действия;
-- **Платёжные системы** — подключение и параметры оплат;
-- **Серверы** — серверы VPN и серверные группы;
-- **Шаблоны** — тексты Telegram, уведомления и письма;
-- **События** — автоматические действия SHM.
+## 13. Резервные копии и восстановление
 
-После изменения конфигурации обычно достаточно:
+### Согласованная копия перед обновлением
+
+Команды ниже выполняются в Bash на хосте. В резервной копии есть секреты и персональные данные; храните её зашифрованной вне этого сервера. Для простоты и согласованности на время копии останавливаем всех писателей, оставляя MySQL запущенным. Планируйте окно обслуживания.
 
 ```bash
-docker compose restart core spool
+set -euo pipefail
+cd /opt/shm
+umask 077
+VB_BACKUP_DIR="/var/backups/vbios/$(date +%Y%m%d-%H%M%S)"
+mkdir -p "$VB_BACKUP_DIR"
+git rev-parse HEAD > "$VB_BACKUP_DIR/git-commit.txt"
+docker compose images > "$VB_BACKUP_DIR/images.txt"
+cp .env docker-compose.yml "$VB_BACKUP_DIR/"
+if [ -f compose.override.yaml ]; then cp compose.override.yaml "$VB_BACKUP_DIR/"; fi
+if [ -f docker-compose.override.yml ]; then cp docker-compose.override.yml "$VB_BACKUP_DIR/"; fi
+cp -a /etc/nginx/sites-available/vbios "$VB_BACKUP_DIR/nginx-vbios.conf"
+docker compose stop client admin api spool core
+docker compose exec -T mysql sh -c 'MYSQL_PWD="$MYSQL_ROOT_PASSWORD" mysqldump -u root --single-transaction --routines --triggers --events --no-tablespaces "$MYSQL_DATABASE"' > "$VB_BACKUP_DIR/database.sql"
+test -s "$VB_BACKUP_DIR/database.sql"
+docker compose run --rm --no-deps -T --entrypoint tar core -C /app/data -czf - . > "$VB_BACKUP_DIR/shm-data.tar.gz"
+tar -tzf "$VB_BACKUP_DIR/shm-data.tar.gz" > /dev/null
+docker compose up -d core
+docker compose logs --tail=100 core
 ```
 
-Если менялись переменные `.env`, нужен полный recreate:
+После проверки core запустите `docker compose up -d api admin client spool`. Если копирование завершилось ошибкой, приложения останутся остановленными — исправьте ошибку и запустите их явно, не принимайте неполный backup за готовый.
+
+Отдельно копируйте Object Storage (версии/резервная реплика), настройки и БД Remnawave, используемые override-файлы, cron и свои шаблоны/инструкции. Конфиги/шаблоны SHM находятся в дампе БД. Каталог сертификатов содержит приватные ключи; на новом сервере можно выпустить сертификат заново. История Redis текущим рецептом не сохраняется. Нужны ежедневные копии и регулярный тест восстановления, не только backup перед обновлением.
+
+### Восстановление на отдельном чистом сервере
+
+1. Выполните разделы 1–3. Возьмите код сохранённого commit и соответствующие версии образов; восстановите `.env` и override. Сохраните имя проекта Compose/каталог `/opt/shm`, чтобы не подключить случайные новые volumes.
+2. Пока не направляйте публичный DNS и callback провайдеров на тестовую копию. Не запускайте spool тестовой копии с рабочими ключами: он может выполнять задания и менять Remnawave.
+3. Скопируйте backup в защищённый каталог, проверьте его контрольную сумму/целостность. Подставьте путь:
 
 ```bash
-docker compose up -d --force-recreate
+set -euo pipefail
+cd /opt/shm
+VB_RESTORE_DIR=/var/backups/vbios/REPLACE_BACKUP_DIRECTORY
+test -s "$VB_RESTORE_DIR/database.sql"
+tar -tzf "$VB_RESTORE_DIR/shm-data.tar.gz" > /dev/null
+docker compose up -d mysql redis
 ```
 
-## 19. Как добавить услугу или тариф
-
-1. Откройте админку.
-2. Перейдите в **Услуги**.
-3. Нажмите **Создать**.
-4. Укажите название, цену, срок действия и категорию.
-5. Выберите сервер или серверную группу.
-6. Сохраните услугу.
-7. Проверьте покупку тестовым пользователем.
-
-После изменения проверьте API:
+Дождитесь healthy MySQL. На **пустой целевой базе**, до первого запуска core:
 
 ```bash
-curl -s https://pbalka.ru/shm/v1/user/service | head
+docker compose exec -T mysql sh -c 'MYSQL_PWD="$MYSQL_PASSWORD" mysql -u "$MYSQL_USER" "$MYSQL_DATABASE"' < "$VB_RESTORE_DIR/database.sql"
+docker compose run --rm --no-deps -T --entrypoint tar core -C /app/data -xzf - < "$VB_RESTORE_DIR/shm-data.tar.gz"
+docker compose up -d core
+docker compose logs --tail=150 core
 ```
 
-Если услуга не отображается, проверьте статус, права группы пользователя и наличие связанной серверной группы.
+Этот импорт не предназначен для слияния с существующими данными. Если core уже создал таблицы на целевой установке, не продолжайте поверх них: подготовьте отдельную пустую БД/установку. После проверки схемы восстановите Nginx/сертификаты и запустите api/admin/client. Spool, платежи и внешние интеграции включайте только при подтверждённом переключении с остановленного старого сервера. Не допускайте двух активных биллингов с одними внешними учётными данными.
 
-## 20. Как добавить платёжную систему
-
-1. Откройте **Платёжные системы**.
-2. Выберите нужный провайдер.
-3. Нажмите **Установить** или **Настроить**.
-4. Вставьте ключи провайдера.
-5. Сохраните настройки.
-6. Создайте тестовый платёж небольшой суммой.
-7. Проверьте возврат пользователя на сайт и запись в **Платежи**.
-
-Секретные ключи нельзя отправлять в Telegram, GitHub или frontend.
-
-При ошибке оплаты:
-
-```bash
-docker compose logs --since=15m core spool --tail=300 | grep -Ei "pay|payment|error|webhook"
-```
-
-## 21. Как изменить Telegram-настройки
-
-В админке откройте конфигурацию `ticket` и проверьте:
-
-```json
-{
-  "id": -1001234567890,
-  "telegram_profile": "vBios_BOT",
-  "forum_topics": 1
-}
-```
-
-Если бот не отвечает:
-
-```bash
-docker compose logs --since=15m core --tail=300 | grep -Ei "telegram|webhook|403|400|timeout"
-```
-
-Проверьте, что бот:
-
-- добавлен в группу;
-- является администратором;
-- может отправлять фото и сообщения;
-- может управлять темами;
-- не заблокирован пользователем.
-
-## 22. Как проверить конкретный тикет
-
-Найдите тикет в базе:
-
-```sql
-SELECT ticket_id, user_id, status, telegram_chat_id,
-       telegram_thread_id, telegram_error
-FROM tickets
-WHERE ticket_id = 13;
-```
-
-Проверьте сообщения:
-
-```sql
-SELECT message_id, ticket_id, user_id, is_admin, message, created
-FROM ticket_messages
-WHERE ticket_id = 13
-ORDER BY message_id;
-```
-
-Проверьте вложения:
-
-```sql
-SELECT m.id, m.name, m.mime_type, m.size, m.object_bucket,
-       m.object_key
-FROM ticket_media m
-WHERE m.ticket_id = 13;
-```
-
-Если тема удалена в Telegram:
-
-```sql
-UPDATE tickets
-SET telegram_chat_id = NULL,
-    telegram_thread_id = NULL,
-    telegram_error = NULL
-WHERE ticket_id = 13;
-```
-
-После следующего сообщения тема создастся заново.
-
-## 23. Как проверить аватар пользователя
-
-```sql
-SELECT user_id, bucket, object_key, mime_type, size, updated_at
-FROM user_avatars
-WHERE user_id = 2;
-```
-
-Путь должен начинаться с:
-
-```text
-avatars/2/
-```
-
-Проверка объекта в Yandex Storage:
-
-```bash
-aws --endpoint-url=https://storage.yandexcloud.net \
-  s3api head-object \
-  --bucket vbios-ticket-images-2026-48291 \
-  --key "avatars/2/OBJECT_KEY.jpg"
-```
-
-Если аватар не нужен, удалите его в профиле кнопкой **Удалить**. В базе это также можно проверить:
-
-```sql
-SELECT * FROM user_avatars WHERE user_id = 2;
-```
-
-## 24. Как проверить ИИ-помощника
-
-Проверьте настройки:
-
-```sql
-SELECT JSON_EXTRACT(value, '$.ai.enabled') AS enabled,
-       JSON_EXTRACT(value, '$.ai.reply_mode') AS reply_mode,
-       JSON_EXTRACT(value, '$.ai.model') AS model,
-       IF(JSON_UNQUOTE(JSON_EXTRACT(value, '$.ai.api_key')) <> '', 'KEY_PRESENT', 'KEY_MISSING') AS key_status
-FROM config
-WHERE `key` = 'ticket';
-```
-
-Проверьте задания ИИ:
-
-```sql
-SELECT source_message_id, ticket_id, status, error,
-       reply_message_id
-FROM ticket_ai_jobs
-ORDER BY source_message_id DESC
-LIMIT 30;
-```
-
-Ошибки ИИ:
-
-```bash
-docker compose logs --since=15m spool core --tail=300 |
-  grep -Ei "ai|timeout|HTTP 4|HTTP 5|read timeout"
-```
-
-Статусы заданий:
-
-- `queued` — ожидает spool;
-- `done` — ответ создан;
-- `error` — провайдер вернул ошибку;
-- `retry` — будет повторная попытка.
-
-Не очищайте задания вручную, пока не сохранён текст ошибки.
-
-## 25. Как проверить вход через Telegram
-
-Проверьте настройки клиента и профиль:
-
-```env
-TELEGRAM_BOT_NAME=vbiosbot
-TELEGRAM_OIDC_AUTH_ENABLE=true
-TELEGRAM_BOT_AUTH_PROFILE=vBios_BOT
-ALLOW_TELEGRAM_PIN=true
-```
-
-После изменения:
-
-```bash
-docker compose up -d --force-recreate client core api
-```
-
-Логи авторизации:
-
-```bash
-docker compose logs --since=15m core api client --tail=300 |
-  grep -Ei "telegram|oidc|oauth|auth|state|nonce|callback|error"
-```
-
-Проверьте, что callback-домен использует HTTPS и совпадает с доменом кабинета.
-
-## 26. Полезные команды Docker
-
-```bash
-docker compose ps
-docker compose top
-docker compose stats --no-stream
-docker compose restart core
-docker compose restart spool
-docker compose restart api
-docker compose restart client
-docker compose logs -f core
-docker compose logs -f spool
-docker compose exec core sh
-docker compose exec mysql mysql -u root -p webface
-```
-
-Перезапуск одного сервиса обычно безопаснее, чем остановка всего проекта.
-
-## 27. Как понять, где проблема
-
-### Сайт не открывается
-
-```bash
-curl -I https://pbalka.ru
-docker compose ps client nginx
-```
-
-### API возвращает 502/504
-
-```bash
-docker compose ps api core
-docker compose logs api core --tail=200
-```
-
-### Белый экран админки
-
-```bash
-docker compose pull admin
-docker compose up -d --force-recreate admin
-```
-
-Очистите кэш браузера и проверьте консоль JavaScript.
-
-### Не создаётся тикет
-
-Проверьте `tickets`, логи `core`, наличие миграций и права пользователя.
-
-### Текст отправляется, фото нет
-
-Проверьте права бота на отправку фото, ключи Object Storage и `ticket_media`.
-
-### Фото есть в базе, но не открывается
-
-Проверьте `head-object`, bucket, `object_key` и системное время сервера.
-
-### Контейнер постоянно перезапускается
-
-```bash
-docker compose ps
-docker inspect shm-core-1 --format '{{.State.Status}} {{.State.ExitCode}}'
-docker compose logs core --tail=300
-```
-
-## 28. Откат обновления
-
-Перед обновлением сохраните версии образов:
-
-```bash
-docker compose images > images-before-update.txt
-```
-
-Если новая версия не работает, верните предыдущие значения `CORE_VERSION`, `CLIENT_VERSION` и `ADMIN_VERSION` в `.env`, затем:
-
-```bash
-docker compose pull
-docker compose up -d --force-recreate
-```
-
-Базу данных откатывайте только из проверенного дампа и после остановки приложений.
-
-## 29. Как установить или заменить prompt ИИ
-
-В репозитории уже находится файл `ticket-ai-prompt.txt`. Он содержит инструкции ИИ-помощника, правила безопасности, контакты vBios и порядок ответа пользователю.
-
-Скопируйте prompt в общий volume контейнера `core`:
+## 14. Диагностика
 
 ```bash
 cd /opt/shm
-
-docker compose cp ./ticket-ai-prompt.txt core:/app/data/ticket-ai-prompt.txt
-
-docker compose exec --user root core chmod 644 /app/data/ticket-ai-prompt.txt
+docker compose ps
+docker compose logs --since=15m --tail=200 core spool api client admin
+docker compose exec -T api wget -qO- http://127.0.0.1/shm/healthcheck.cgi
+nginx -t
+journalctl -u nginx --since '15 minutes ago' --no-pager
 ```
 
-Проверьте файл:
+| Симптом | Что проверить |
+| --- | --- |
+| 502 на домене | Локальный порт 9081/9082, контейнеры, healthcheck и Nginx error.log |
+| Access denied MySQL | Пароли `.env` и первоначальные credentials тома; изменение env не меняет пароль существующей БД |
+| SQL table missing | Завершение init, отдельные SQL раздела 4, правильная база; не импортировать full-install поверх рабочей |
+| OIDC jwks / подпись | Свежий core, часы, доступ к Telegram HTTPS, реальные client credentials, RS256; начать новый вход |
+| PASSWORD_SAVE_NOT_CONFIRMED | Версии client/core, ответ API и backend-логи; не считать пароль сохранённым без повторного входа |
+| Расширение оплачено, но не выдано | События CREATE/ACTIVATE, шаблон, журнал задания, ledger, подпись/целевой user_service_id; повтор того же задания |
+| Мониторинг unknown/без истории | Реальные UUID/IP/порт, доступ из core, cron, Redis; история не восстанавливает прошлое |
+| S3 missing / 403 | Окружение core и spool, закрытый бакет, права сервисного аккаунта, пересоздание после env |
+| Нет ответа Telegram | Webhook/secret/template_id, права бота и Topics, правильный профиль ticket |
+| 429 | Правильный реальный IP за прокси, rate limit; не доверять произвольному X-Forwarded-For |
 
-```bash
-docker compose exec core sh -lc '
-test -s /app/data/ticket-ai-prompt.txt && echo PROMPT_OK || echo PROMPT_MISSING
-wc -c /app/data/ticket-ai-prompt.txt
-'
-```
-
-`/app/data` подключён к volume `shm-data`, поэтому prompt сохраняется после перезапуска контейнера. `spool` использует тот же volume.
-
-Перезапустите обработчики ИИ:
-
-```bash
-docker compose restart core spool
-```
-
-Если изменялись переменные `.env`, используйте полный recreate:
-
-```bash
-docker compose up -d --force-recreate core spool
-```
-
-Проверьте prompt в обоих контейнерах:
-
-```bash
-for service in core spool; do
-  echo "--- $service ---"
-  docker compose exec "$service" sh -lc \
-    'test -s /app/data/ticket-ai-prompt.txt && echo PROMPT_OK || echo PROMPT_MISSING'
-done
-```
-
-После этого отправьте новое сообщение в тикет и проверьте очередь:
-
-```bash
-docker compose exec mysql mysql -u root -p webface -e "
-SELECT source_message_id,ticket_id,status,error,reply_message_id
-FROM ticket_ai_jobs
-ORDER BY source_message_id DESC
-LIMIT 10;
-"
-```
-
-Если prompt не должен попадать в Git, замените файл на сервере вручную, но после каждого обновления контейнера повторяйте копирование командой выше.
+Перед отправкой логов удалите токены, пароли, cookies, ссылки подписок и данные клиентов. Факт готовности подтверждается проверками раздела 11 на вашей инфраструктуре. В рамках подготовки этого руководства фактическое развёртывание на чистом сервере с вашими платёжными ключами не выполнялось.
