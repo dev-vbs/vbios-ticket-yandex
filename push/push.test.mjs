@@ -23,14 +23,14 @@ test('Push endpoints and navigation cannot target arbitrary hosts', () => {
 
 test('SHM authentication, same-origin writes and subscription ownership', async () => {
   const dir = mkdtempSync(join(tmpdir(), 'vbios-push-'));
-  const shm = createServer((req, res) => { res.setHeader('Content-Type','application/json'); res.end(JSON.stringify(req.headers.cookie === 'session_id=session-user-2' ? {data:[{user_id:2}]} : req.headers.cookie === 'session_id=session-user-3' ? {data:[{user_id:3}]} : {error:'unauthorized'})); });
+  const shm = createServer((req, res) => { res.setHeader('Content-Type','application/json'); const validClient = req.headers['user-agent'] === 'test-browser' && req.headers['x-forwarded-for'] === '203.0.113.5'; res.end(JSON.stringify(validClient && req.headers.cookie === 'session_id=session-user-2' ? {data:[{user_id:2}]} : validClient && req.headers.cookie === 'session_id=session-user-3' ? {data:[{user_id:3}]} : {error:'unauthorized'})); });
   shm.listen(0, '127.0.0.1'); await once(shm, 'listening');
   const reservation = createServer(); reservation.listen(0, '127.0.0.1'); await once(reservation,'listening'); const port = reservation.address().port; await new Promise(r=>reservation.close(r));
   const keys=webpush.generateVAPIDKeys(), secret='b'.repeat(64), origin='https://bill.example.com';
   const child=spawn(process.execPath,['server.mjs'],{cwd:import.meta.dirname,env:{...process.env,WEB_PUSH_ENABLE:'true',PORT:String(port),PUSH_DATA_DIR:dir,SHM_URL:`http://127.0.0.1:${shm.address().port}`,PUSH_INTERNAL_TOKEN:secret,PUSH_PUBLIC_ORIGIN:origin,VAPID_PUBLIC_KEY:keys.publicKey,VAPID_PRIVATE_KEY:keys.privateKey,VAPID_SUBJECT:'mailto:test@example.com'},stdio:['ignore','pipe','pipe']});
   try {
     await Promise.race([once(child.stdout,'data'),once(child,'exit').then(()=>{throw Error('Push did not start')}),new Promise((_,reject)=>setTimeout(()=>reject(Error('Start timeout')),10000).unref())]);
-    const call=(path,method='GET',body,session='session-user-2',requestOrigin=origin)=>fetch(`http://127.0.0.1:${port}${path}`,{method,headers:{session_id:session,Origin:requestOrigin,'Content-Type':'application/json'},...(body?{body:JSON.stringify(body)}:{})});
+    const call=(path,method='GET',body,session='session-user-2',requestOrigin=origin)=>fetch(`http://127.0.0.1:${port}${path}`,{method,headers:{session_id:session,Origin:requestOrigin,'Content-Type':'application/json','User-Agent':'test-browser','X-Real-IP':'203.0.113.5'},...(body?{body:JSON.stringify(body)}:{})});
     assert.equal((await call('/push/config')).status,200);
     assert.equal((await call('/push/subscriptions','POST',sub,'bad-session-1')).status,401);
     assert.equal((await call('/push/subscriptions','POST',sub,'session-user-2','https://evil.test')).status,403);
