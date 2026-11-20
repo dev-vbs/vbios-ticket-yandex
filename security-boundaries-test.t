@@ -95,4 +95,19 @@ my ($file)=RouterBoundary::determine_script('/shm/healthcheck.cgi');
 is($file,realpath("$root/public/shm/healthcheck.cgi"),'legitimate CGI remains available');
 ($file)=RouterBoundary::determine_script('/shm/v1/user');
 like($file,qr{/shm/v1.cgi$},'API mapping remains available');
+{
+    package PublicMainBoundary;
+    sub data_by_name { $_[0]{config} }
+}
+eval 'package PublicMainBoundary; '.method('server/app/lib/Core/Config.pm','api_data_by_main'); die $@ if $@;
+my @landing_fields=qw(preview_label preview_title catalog_title catalog_description catalog_button plans_title plans_description plan_button geography_title geography_description cta_title cta_description);
+my $main_config=bless {config=>{(map {($_=>'configured text')} @landing_fields), api_token=>'secret', private_data=>{password=>'secret'}, visual_steps=>[{title=>'Step',description=>'Details',api_token=>'secret'}]}}, 'PublicMainBoundary';
+my $public_main=$main_config->api_data_by_main;
+for my $field (@landing_fields) { is($public_main->{$field},'configured text',"public landing copy survives: $field"); }
+ok(!exists($public_main->{api_token}) && !exists($public_main->{private_data}),'public main still excludes unlisted private fields');
+ok(!exists($public_main->{visual_steps}[0]{api_token}),'nested landing copy excludes private fields');
+$main_config->{config}{preview_title}={password=>'secret'};
+my $invalid_main=$main_config->api_data_by_main;
+ok(!exists($invalid_main->{preview_title}),'landing copy rejects nested objects');
+
 done_testing();
