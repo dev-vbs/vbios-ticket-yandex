@@ -1,135 +1,109 @@
-# Обновление vBios в production
+# Обновление vBios на работающем сервере
 
-Все команды выполняйте на сервере из каталога, где находится рабочий `docker-compose.yml`, обычно `/opt/shm`.
+[На главную](../README.md) · [Полная установка и восстановление](INSTALLATION-RU.md) · [Скриншоты](screenshots/README.md)
 
-## Перед обновлением
+Эта инструкция предназначена для существующей установки. Для чистого сервера начните с [полного мануала](INSTALLATION-RU.md). Команды выполняются через SSH в Bash из каталога рабочего Compose, обычно `/opt/shm`.
 
-Сделайте резервную копию базы и сохраните текущие теги образов:
+## Какой способ выбрать
 
-```sh
+| Что изменилось | Что обновлять |
+| --- | --- |
+| Только интерфейс пользователя и графики | client |
+| Только административный интерфейс | admin |
+| API, авторизация, платежи, Remnawave, серверный код | core, spool, api; при связанных изменениях также client/admin |
+| Переменные .env | Пересоздать затронутые сервисы |
+| Тексты config.main в базе SHM | Обновить страницу; пересборка образа не нужна |
+
+## 1. Подготовиться
+
+Дождитесь успешной публикации образов в GitHub Actions. Сделайте [резервную копию базы, данных и окружения](INSTALLATION-RU.md#13-резервные-копии-и-восстановление). Сохраните текущий Git commit и версии/digests образов, чтобы знать, к какой версии возвращаться.
+
+```bash
 cd /opt/shm
-cp .env .env.backup.$(date +%Y%m%d-%H%M%S)
+git status --short
+git rev-parse HEAD
+docker compose images
 docker compose config --quiet
-docker compose ps
 ```
 
-Не удаляйте volumes и не используйте `docker compose down -v`: в volumes находятся MySQL, Redis и данные SHM.
+Если есть локальные правки, сохраните и разберите их до обновления. Не используйте reset --hard для обхода конфликта. Не удаляйте volumes и не запускайте `docker compose down -v`: там находятся база и данные SHM. В текущем Compose у Redis постоянный том не настроен.
 
-## Обновление после нового коммита
+## 2. Обновить весь проект
 
-GitHub Actions публикует четыре образа: `vbios-core`, `vbios-api`, `vbios-clients`, `vbios-admin`. Для текущего `main` используйте:
-
-```sh
+```bash
 cd /opt/shm
-docker compose pull api core spool client admin
-docker compose up -d --no-deps --force-recreate core spool api client admin
-docker compose ps
-```
-
-`spool` использует тот же образ `vbios-core`, поэтому его нужно пересоздавать вместе с `core`. `mysql` и `redis` перезапускать при обновлении кода не нужно.
-
-Порядок для более осторожного обновления:
-
-```sh
-docker compose pull core
-# сначала backend и очередь
-docker compose up -d --no-deps --force-recreate core spool
-docker compose pull api
-# API пересоздаётся после core
-docker compose up -d --no-deps --force-recreate api
-docker compose pull client admin
-docker compose up -d --no-deps --force-recreate client admin
-```
-
-## Только пользовательский кабинет
-
-После изменений в `client/` достаточно:
-
-```sh
-docker compose pull client
-docker compose up -d --no-deps --force-recreate client
-docker compose logs --tail=80 client
-```
-
-## Только админка
-
-```sh
-docker compose pull admin
-docker compose up -d --no-deps --force-recreate admin
-docker compose logs --tail=80 admin
-```
-
-## Backend, платежи, Remnawave и очередь
-
-После изменений в `server/`, SHM API, платежах, авторизации, Remnawave или локальных шаблонах:
-
-```sh
-docker compose pull core spool api
-docker compose up -d --no-deps --force-recreate core spool api
-docker compose ps core spool api
-docker compose logs --tail=120 core spool api
-```
-
-Если добавлялась SQL-схема, сначала сделайте backup и примените миграцию по инструкции конкретного файла. Пересоздание контейнера не применяет SQL автоматически.
-
-## Проверка после обновления
-
-```sh
-docker compose ps
-docker compose exec api wget -qO- http://127.0.0.1/shm/healthcheck.cgi
-docker compose logs --tail=100 core spool api client admin
-```
-
-Проверьте вручную:
-
-1. Вход в кабинет.
-2. Загрузку «Мой VPN».
-3. Оплату через SHM на тестовом аккаунте.
-4. Открытие ссылки и QR-кода.
-5. Центр устройств.
-6. Диагностику Remnawave и статус серверов.
-7. В админке пользователей, платежи и очередь spool.
-
-Проверка `/shm/healthcheck.cgi` подтверждает доступность API, но не подтверждает реальную оплату или выдачу Remnawave.
-
-## Если нужно обновить конфигурацию
-
-После изменения `.env`, compose environment, CORS, Telegram или S3 используйте `--force-recreate`; обычный `restart` не перечитывает environment:
-
-```sh
-docker compose config --quiet
-docker compose up -d --no-deps --force-recreate core spool api client admin
-```
-
-После изменения только `config.main`/`config.remna` через SHM local контейнеры перезапускать не нужно: обновите страницу и подождите кэш мониторинга до 15 секунд.
-
-## Откат
-
-Не используйте `latest` для контролируемого production-релиза. Сохраните рабочие значения:
-
-```dotenv
-CORE_VERSION=sha-ВАШ_РАБОЧИЙ_SHA
-CLIENT_VERSION=ghcr.io/dev-vbs/vbios-clients:sha-ВАШ_РАБОЧИЙ_SHA
-ADMIN_VERSION=ghcr.io/dev-vbs/vbios-admin:sha-ВАШ_РАБОЧИЙ_SHA
-```
-
-После возврата тегов:
-
-```sh
+git pull --ff-only origin main
 docker compose config --quiet
 docker compose pull core spool api client admin
-docker compose up -d --no-deps --force-recreate core spool api client admin
+docker compose stop spool
+docker compose up -d --no-deps --force-recreate core
+docker compose logs --tail=150 core
+```
+
+**Проверьте логи core перед продолжением.** Его init создаёт базовую схему или применяет подходящие версии миграций SHM. Отдельные SQL-файлы функций проекта применяйте по инструкции соответствующего релиза: нельзя считать, что любой SQL в репозитории выполнится автоматически. Не импортируйте full-install в рабочую базу.
+
+Когда core успешно запустился и нет ошибок миграций:
+
+```bash
+docker compose up -d --no-deps --force-recreate api admin client spool
 docker compose ps
+docker compose exec -T api wget -qO- http://127.0.0.1/shm/healthcheck.cgi
+docker compose logs --since=10m --tail=100 core spool api client admin
 ```
 
-Не откатывайте код после необратимой SQL-миграции без совместимой процедуры rollback. Сначала остановите дальнейшую обработку платежей только по вашему регламенту и проверьте совместимость схемы.
+`spool` использует образ core; оба обработчика очереди нужно обновлять вместе с серверной частью. MySQL и Redis при обновлении приложения не пересоздавайте. Их версии и миграции планируйте отдельно.
 
-## Если контейнер не запускается
+Если core не запускается, оставьте очередь остановленной и устраните причину. Не запускайте старые задания поверх незавершённой миграции.
 
-```sh
+## 3. Обновить только дизайн кабинета
+
+Подходит для изменений, которым не требуется новая версия API:
+
+```bash
+cd /opt/shm
+docker compose pull client
+docker compose up -d --no-deps --force-recreate client
+docker compose ps client
+docker compose logs --tail=50 client
+```
+
+После этого обновите вкладку. Если браузер продолжает показывать старый интерфейс, закройте другие вкладки кабинета и выполните принудительное обновление. Не очищайте данные сайта без необходимости: это может завершить сеанс пользователя.
+
+Для одной админки аналогично замените client на admin.
+
+## 4. Если изменили конфигурацию
+
+- Изменение .env требует пересоздания соответствующего контейнера: обычный restart не перечитывает environment.
+- Изменение конфигурации SHM в БД обычно не требует перезапуска frontend; учитывайте кэш конкретного раздела.
+- Полные local-шаблоны могут заменять весь объект настройки. Сначала сохраните текущий config.main/config.remna.
+- Префиксы Remnawave и ключ подписи расширений не меняйте как часть косметического обновления.
+
+## 5. Проверить результат
+
+| Проверка | Ожидаемый результат |
+| --- | --- |
+| Compose | Нет циклических перезапусков и unhealthy |
+| Вход, выход и смена пароля | Пользователь входит с новым паролем, ошибки не скрываются |
+| Список и карточка услуги | Правильный тариф, цена и срок из SHM |
+| Подключение | Открываются ссылка и QR нужного клиента |
+| Трафик | Даты, сумма и выбранный день соответствуют данным API |
+| Оплата на тестовом клиенте | Одна оплата → одно списание/зачисление → нужное задание |
+| Расширение | Применяется после оплаты, повтор задания не удваивает выдачу |
+| Поддержка и статус | Отправляются сообщения, мониторинг показывает реальные проверки |
+| Телефон и обе темы | Кнопки доступны, страница не выходит за ширину экрана |
+
+HTTP healthcheck подтверждает доступность API, но не работу платежей, почты и Remnawave.
+
+## 6. Откат и устранение ошибок
+
+Для управляемого релиза используйте согласованные опубликованные теги одной сборки вместо latest. В CORE_VERSION указывается тег; в CLIENT_VERSION и ADMIN_VERSION — полное имя образа. Точные доступные теги смотрите в Packages вашего GitHub.
+
+Если схема БД совместима со старой версией, верните сохранённые значения .env и повторите порядок запуска из раздела 2. После несовместимой миграции простой откат образа небезопасен: нужна совместимая резервная копия БД и данных. [Порядок восстановления](INSTALLATION-RU.md#13-резервные-копии-и-восстановление).
+
+```bash
 docker compose ps -a
-docker compose logs --tail=200 ИМЯ_СЕРВИСА
-docker compose config
+docker compose logs --since=15m --tail=200 core spool api client admin
+docker compose config --quiet
 ```
 
-Сначала исправьте причину в `.env`, образе или healthcheck. Не удаляйте volumes и не запускайте `down -v` для «починки».
+Не публикуйте полный вывод docker compose config: он содержит секреты. Перед передачей логов удалите токены, cookies, пароли и ссылки подписок.
