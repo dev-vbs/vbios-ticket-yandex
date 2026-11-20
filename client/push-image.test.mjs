@@ -27,3 +27,29 @@ test('unavailable or malformed attachments fall back to text notifications', asy
   fetch.mock.mockImplementation(async () => { throw new Error('offline') })
   assert.equal(await loadNotificationImage(1), undefined)
 })
+
+test('large attachments are reduced before being used as notification images', async (t) => {
+  const originalBitmap = globalThis.createImageBitmap
+  const originalCanvas = globalThis.OffscreenCanvas
+  t.after(() => {
+    if (originalBitmap === undefined) delete globalThis.createImageBitmap
+    else globalThis.createImageBitmap = originalBitmap
+    if (originalCanvas === undefined) delete globalThis.OffscreenCanvas
+    else globalThis.OffscreenCanvas = originalCanvas
+  })
+  let closed = false
+  globalThis.createImageBitmap = async () => ({ width: 3000, height: 1500, close: () => { closed = true } })
+  globalThis.OffscreenCanvas = class {
+    constructor(width, height) { this.width = width; this.height = height }
+    getContext() { return { drawImage: () => {} } }
+    async convertToBlob() {
+      assert.equal(this.width, 960)
+      assert.equal(this.height, 480)
+      return new Blob(['preview'], { type: 'image/jpeg' })
+    }
+  }
+  const original = Buffer.alloc(2 * 1024 * 1024, 1).toString('base64')
+  t.mock.method(globalThis, 'fetch', async () => ({ ok: true, json: async () => ({ data: [{ mime_type: 'image/png', data: original }] }) }))
+  assert.equal(await loadNotificationImage(42), `data:image/jpeg;base64,${Buffer.from('preview').toString('base64')}`)
+  assert.equal(closed, true)
+})
