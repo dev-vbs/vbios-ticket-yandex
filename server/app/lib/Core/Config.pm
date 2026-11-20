@@ -145,7 +145,45 @@ sub api_data_by_main {
         }
         $public{$field} = \@items;
     }
+    if (($cfg->{plans_source} // '') eq 'shm') {
+        # Anonymous storefront: never calculate user discounts or expose service config.
+        $public{plans} = $self->public_shm_plans($cfg);
+    }
     return \%public;
+}
+
+sub public_shm_plans {
+    my ($self, $cfg) = @_;
+    my %where = (allow_to_order => 1, deleted => 0);
+    if (ref($cfg->{plan_service_ids}) eq 'ARRAY') {
+        my @ids = grep { defined($_) && !ref($_) && /^\d+$/ && $_ > 0 } @{$cfg->{plan_service_ids}};
+        return [] unless @ids;
+        $where{service_id} = { '-in' => \@ids };
+    }
+    my $remna = $self->data_by_name('remna') || {};
+    my %addons = map { ref($_) eq 'HASH' && $_->{service_id} ? ($_->{service_id} => 1) : () }
+        @{ref($remna->{addons}) eq 'ARRAY' ? $remna->{addons} : []};
+    my $items = $self->srv('service')->items(where => \%where, limit => 100);
+    my @plans;
+    for my $service (@{$items || []}) {
+        my $row = $service->get;
+        next unless $row->{allow_to_order} && !$row->{deleted} && !$addons{$row->{service_id}};
+        my $cost = $service->is_composite ? $service->cost_composite() : $row->{cost};
+        next unless defined($cost) && !ref($cost) && $cost =~ /^\d+(?:\.\d+)?$/;
+        my $currency = $cfg->{plans_currency};
+        $currency = 'RUB' unless defined($currency) && !ref($currency) && length($currency) <= 12;
+        my $period = $row->{period};
+        my $details = defined($period) && !ref($period) && $period =~ /^\d+(?:\.\d+)?$/
+            ? ($period == 0 ? 'Разовая оплата' : 'Период: '.$period.' мес.') : '';
+        push @plans, {
+            title => $row->{name} // '',
+            description => $row->{descr} // '',
+            price => sprintf('%.2f', $cost).' '.$currency,
+            details => $details,
+        };
+        last if @plans >= 20;
+    }
+    return \@plans;
 }
 
 sub api_data_by_apps {

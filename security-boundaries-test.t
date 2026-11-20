@@ -110,4 +110,33 @@ $main_config->{config}{preview_title}={password=>'secret'};
 my $invalid_main=$main_config->api_data_by_main;
 ok(!exists($invalid_main->{preview_title}),'landing copy rejects nested objects');
 
+{
+    package StorefrontService;
+    sub get { $_[0] }
+    sub is_composite { $_[0]{is_composite} }
+    sub cost_composite { 250 }
+    package StorefrontCatalog;
+    sub items { my ($self,%args)=@_; $self->{query}=\%args; return $self->{rows}; }
+    package StorefrontConfig;
+    sub srv { $_[0]{catalog} }
+    sub data_by_name { +{addons=>[{service_id=>4}]} }
+}
+eval 'package StorefrontConfig; '.method('server/app/lib/Core/Config.pm','public_shm_plans'); die $@ if $@;
+my $storefront=bless {catalog=>bless {rows=>[
+    map {bless $_,'StorefrontService'}
+    {service_id=>1,name=>'Public',cost=>150,period=>1,allow_to_order=>1,config=>{secret=>'hidden'}},
+    {service_id=>2,name=>'Private',cost=>10,allow_to_order=>0},
+    {service_id=>3,name=>'Deleted',cost=>10,allow_to_order=>1,deleted=>1},
+    {service_id=>4,name=>'Addon',cost=>10,allow_to_order=>1},
+    {service_id=>5,name=>'Composite',cost=>100,period=>0,allow_to_order=>1,is_composite=>1},
+]},'StorefrontCatalog'},'StorefrontConfig';
+my $plans=$storefront->public_shm_plans({});
+is(scalar(@$plans),2,'storefront excludes private, deleted and addon services');
+is($plans->[0]{price},'150.00 RUB','price comes from SHM');
+is($plans->[1]{price},'250.00 RUB','composite price includes children');
+is($plans->[1]{details},"\x{420}\x{430}\x{437}\x{43e}\x{432}\x{430}\x{44f} \x{43e}\x{43f}\x{43b}\x{430}\x{442}\x{430}",'zero period means one-time payment');
+ok(!exists($plans->[0]{config}),'service config is never public');
+$storefront->public_shm_plans({plan_service_ids=>[1,'bad',{},-1]});
+is_deeply($storefront->{catalog}{query}{where},{allow_to_order=>1,deleted=>0,service_id=>{'-in'=>[1]}},'explicit IDs cannot bypass public service filters');
+is_deeply($storefront->public_shm_plans({plan_service_ids=>[]}),[],'empty explicit selection hides all tariffs');
 done_testing();
