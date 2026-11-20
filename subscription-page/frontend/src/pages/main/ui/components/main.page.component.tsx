@@ -1,6 +1,6 @@
 import { ActionIcon, Anchor, Badge, Box, Button, Center, Container, Group, Image, Paper, Stack, Text, Title, useMantineColorScheme } from '@mantine/core'
 import { useClipboard } from '@mantine/hooks'
-import { IconArrowLeft, IconArrowRight, IconCheck, IconCopy, IconDeviceMobile, IconWallet } from '@tabler/icons-react'
+import { IconArrowLeft, IconArrowRight, IconCheck, IconCopy, IconDeviceMobile, IconWallet, IconSun, IconMoon, IconShieldCheck } from '@tabler/icons-react'
 import { TSubscriptionPagePlatformKey } from '@remnawave/subscription-page-types'
 import { useSubscription } from '@entities/subscription-info-store'
 import { useAppConfig, useAppConfigStoreActions, useCurrentLang } from '@entities/app-config-store'
@@ -70,7 +70,7 @@ export const MainPageComponent = ({ isMobile, platform }: IMainPageComponentProp
                         </Group>
                         <Group gap="xs" wrap="nowrap">
                             {cabinet && <Button component="a" href={serviceUrl} variant="subtle" size="compact-sm">Личный кабинет</Button>}
-                            <ActionIcon variant="light" size="lg" aria-label="Сменить тему" onClick={() => toggleColorScheme()}>{colorScheme === 'dark' ? '☀️' : '🌙'}</ActionIcon>
+                            <ActionIcon variant="light" size="lg" aria-label="Сменить тему" onClick={() => toggleColorScheme()}>{colorScheme === 'dark' ? <IconSun size={19} /> : <IconMoon size={19} />}</ActionIcon>
                             <SubscriptionLinkWidget hideGetLink={config.baseSettings.hideGetLinkButton} supportUrl={config.brandingSettings.supportUrl} />
                         </Group>
                     </Group>
@@ -78,19 +78,28 @@ export const MainPageComponent = ({ isMobile, platform }: IMainPageComponentProp
             </Box>
 
             <Container maw={1120} px={{ base: 'md', sm: 'lg' }} py="xl">
-                <Stack gap="md">
+                <Stack gap="lg">
                     {serviceUrl && <Anchor href={serviceUrl} size="sm" className="subscription-back"><IconArrowLeft size={16} /> Моя услуга</Anchor>}
-                    <Paper withBorder radius="lg" p={{ base: 'md', sm: 'xl' }} className="subscription-panel">
+                    <div className="subscription-hero">
+                    <section className="subscription-hero-copy">
+                        <Text className="subscription-kicker">ВАШЕ ПОДКЛЮЧЕНИЕ</Text>
+                        <Title order={1} className="subscription-hero-title">Подключение<br /><span>без сложностей.</span></Title>
+                        <Text className="subscription-hero-description">Выберите устройство, добавьте подписку в приложение и пользуйтесь сервисом.</Text>
+                        {hasGuide && <Button component="a" href="#installation-guide" size="md" radius="md" rightSection={<IconArrowRight size={17} />}>Как подключиться</Button>}
+                    </section>
+                    <Paper withBorder radius="lg" p={{ base: 'md', sm: 'xl' }} className="subscription-panel subscription-summary">
+                        <Group justify="space-between" mb="xl" align="flex-start"><IconShieldCheck className="subscription-shield" size={42} stroke={1.4} /><Text size="sm" c="dimmed">Моя подписка</Text></Group>
                         <Group justify="space-between" align="flex-start" gap="xs">
                             <Box>
                                 <Text size="sm" c="dimmed">Подписка</Text>
-                                <Title order={1} className="subscription-title">{SubscriptionInfoBlockRenderer ? subscription.user.username : 'Подключение'}</Title>
+                                <Title order={2} className="subscription-title">{SubscriptionInfoBlockRenderer ? subscription.user.username : 'Подключение'}</Title>
                             </Box>
                             {SubscriptionInfoBlockRenderer && <Badge color={isActive ? 'teal' : 'red'} variant="light">{isActive ? 'Активна' : 'Неактивна'}</Badge>}
                         </Group>
                         {SubscriptionInfoBlockRenderer && <Box mt="lg"><SubscriptionInfoBlockRenderer isMobile={isMobile} /></Box>}
                         {serviceUrl && <Button component="a" href={serviceUrl} variant="filled" fullWidth mt="lg" rightSection={<IconArrowRight size={17} />}>Управлять услугой</Button>}
                     </Paper>
+                    </div>
 
                     {!config.baseSettings.hideGetLinkButton && <Paper withBorder radius="lg" p={{ base: 'md', sm: 'xl' }} className="subscription-panel">
                         <Stack gap="md">

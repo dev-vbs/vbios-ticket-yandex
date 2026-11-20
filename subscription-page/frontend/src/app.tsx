@@ -31,7 +31,7 @@ export function App() {
         <DirectionProvider>
             <MantineProvider
                 cssVariablesResolver={v8CssVariablesResolver}
-                defaultColorScheme="light"
+                defaultColorScheme="dark"
                 colorSchemeManager={localStorageColorSchemeManager({ key: "vbios-color-scheme-v2" })}
                 theme={theme}
             >
