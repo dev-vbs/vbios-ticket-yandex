@@ -1,4 +1,4 @@
-import LandingSections from '../components/LandingSections';
+import LandingSections, { LandingPlans } from '../components/LandingSections';
 import ServerMonitor from '../components/ServerMonitor';
 import './Login.css';
 import './LoginShowcase.css';
@@ -536,6 +536,7 @@ export default function Login() {
           <div className="welcome-hero-side"><div className="welcome-product"><div className="welcome-product__top"><span className="welcome-product__symbol"><IconKey size={23} /></span><strong>{main.name || config.APP_NAME}</strong><span className="welcome-product__tag">{main.preview_label || 'Ваш личный кабинет'}</span></div><div className="welcome-product__body"><h2>{main.preview_title || 'От выбора до подключения. Всё рядом.'}</h2><ol>{(main.visual_steps || [{title:'Выберите подписку',description:'Сравните условия и оплатите в кабинете.'},{title:'Подключите устройство',description:'Ссылка, QR-код и инструкция уже под рукой.'},{title:'Управляйте без сложностей',description:'Срок действия, устройства и помощь в одном месте.'}]).map((item: {title: string; description: string}, index: number) => <li key={index}><span>{index + 1}</span><div><strong>{item.title}</strong><p>{item.description}</p></div></li>)}</ol></div><div className="welcome-product__bottom"><IconShieldLock size={18}/><span>{main.visual_caption || 'Понятный сервис начинается с удобного кабинета.'}</span></div></div></div>
         </section>
 
+        <LandingPlans main={main} onStart={() => { setMode(registerEnabled ? 'register' : 'login'); setAuthOpen(true); }} />
         {monitor.enabled && <div className="welcome-network"><ServerMonitor monitor={monitor} /></div>}
         <LandingSections main={main} nodes={monitor.nodes || []} onStart={() => { setMode(registerEnabled ? 'register' : 'login'); setAuthOpen(true); }} />
         <section id="welcome-benefits" className="welcome-benefits"><div><h2>{main.benefits_title || 'Всё нужное. Под рукой.'}</h2><p>{main.benefits_description || 'Управляйте услугами без лишних действий.'}</p></div>{(main.benefits || [{title:'Ваши подписки',description:'Срок действия и продление в карточке услуги.'},{title:'Ваши устройства',description:'Просматривайте привязки устройств в кабинете.'},{title:'Помощь рядом',description:'Инструкции и поддержка в одном месте.'}]).map((item: {title: string; description: string}, i: number) => <article key={i}><IconKey size={26}/><h3>{item.title}</h3><p>{item.description}</p></article>)}</section>
