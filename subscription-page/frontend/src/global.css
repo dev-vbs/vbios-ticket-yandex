@@ -11,3 +11,11 @@ html, body { min-height:100%; margin:0; background:var(--mantine-color-body); co
 .vbios-intro h1 { font-size:clamp(26px,5vw,40px); line-height:1.2; letter-spacing:-.035em; margin:10px 0; }
 
 body, p, button, input, select, textarea { font-family: Inter, system-ui, -apple-system, Segoe UI, sans-serif; }
+
+.subscription-panel { background: var(--mantine-color-default); border-color: var(--mantine-color-default-border); }
+.subscription-title { font-size: clamp(24px, 4vw, 30px); line-height: 1.2; overflow-wrap: anywhere; }
+.subscription-back { display: inline-flex; align-items: center; gap: 8px; color: var(--mantine-color-dimmed); }
+.subscription-address { padding: 14px; border: 1px solid var(--mantine-color-default-border); border-radius: var(--mantine-radius-md); background: var(--mantine-color-body); }
+.subscription-url { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.subscription-actions > * { min-width: 180px; }
+@media (max-width: 480px) { .subscription-actions > * { flex-basis: 100%; } .header-wrapper .mantine-Group-root { gap: 6px; } }

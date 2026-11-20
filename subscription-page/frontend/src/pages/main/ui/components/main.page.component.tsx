@@ -1,21 +1,17 @@
-import { ActionIcon, Anchor, Badge, Text, useMantineColorScheme, Box, Center, Container, Group, Image, Stack, Title } from '@mantine/core'
+import { ActionIcon, Anchor, Badge, Box, Button, Center, Container, Group, Image, Paper, Stack, Text, Title, useMantineColorScheme } from '@mantine/core'
+import { useClipboard } from '@mantine/hooks'
+import { IconArrowLeft, IconArrowRight, IconCheck, IconCopy, IconDeviceMobile, IconWallet } from '@tabler/icons-react'
 import { TSubscriptionPagePlatformKey } from '@remnawave/subscription-page-types'
-
-import {
-    AccordionBlockRenderer,
-    CardsBlockRenderer,
-    InstallationGuideConnector,
-    MinimalBlockRenderer,
-    RawKeysWidget,
-    SubscriptionInfoCardsWidget,
-    SubscriptionInfoCollapsedWidget,
-    SubscriptionInfoExpandedWidget,
-    SubscriptionLinkWidget,
-    TimelineBlockRenderer
-} from '@widgets/main'
+import { useSubscription } from '@entities/subscription-info-store'
 import { useAppConfig, useAppConfigStoreActions, useCurrentLang } from '@entities/app-config-store'
+import { constructSubscriptionUrl } from '@shared/utils/construct-subscription-url'
 import { LanguagePicker } from '@shared/ui/language-picker/language-picker.shared'
 import { Page, RemnawaveLogo } from '@shared/ui'
+import {
+    AccordionBlockRenderer, CardsBlockRenderer, InstallationGuideConnector, MinimalBlockRenderer,
+    RawKeysWidget, SubscriptionInfoCardsWidget, SubscriptionInfoCollapsedWidget,
+    SubscriptionInfoExpandedWidget, SubscriptionLinkWidget, TimelineBlockRenderer
+} from '@widgets/main'
 
 interface IMainPageComponentProps {
     isMobile: boolean
@@ -38,20 +34,19 @@ const SUBSCRIPTION_INFO_BLOCK_RENDERERS = {
 
 export const MainPageComponent = ({ isMobile, platform }: IMainPageComponentProps) => {
     const { colorScheme, toggleColorScheme } = useMantineColorScheme()
-    const cabinetUrl = document.querySelector<HTMLMetaElement>('meta[name="vbios-cabinet-url"]')?.content || ''
+    const clipboard = useClipboard({ timeout: 2000 })
     const config = useAppConfig()
+    const subscription = useSubscription()
     const currentLang = useCurrentLang()
     const { setLanguage } = useAppConfigStoreActions()
-
-    const brandName = config.brandingSettings.title
-    let hasCustomLogo = !!config.brandingSettings.logoUrl
-
-    if (hasCustomLogo) {
-        if (config.brandingSettings.logoUrl.includes('docs.rw')) {
-            hasCustomLogo = false
-        }
-    }
-
+    const cabinetUrl = document.querySelector<HTMLMetaElement>('meta[name="vbios-cabinet-url"]')?.content || ''
+    const serviceId = new URLSearchParams(window.location.search).get('shm_service')
+    const validServiceId = serviceId && /^[1-9]\d{0,14}$/.test(serviceId) ? serviceId : null
+    const cabinet = cabinetUrl.startsWith('https://') ? cabinetUrl.replace(/\/+$/, '') : ''
+    const serviceUrl = cabinet ? `${cabinet}/services${validServiceId ? `/${validServiceId}` : ''}` : ''
+    const subscriptionUrl = constructSubscriptionUrl(window.location.href, subscription.user.shortUuid)
+    const isActive = subscription.user.userStatus === 'ACTIVE'
+    const hasCustomLogo = !!config.brandingSettings.logoUrl && !config.brandingSettings.logoUrl.includes('docs.rw')
     const hasPlatformApps: Record<TSubscriptionPagePlatformKey, boolean> = {
         ios: Boolean(config.platforms.ios?.apps.length),
         android: Boolean(config.platforms.android?.apps.length),
@@ -61,89 +56,68 @@ export const MainPageComponent = ({ isMobile, platform }: IMainPageComponentProp
         androidTV: Boolean(config.platforms.androidTV?.apps.length),
         appleTV: Boolean(config.platforms.appleTV?.apps.length)
     }
-
-    const atLeastOnePlatformApp = Object.values(hasPlatformApps).some((value) => value)
-
-    const SubscriptionInfoBlockRenderer =
-        SUBSCRIPTION_INFO_BLOCK_RENDERERS[config.uiConfig.subscriptionInfoBlockType]
+    const SubscriptionInfoBlockRenderer = SUBSCRIPTION_INFO_BLOCK_RENDERERS[config.uiConfig.subscriptionInfoBlockType]
+    const hasGuide = Object.values(hasPlatformApps).some(Boolean)
 
     return (
         <Page>
-            <Box className="header-wrapper" py="md">
-                <Container maw={1200} px={{ base: 'md', sm: 'lg', md: 'xl' }}>
-                    <Group justify="space-between">
-                        <Group gap="sm" style={{ userSelect: 'none' }} wrap="nowrap">
-                            {hasCustomLogo ? (
-                                <Image
-                                    alt="logo"
-                                    fit="contain"
-                                    src={config.brandingSettings.logoUrl}
-                                    style={{
-                                        width: '32px',
-                                        height: '32px',
-                                        flexShrink: 0
-                                    }}
-                                />
-                            ) : (
-                                <RemnawaveLogo c="cyan" size={32} />
-                            )}
-                            <Title
-                                c="var(--mantine-color-text)"
-                                fw={700}
-                                order={4}
-                                size="lg"
-                            >
-                                {brandName}
-                            </Title>
+            <Box className="header-wrapper" py="sm">
+                <Container maw={1120} px={{ base: 'md', sm: 'lg' }}>
+                    <Group justify="space-between" wrap="nowrap">
+                        <Group gap="sm" wrap="nowrap">
+                            {hasCustomLogo ? <Image alt="" fit="contain" src={config.brandingSettings.logoUrl} w={32} h={32} /> : <RemnawaveLogo c="blue" size={32} />}
+                            <Title order={4} size="lg">{config.brandingSettings.title}</Title>
                         </Group>
-
-                        {cabinetUrl.startsWith('https://') && <Anchor href={cabinetUrl}>Личный кабинет</Anchor>}
-                        <ActionIcon variant="light" size="lg" aria-label="Сменить тему" onClick={() => toggleColorScheme()}>{colorScheme === 'dark' ? '☀️' : '🌙'}</ActionIcon>
-                        <SubscriptionLinkWidget
-                            hideGetLink={config.baseSettings.hideGetLinkButton}
-                            supportUrl={config.brandingSettings.supportUrl}
-                        />
+                        <Group gap="xs" wrap="nowrap">
+                            {cabinet && <Button component="a" href={serviceUrl} variant="subtle" size="compact-sm">Личный кабинет</Button>}
+                            <ActionIcon variant="light" size="lg" aria-label="Сменить тему" onClick={() => toggleColorScheme()}>{colorScheme === 'dark' ? '☀️' : '🌙'}</ActionIcon>
+                            <SubscriptionLinkWidget hideGetLink={config.baseSettings.hideGetLinkButton} supportUrl={config.brandingSettings.supportUrl} />
+                        </Group>
                     </Group>
                 </Container>
             </Box>
 
-            <Container
-                maw={1200}
-                px={{ base: 'md', sm: 'lg', md: 'xl' }}
-                py="xl"
-                style={{ position: 'relative', zIndex: 1 }}
-            >
-                <Stack gap="xl">
-                    <Box className="vbios-intro">
-                        <Badge variant="light">Ваша подписка</Badge>
-                        <h1>Подключение без лишних шагов</h1>
-                        <Text c="dimmed" size="lg">Установите приложение, добавьте подписку и подключитесь. Все настройки — на этой странице.</Text>
-                    </Box>
-                    {SubscriptionInfoBlockRenderer && (
-                        <SubscriptionInfoBlockRenderer isMobile={isMobile} />
-                    )}
+            <Container maw={1120} px={{ base: 'md', sm: 'lg' }} py="xl">
+                <Stack gap="md">
+                    {serviceUrl && <Anchor href={serviceUrl} size="sm" className="subscription-back"><IconArrowLeft size={16} /> Моя услуга</Anchor>}
+                    <Paper withBorder radius="lg" p={{ base: 'md', sm: 'xl' }} className="subscription-panel">
+                        <Group justify="space-between" align="flex-start" gap="xs">
+                            <Box>
+                                <Text size="sm" c="dimmed">Подписка</Text>
+                                <Title order={1} className="subscription-title">{SubscriptionInfoBlockRenderer ? subscription.user.username : 'Подключение'}</Title>
+                            </Box>
+                            {SubscriptionInfoBlockRenderer && <Badge color={isActive ? 'teal' : 'red'} variant="light">{isActive ? 'Активна' : 'Неактивна'}</Badge>}
+                        </Group>
+                        {SubscriptionInfoBlockRenderer && <Box mt="lg"><SubscriptionInfoBlockRenderer isMobile={isMobile} /></Box>}
+                        {serviceUrl && <Button component="a" href={serviceUrl} variant="filled" fullWidth mt="lg" rightSection={<IconArrowRight size={17} />}>Управлять услугой</Button>}
+                    </Paper>
 
-                    {atLeastOnePlatformApp && (
-                        <InstallationGuideConnector
-                            BlockRenderer={
-                                BLOCK_RENDERERS[config.uiConfig.installationGuidesBlockType]
-                            }
-                            hasPlatformApps={hasPlatformApps}
-                            isMobile={isMobile}
-                            platform={platform}
-                        />
-                    )}
+                    {!config.baseSettings.hideGetLinkButton && <Paper withBorder radius="lg" p={{ base: 'md', sm: 'xl' }} className="subscription-panel">
+                        <Stack gap="md">
+                            <Box><Title order={2} size="h4">Подключение к сервису</Title><Text size="sm" c="dimmed">Добавьте ссылку в приложение или отсканируйте QR-код.</Text></Box>
+                            <Box className="subscription-address"><Text size="xs" c="dimmed" mb={6}>Ссылка на подписку</Text><Group wrap="nowrap" gap="xs"><Text className="subscription-url" size="sm">{subscriptionUrl}</Text><ActionIcon aria-label="Скопировать ссылку подписки" variant="light" onClick={() => clipboard.copy(subscriptionUrl)}>{clipboard.copied ? <IconCheck size={17} /> : <IconCopy size={17} />}</ActionIcon></Group></Box>
+                            <Group className="subscription-actions" grow>
+                                <SubscriptionLinkWidget buttonOnly hideGetLink={false} supportUrl="" />
+                                {hasGuide && <Button component="a" href="#installation-guide" variant="filled">Как подключиться</Button>}
+                            </Group>
+                            {clipboard.copied && <Text size="xs" c="teal" role="status">Ссылка скопирована</Text>}
+                        </Stack>
+                    </Paper>}
 
+                    {hasGuide && <Box id="installation-guide"><InstallationGuideConnector BlockRenderer={BLOCK_RENDERERS[config.uiConfig.installationGuidesBlockType]} hasPlatformApps={hasPlatformApps} isMobile={isMobile} platform={platform} /></Box>}
                     <RawKeysWidget isMobile={isMobile} />
 
+                    {cabinet && <Paper withBorder radius="lg" p={{ base: 'md', sm: 'xl' }} className="subscription-panel">
+                        <Stack gap="md">
+                            <Box><Title order={2} size="h4">Управление подпиской</Title><Text size="sm" c="dimmed">Устройства, тариф и оплата доступны в личном кабинете.</Text></Box>
+                            <Group className="subscription-actions" grow>
+                                <Button component="a" href={serviceUrl} variant="light" leftSection={<IconDeviceMobile size={18} />}>Устройства и тариф</Button>
+                                <Button component="a" href={`${cabinet}/balance`} variant="light" leftSection={<IconWallet size={18} />}>Баланс и оплата</Button>
+                            </Group>
+                        </Stack>
+                    </Paper>}
+                    <Center><LanguagePicker currentLang={currentLang} locales={config.locales} onLanguageChange={setLanguage} /></Center>
                     <Center><Anchor href="https://github.com/dev-vbs/vbios-ticket-yandex/tree/main/subscription-page" size="xs" target="_blank" rel="noopener noreferrer">Исходный код · Remnawave / vBios</Anchor></Center>
-                    <Center>
-                        <LanguagePicker
-                            currentLang={currentLang}
-                            locales={config.locales}
-                            onLanguageChange={setLanguage}
-                        />
-                    </Center>
                 </Stack>
             </Container>
         </Page>

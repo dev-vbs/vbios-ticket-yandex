@@ -1,4 +1,4 @@
-import { IconArrowsUpDown, IconCalendar, IconCheck, IconUserScan, IconX } from '@tabler/icons-react'
+import { IconArrowsUpDown, IconCalendar } from '@tabler/icons-react'
 import { Box, Group, SimpleGrid, Stack, Text, ThemeIcon } from '@mantine/core'
 
 import { useSubscription } from '@entities/subscription-info-store'
@@ -71,30 +71,13 @@ export const SubscriptionInfoCardsWidget = ({ isMobile: _ }: IProps) => {
 
     const { user } = subscription
 
-    const isActive = user.userStatus === 'ACTIVE'
-    const statusText = isActive ? t(baseTranslations.active) : t(baseTranslations.inactive)
-
     const bandwidthValue =
         user.trafficLimit === '0'
             ? `${user.trafficUsed} / ∞`
             : `${user.trafficUsed} / ${user.trafficLimit}`
 
     return (
-        <SimpleGrid cols={{ base: 1, xs: 1, sm: 2 }} spacing="xs" verticalSpacing="xs">
-            <CardItem
-                color="blue"
-                icon={<IconUserScan size={18} />}
-                label={t(baseTranslations.name)}
-                value={user.username}
-            />
-
-            <CardItem
-                color={isActive ? 'green' : 'red'}
-                icon={isActive ? <IconCheck size={18} /> : <IconX size={18} />}
-                label={t(baseTranslations.status)}
-                value={statusText}
-            />
-
+        <SimpleGrid cols={{ base: 2 }} spacing="xs" verticalSpacing="xs">
             <CardItem
                 color="orange"
                 icon={<IconCalendar size={18} />}

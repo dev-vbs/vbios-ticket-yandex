@@ -133,6 +133,18 @@ function extractSubscriptionUrl(payload: unknown): string | null {
   return findStorageString(value, [], (candidate) => /^[a-z][a-z\d+.-]*:\/\//i.test(candidate));
 }
 
+function subscriptionPageUrl(link: string | null, serviceId: number): string | null {
+  if (!link) return null;
+  try {
+    const url = new URL(link);
+    if (url.protocol !== 'https:') return null;
+    url.searchParams.set('shm_service', String(serviceId));
+    return url.toString();
+  } catch {
+    return null;
+  }
+}
+
 function extractConfiguration(payload: unknown): string | null {
   return findStorageString(parseStorageValue(payload), configFields, (candidate) => candidate.length > 0);
 }
@@ -496,6 +508,11 @@ function ServiceDetail({ service, onDelete, onChangeTariff }: ServiceDetailProps
                         </ActionIcon>
                       </Tooltip>
                     </Group>
+                    {subscriptionPageUrl(subscriptionUrl, service.user_service_id) && (
+                      <Button component="a" href={subscriptionPageUrl(subscriptionUrl, service.user_service_id)!} target="_blank" rel="noopener noreferrer" variant="light" size="xs" mt="sm" rightSection={<IconArrowRight size={15} />}>
+                        Открыть страницу подписки
+                      </Button>
+                    )}
                   </Paper>
                 )}
 

@@ -1,6 +1,7 @@
 FROM node:24.22-trixie-slim AS frontend-build
 WORKDIR /frontend
 COPY frontend/package*.json ./
+COPY frontend/.npmrc ./
 RUN npm ci --no-audit --no-fund
 COPY frontend/ .
 RUN npm run start:build
@@ -9,6 +10,7 @@ FROM node:24.22-trixie-slim AS backend-build
 WORKDIR /opt/app
 
 COPY backend/package*.json ./
+COPY backend/.npmrc ./
 COPY backend/tsconfig.json ./
 COPY backend/tsconfig.build.json ./
 

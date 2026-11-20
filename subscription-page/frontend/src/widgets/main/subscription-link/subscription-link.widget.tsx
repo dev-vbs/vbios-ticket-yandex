@@ -22,9 +22,10 @@ import classes from './subscription-link.module.css'
 interface IProps {
     hideGetLink: boolean
     supportUrl: string
+    buttonOnly?: boolean
 }
 
-export const SubscriptionLinkWidget = ({ supportUrl, hideGetLink }: IProps) => {
+export const SubscriptionLinkWidget = ({ supportUrl, hideGetLink, buttonOnly = false }: IProps) => {
     const { t, baseTranslations } = useTranslation()
     const subscription = useSubscription()
     const clipboard = useClipboard({ timeout: 10000 })
@@ -121,10 +122,19 @@ export const SubscriptionLinkWidget = ({ supportUrl, hideGetLink }: IProps) => {
         })
     }
 
+    if (buttonOnly) {
+        return hideGetLink ? null : (
+            <Button variant="light" leftSection={<IconLink size={18} />} onClick={handleGetLink}>
+                QR-код и ссылка
+            </Button>
+        )
+    }
+
     return (
         <Group gap="xs" ml="auto" wrap="nowrap">
             {!hideGetLink && (
                 <ActionIcon
+                    aria-label="Открыть QR-код и ссылку подписки"
                     className={classes.actionIcon}
                     onClick={handleGetLink}
                     radius="md"
