@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Card, Text, Stack, Button, ActionIcon, TextInput, PasswordInput, Divider, Title, Modal, Group, Loader, useMantineColorScheme, useComputedColorScheme, Checkbox, Tooltip } from '@mantine/core';
 
 import { useForm, isEmail, hasLength } from '@mantine/form';
+import { useMediaQuery } from '@mantine/hooks';
 import { IconLogin, IconUserPlus, IconHeadset, IconFingerprint, IconShieldLock, IconBrandTelegram, IconMailForward, IconLock, IconMoon, IconSun, IconAt, IconKey } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 import { useTranslation } from 'react-i18next';
@@ -92,7 +93,7 @@ export default function Login() {
     document.addEventListener('visibilitychange', handleVisibility);
     return () => { cancelled = true; window.clearInterval(timer); document.removeEventListener('visibilitychange', handleVisibility); };
   }, []);
-  const isMobile = window.matchMedia('(max-width: 768px)').matches;
+  const isMobile = useMediaQuery('(max-width: 768px)');
   const [loading, setLoading] = useState(false);
   const [passkeyLoading, setPasskeyLoading] = useState(false);
   const [loginOrEmail, setLoginOrEmail] = useState('');
@@ -552,12 +553,11 @@ export default function Login() {
               <LanguageSwitcher />
             </Group>
           </Group>
-          {config.APP_DESCRIPTION && (
-            <Text size="sm" c="dimmed" ta="center" style={{ flex: 'auto' }}>{config.APP_DESCRIPTION}</Text>
-          )}
+          <div className="auth-welcome">
           <Title order={3} className="auth-heading" ta="center">
               {mode === 'login' ? t('auth.loginTitle') : t('auth.registerTitle')}
           </Title>
+          </div>
 
           {!loginEnabled && <Text ta="center" c="dimmed">Вход временно отключён администратором.</Text>}
 
@@ -617,7 +617,6 @@ export default function Login() {
           {loginEnabled && (!hasTelegramWebAppAuth || showLoginForm) && (
             <>
               <div className="auth-form-section">
-              <div className="auth-section-label"><IconShieldLock size={15} /> {mode === 'login' ? t('auth.login') : t('auth.register')}</div>
               <form onSubmit={handleSubmit} aria-busy={loading}>
                 <fieldset className="auth-fieldset" disabled={loading}>
                 <Stack gap="sm">

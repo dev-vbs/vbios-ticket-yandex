@@ -176,3 +176,29 @@
 }
 
 .welcome-monitor__head b.is-unknown { color: #8a96a8; }
+
+/* Calm, single-surface AJAX login. Theme comes from the active Mantine scheme. */
+.welcome-auth-modal .mantine-Modal-content { border-radius:24px; border:1px solid var(--mantine-color-default-border); box-shadow:0 28px 90px #06142630; }
+.welcome-auth-modal .mantine-Modal-header { background:var(--mantine-color-body); padding:14px 20px 0; }
+.welcome-auth-modal .mantine-Modal-title { font-size:12px; font-weight:600; color:var(--mantine-color-dimmed); }
+.welcome-auth-modal .auth-card { width:100%!important; padding:20px 28px 28px!important; border:0!important; border-radius:0!important; box-shadow:none!important; background:var(--mantine-color-body)!important; }
+.welcome-auth-modal .auth-card::before,.welcome-auth-modal .auth-card::after { display:none; }
+.welcome-auth-modal .auth-card>.mantine-Stack-root { gap:20px!important; }
+.welcome-auth-modal .auth-welcome { padding:4px 0; }
+.welcome-auth-modal .auth-heading { font-size:28px; letter-spacing:-.035em; line-height:1.2; }
+.welcome-auth-modal .auth-form-section { padding:0; background:transparent!important; border:0; border-radius:0; }
+.welcome-auth-modal .auth-form-section .mantine-Stack-root { gap:16px; }
+.welcome-auth-modal .auth-card .mantine-Input-input { background:var(--mantine-color-default); border-color:var(--mantine-color-default-border); color:var(--mantine-color-text); }
+.welcome-auth-modal .auth-card .mantine-Input-input:focus-within { border-color:var(--mantine-primary-color-filled); }
+.welcome-auth-modal .auth-card .mantine-Button-root { border-radius:12px; }
+.welcome-auth-modal .auth-card .mantine-InputWrapper-label { font-size:13px; margin-bottom:7px; }
+.welcome-auth-modal .auth-text-button { text-underline-offset:4px; }
+.welcome-page .mantine-Button-root:focus-visible,.landing-section button:focus-visible { outline:3px solid var(--welcome-accent); outline-offset:4px; }
+@media(max-width:560px) {
+ .welcome-auth-modal .auth-card { padding:18px 20px 24px!important; }
+ .welcome-auth-modal .auth-heading { font-size:25px; }
+ .welcome-auth-modal .auth-card>.mantine-Stack-root { gap:16px!important; }
+ .welcome-actions { flex-direction:column; align-items:stretch; }
+ .welcome-actions .mantine-Button-label { white-space:normal; line-height:1.4; }
+ .welcome-actions .mantine-Button-root { height:auto; padding-block:14px; }
+}

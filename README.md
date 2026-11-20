@@ -6,114 +6,153 @@
 
 ## Превью личного кабинета
 
-Актуальные снимки интерфейса от 18 ноября 2026 года. Все данные демонстрационные: аккаунт, тарифы, баланс, сообщения и показатели мониторинга. Секреты и реальные ключи доступа не используются.
+Снимки обновлены 20 ноября 2026 года. Компьютер: 1440 × 1000 px, телефон: 390 × 844 px; длинные страницы сняты целиком. Данные аккаунта, платежей, сообщений и мониторинга демонстрационные. История и расширения показаны в состоянии без записей и настроенных предложений. Снимки не подтверждают работу внешней авторизации, платежей или доступность реальных серверов.
+
+| Обновлённые услуги | Обновлённый профиль |
+| --- | --- |
+| ![Услуги — тёмная тема](docs/screenshots/current-services-desktop-dark.png) | ![Профиль — светлая тема](docs/screenshots/current-profile-desktop-light.png) |
+
+Вся галерея — ниже. Раскройте раздел и нажмите на изображение для просмотра в полном размере.
+
+<details>
+<summary><strong>Основные разделы</strong></summary>
+
+**Компьютер**
+
+| Экран | Тёмная тема | Светлая тема |
+| --- | --- | --- |
+| Главная | ![Главная — тёмная тема](docs/screenshots/current-dashboard-desktop-dark.png) | ![Главная — светлая тема](docs/screenshots/current-dashboard-desktop-light.png) |
+| Мои услуги | ![Мои услуги — тёмная тема](docs/screenshots/current-services-desktop-dark.png) | ![Мои услуги — светлая тема](docs/screenshots/current-services-desktop-light.png) |
+| Карточка услуги | ![Карточка услуги — тёмная тема](docs/screenshots/current-service-desktop-dark.png) | ![Карточка услуги — светлая тема](docs/screenshots/current-service-desktop-light.png) |
+| Профиль | ![Профиль — тёмная тема](docs/screenshots/current-profile-desktop-dark.png) | ![Профиль — светлая тема](docs/screenshots/current-profile-desktop-light.png) |
+| Баланс | ![Баланс — тёмная тема](docs/screenshots/current-balance-desktop-dark.png) | ![Баланс — светлая тема](docs/screenshots/current-balance-desktop-light.png) |
+| История операций | ![История операций — тёмная тема](docs/screenshots/current-operations-desktop-dark.png) | ![История операций — светлая тема](docs/screenshots/current-operations-desktop-light.png) |
+| Уведомления | ![Уведомления — тёмная тема](docs/screenshots/current-notifications-desktop-dark.png) | ![Уведомления — светлая тема](docs/screenshots/current-notifications-desktop-light.png) |
+| Помощь | ![Помощь — тёмная тема](docs/screenshots/current-help-desktop-dark.png) | ![Помощь — светлая тема](docs/screenshots/current-help-desktop-light.png) |
+
+**Телефон**
+
+| Экран | Тёмная тема | Светлая тема |
+| --- | --- | --- |
+| Главная | ![Главная — тёмная тема](docs/screenshots/current-dashboard-mobile-dark.png) | ![Главная — светлая тема](docs/screenshots/current-dashboard-mobile-light.png) |
+| Мои услуги | ![Мои услуги — тёмная тема](docs/screenshots/current-services-mobile-dark.png) | ![Мои услуги — светлая тема](docs/screenshots/current-services-mobile-light.png) |
+| Карточка услуги | ![Карточка услуги — тёмная тема](docs/screenshots/current-service-mobile-dark.png) | ![Карточка услуги — светлая тема](docs/screenshots/current-service-mobile-light.png) |
+| Профиль | ![Профиль — тёмная тема](docs/screenshots/current-profile-mobile-dark.png) | ![Профиль — светлая тема](docs/screenshots/current-profile-mobile-light.png) |
+| Баланс | ![Баланс — тёмная тема](docs/screenshots/current-balance-mobile-dark.png) | ![Баланс — светлая тема](docs/screenshots/current-balance-mobile-light.png) |
+| История операций | ![История операций — тёмная тема](docs/screenshots/current-operations-mobile-dark.png) | ![История операций — светлая тема](docs/screenshots/current-operations-mobile-light.png) |
+| Уведомления | ![Уведомления — тёмная тема](docs/screenshots/current-notifications-mobile-dark.png) | ![Уведомления — светлая тема](docs/screenshots/current-notifications-mobile-light.png) |
+| Помощь | ![Помощь — тёмная тема](docs/screenshots/current-help-mobile-dark.png) | ![Помощь — светлая тема](docs/screenshots/current-help-mobile-light.png) |
+
+</details>
+
+<details>
+<summary><strong>Вход и регистрация</strong></summary>
+
+**Компьютер**
+
+| Экран | Тёмная тема | Светлая тема |
+| --- | --- | --- |
+| Стартовая страница | ![Стартовая страница — тёмная тема](docs/screenshots/current-landing-desktop-dark.png) | ![Стартовая страница — светлая тема](docs/screenshots/current-landing-desktop-light.png) |
+| AJAX-вход | ![AJAX-вход — тёмная тема](docs/screenshots/current-login-desktop-dark.png) | ![AJAX-вход — светлая тема](docs/screenshots/current-login-desktop-light.png) |
+| Регистрация | ![Регистрация — тёмная тема](docs/screenshots/current-register-desktop-dark.png) | ![Регистрация — светлая тема](docs/screenshots/current-register-desktop-light.png) |
+| Восстановление пароля | ![Восстановление пароля — тёмная тема](docs/screenshots/current-reset-desktop-dark.png) | ![Восстановление пароля — светлая тема](docs/screenshots/current-reset-desktop-light.png) |
+
+**Телефон**
+
+| Экран | Тёмная тема | Светлая тема |
+| --- | --- | --- |
+| Стартовая страница | ![Стартовая страница — тёмная тема](docs/screenshots/current-landing-mobile-dark.png) | ![Стартовая страница — светлая тема](docs/screenshots/current-landing-mobile-light.png) |
+| AJAX-вход | ![AJAX-вход — тёмная тема](docs/screenshots/current-login-mobile-dark.png) | ![AJAX-вход — светлая тема](docs/screenshots/current-login-mobile-light.png) |
+| Регистрация | ![Регистрация — тёмная тема](docs/screenshots/current-register-mobile-dark.png) | ![Регистрация — светлая тема](docs/screenshots/current-register-mobile-light.png) |
+| Восстановление пароля | ![Восстановление пароля — тёмная тема](docs/screenshots/current-reset-mobile-dark.png) | ![Восстановление пароля — светлая тема](docs/screenshots/current-reset-mobile-light.png) |
+
+</details>
+
+<details>
+<summary><strong>Подписка и подключение</strong></summary>
+
+**Компьютер**
+
+| Экран | Тёмная тема | Светлая тема |
+| --- | --- | --- |
+| Параметры подключения | ![Параметры подключения — тёмная тема](docs/screenshots/current-connection-desktop-dark.png) | ![Параметры подключения — светлая тема](docs/screenshots/current-connection-desktop-light.png) |
+| QR-код | ![QR-код — тёмная тема](docs/screenshots/current-qr-desktop-dark.png) | ![QR-код — светлая тема](docs/screenshots/current-qr-desktop-light.png) |
+| Центр устройств | ![Центр устройств — тёмная тема](docs/screenshots/current-devices-desktop-dark.png) | ![Центр устройств — светлая тема](docs/screenshots/current-devices-desktop-light.png) |
+| Диагностика | ![Диагностика — тёмная тема](docs/screenshots/current-diagnostics-desktop-dark.png) | ![Диагностика — светлая тема](docs/screenshots/current-diagnostics-desktop-light.png) |
+| Трафик | ![Трафик — тёмная тема](docs/screenshots/current-traffic-desktop-dark.png) | ![Трафик — светлая тема](docs/screenshots/current-traffic-desktop-light.png) |
+| Обновления подписки | ![Обновления подписки — тёмная тема](docs/screenshots/current-history-desktop-dark.png) | ![Обновления подписки — светлая тема](docs/screenshots/current-history-desktop-light.png) |
+| Расширения | ![Расширения — тёмная тема](docs/screenshots/current-addons-desktop-dark.png) | ![Расширения — светлая тема](docs/screenshots/current-addons-desktop-light.png) |
+| Смена тарифа через SHM | ![Смена тарифа через SHM — тёмная тема](docs/screenshots/current-tariff-desktop-dark.png) | ![Смена тарифа через SHM — светлая тема](docs/screenshots/current-tariff-desktop-light.png) |
+
+**Телефон**
+
+| Экран | Тёмная тема | Светлая тема |
+| --- | --- | --- |
+| Параметры подключения | ![Параметры подключения — тёмная тема](docs/screenshots/current-connection-mobile-dark.png) | ![Параметры подключения — светлая тема](docs/screenshots/current-connection-mobile-light.png) |
+| QR-код | ![QR-код — тёмная тема](docs/screenshots/current-qr-mobile-dark.png) | ![QR-код — светлая тема](docs/screenshots/current-qr-mobile-light.png) |
+| Центр устройств | ![Центр устройств — тёмная тема](docs/screenshots/current-devices-mobile-dark.png) | ![Центр устройств — светлая тема](docs/screenshots/current-devices-mobile-light.png) |
+| Диагностика | ![Диагностика — тёмная тема](docs/screenshots/current-diagnostics-mobile-dark.png) | ![Диагностика — светлая тема](docs/screenshots/current-diagnostics-mobile-light.png) |
+| Трафик | ![Трафик — тёмная тема](docs/screenshots/current-traffic-mobile-dark.png) | ![Трафик — светлая тема](docs/screenshots/current-traffic-mobile-light.png) |
+| Обновления подписки | ![Обновления подписки — тёмная тема](docs/screenshots/current-history-mobile-dark.png) | ![Обновления подписки — светлая тема](docs/screenshots/current-history-mobile-light.png) |
+| Расширения | ![Расширения — тёмная тема](docs/screenshots/current-addons-mobile-dark.png) | ![Расширения — светлая тема](docs/screenshots/current-addons-mobile-light.png) |
+| Смена тарифа через SHM | ![Смена тарифа через SHM — тёмная тема](docs/screenshots/current-tariff-mobile-dark.png) | ![Смена тарифа через SHM — светлая тема](docs/screenshots/current-tariff-mobile-light.png) |
+
+</details>
+
+<details>
+<summary><strong>Оплата и безопасность</strong></summary>
+
+**Компьютер**
+
+| Экран | Тёмная тема | Светлая тема |
+| --- | --- | --- |
+| Выбор тарифа | ![Выбор тарифа — тёмная тема](docs/screenshots/current-order-desktop-dark.png) | ![Выбор тарифа — светлая тема](docs/screenshots/current-order-desktop-light.png) |
+| Пополнение через SHM | ![Пополнение через SHM — тёмная тема](docs/screenshots/current-payment-desktop-dark.png) | ![Пополнение через SHM — светлая тема](docs/screenshots/current-payment-desktop-light.png) |
+| Промокод | ![Промокод — тёмная тема](docs/screenshots/current-promo-desktop-dark.png) | ![Промокод — светлая тема](docs/screenshots/current-promo-desktop-light.png) |
+| Смена пароля | ![Смена пароля — тёмная тема](docs/screenshots/current-password-desktop-dark.png) | ![Смена пароля — светлая тема](docs/screenshots/current-password-desktop-light.png) |
+| Настройка 2FA | ![Настройка 2FA — тёмная тема](docs/screenshots/current-2fa-desktop-dark.png) | ![Настройка 2FA — светлая тема](docs/screenshots/current-2fa-desktop-light.png) |
+| Ключи входа | ![Ключи входа — тёмная тема](docs/screenshots/current-passkey-desktop-dark.png) | ![Ключи входа — светлая тема](docs/screenshots/current-passkey-desktop-light.png) |
+
+**Телефон**
+
+| Экран | Тёмная тема | Светлая тема |
+| --- | --- | --- |
+| Выбор тарифа | ![Выбор тарифа — тёмная тема](docs/screenshots/current-order-mobile-dark.png) | ![Выбор тарифа — светлая тема](docs/screenshots/current-order-mobile-light.png) |
+| Пополнение через SHM | ![Пополнение через SHM — тёмная тема](docs/screenshots/current-payment-mobile-dark.png) | ![Пополнение через SHM — светлая тема](docs/screenshots/current-payment-mobile-light.png) |
+| Промокод | ![Промокод — тёмная тема](docs/screenshots/current-promo-mobile-dark.png) | ![Промокод — светлая тема](docs/screenshots/current-promo-mobile-light.png) |
+| Смена пароля | ![Смена пароля — тёмная тема](docs/screenshots/current-password-mobile-dark.png) | ![Смена пароля — светлая тема](docs/screenshots/current-password-mobile-light.png) |
+| Настройка 2FA | ![Настройка 2FA — тёмная тема](docs/screenshots/current-2fa-mobile-dark.png) | ![Настройка 2FA — светлая тема](docs/screenshots/current-2fa-mobile-light.png) |
+| Ключи входа | ![Ключи входа — тёмная тема](docs/screenshots/current-passkey-mobile-dark.png) | ![Ключи входа — светлая тема](docs/screenshots/current-passkey-mobile-light.png) |
+
+</details>
+
+<details>
+<summary><strong>Поддержка</strong></summary>
+
+**Компьютер**
+
+| Экран | Тёмная тема | Светлая тема |
+| --- | --- | --- |
+| Обращения | ![Обращения — тёмная тема](docs/screenshots/current-tickets-desktop-dark.png) | ![Обращения — светлая тема](docs/screenshots/current-tickets-desktop-light.png) |
+| Новый вопрос | ![Новый вопрос — тёмная тема](docs/screenshots/current-ticket-create-desktop-dark.png) | ![Новый вопрос — светлая тема](docs/screenshots/current-ticket-create-desktop-light.png) |
+| Переписка | ![Переписка — тёмная тема](docs/screenshots/current-ticket-chat-desktop-dark.png) | ![Переписка — светлая тема](docs/screenshots/current-ticket-chat-desktop-light.png) |
+
+**Телефон**
+
+| Экран | Тёмная тема | Светлая тема |
+| --- | --- | --- |
+| Обращения | ![Обращения — тёмная тема](docs/screenshots/current-tickets-mobile-dark.png) | ![Обращения — светлая тема](docs/screenshots/current-tickets-mobile-light.png) |
+| Новый вопрос | ![Новый вопрос — тёмная тема](docs/screenshots/current-ticket-create-mobile-dark.png) | ![Новый вопрос — светлая тема](docs/screenshots/current-ticket-create-mobile-light.png) |
+| Переписка | ![Переписка — тёмная тема](docs/screenshots/current-ticket-chat-mobile-dark.png) | ![Переписка — светлая тема](docs/screenshots/current-ticket-chat-mobile-light.png) |
+
+</details>
+
+<details>
+<summary><strong>Мобильная навигация</strong></summary>
 
 | Тёмная тема | Светлая тема |
 | --- | --- |
-| ![Кабинет — тёмная тема](docs/screenshots/dashboard.png) | ![Кабинет — светлая тема](docs/screenshots/dashboard-light.png) |
-
-Раскройте нужный раздел, чтобы посмотреть остальные экраны. Нажмите на изображение для просмотра в полном размере.
-
-<details>
-<summary><strong>Remnawave: серверы, трафик и расширения</strong></summary>
-
-| Экран | Тёмная тема | Светлая тема |
-| --- | --- | --- |
-| Диагностика и лимиты | ![Диагностика и лимиты — тёмная тема](docs/screenshots/remna-diagnostics.png) | ![Диагностика и лимиты — светлая тема](docs/screenshots/remna-diagnostics-light.png) |
-| Смена тарифа через SHM | ![Смена тарифа через SHM — тёмная тема](docs/screenshots/remna-tariff.png) | ![Смена тарифа через SHM — светлая тема](docs/screenshots/remna-tariff-light.png) |
-| График трафика | ![График трафика — тёмная тема](docs/screenshots/remna-traffic.png) | ![График трафика — светлая тема](docs/screenshots/remna-traffic-light.png) |
-| История обновлений подписки | ![История обновлений подписки — тёмная тема](docs/screenshots/remna-history.png) | ![История обновлений подписки — светлая тема](docs/screenshots/remna-history-light.png) |
-| Платные расширения | ![Платные расширения — тёмная тема](docs/screenshots/remna-addons.png) | ![Платные расширения — светлая тема](docs/screenshots/remna-addons-light.png) |
-| Замена ссылки доступа | ![Замена ссылки доступа — тёмная тема](docs/screenshots/remna-revoke.png) | ![Замена ссылки доступа — светлая тема](docs/screenshots/remna-revoke-light.png) |
-
-| На телефоне | Тёмная тема | Светлая тема |
-| --- | --- | --- |
-| Диагностика и лимиты | ![Диагностика и лимиты — мобильная тёмная тема](docs/screenshots/remna-diagnostics-mobile-dark.png) | ![Диагностика и лимиты — мобильная светлая тема](docs/screenshots/remna-diagnostics-mobile-light.png) |
-| Смена тарифа через SHM | ![Смена тарифа через SHM — мобильная тёмная тема](docs/screenshots/remna-tariff-mobile-dark.png) | ![Смена тарифа через SHM — мобильная светлая тема](docs/screenshots/remna-tariff-mobile-light.png) |
-| График трафика | ![График трафика — мобильная тёмная тема](docs/screenshots/remna-traffic-mobile-dark.png) | ![График трафика — мобильная светлая тема](docs/screenshots/remna-traffic-mobile-light.png) |
-| История обновлений подписки | ![История обновлений подписки — мобильная тёмная тема](docs/screenshots/remna-history-mobile-dark.png) | ![История обновлений подписки — мобильная светлая тема](docs/screenshots/remna-history-mobile-light.png) |
-| Платные расширения | ![Платные расширения — мобильная тёмная тема](docs/screenshots/remna-addons-mobile-dark.png) | ![Платные расширения — мобильная светлая тема](docs/screenshots/remna-addons-mobile-light.png) |
-
-</details>
-
-<details>
-<summary><strong>Стартовая страница и AJAX-вход</strong></summary>
-
-| Экран | Тёмная тема | Светлая тема |
-| --- | --- | --- |
-| Стартовая страница | ![Стартовая страница — тёмная тема](docs/screenshots/landing-preview-dark.png) | ![Стартовая страница — светлая тема](docs/screenshots/landing-preview-light.png) |
-| Мониторинг серверов | ![Мониторинг серверов — тёмная тема](docs/screenshots/monitor-dark.png) | ![Мониторинг серверов — светлая тема](docs/screenshots/monitor-light.png) |
-| Вход в кабинет | ![Вход в кабинет — тёмная тема](docs/screenshots/login.png) | ![Вход в кабинет — светлая тема](docs/screenshots/login-light.png) |
-| Регистрация | ![Регистрация — тёмная тема](docs/screenshots/register.png) | ![Регистрация — светлая тема](docs/screenshots/register-light.png) |
-| Восстановление пароля | ![Восстановление пароля — тёмная тема](docs/screenshots/password-reset.png) | ![Восстановление пароля — светлая тема](docs/screenshots/password-reset-light.png) |
-
-</details>
-
-<details>
-<summary><strong>Все разделы кабинета</strong></summary>
-
-| Экран | Тёмная тема | Светлая тема |
-| --- | --- | --- |
-| Главная | ![Главная — тёмная тема](docs/screenshots/dashboard.png) | ![Главная — светлая тема](docs/screenshots/dashboard-light.png) |
-| Мои услуги | ![Мои услуги — тёмная тема](docs/screenshots/services.png) | ![Мои услуги — светлая тема](docs/screenshots/services-light.png) |
-| Карточка услуги | ![Карточка услуги — тёмная тема](docs/screenshots/service-details.png) | ![Карточка услуги — светлая тема](docs/screenshots/service-details-light.png) |
-| Центр устройств | ![Центр устройств — тёмная тема](docs/screenshots/device-center.png) | ![Центр устройств — светлая тема](docs/screenshots/device-center-light.png) |
-| Параметры подключения | ![Параметры подключения — тёмная тема](docs/screenshots/connection.png) | ![Параметры подключения — светлая тема](docs/screenshots/connection-light.png) |
-| Баланс | ![Баланс — тёмная тема](docs/screenshots/balance.png) | ![Баланс — светлая тема](docs/screenshots/balance-light.png) |
-| История операций | ![История операций — тёмная тема](docs/screenshots/operations.png) | ![История операций — светлая тема](docs/screenshots/operations-light.png) |
-| Уведомления | ![Уведомления — тёмная тема](docs/screenshots/notifications.png) | ![Уведомления — светлая тема](docs/screenshots/notifications-light.png) |
-| Поддержка | ![Поддержка — тёмная тема](docs/screenshots/tickets.png) | ![Поддержка — светлая тема](docs/screenshots/tickets-light.png) |
-| Переписка с поддержкой | ![Переписка с поддержкой — тёмная тема](docs/screenshots/ticket-conversation.png) | ![Переписка с поддержкой — светлая тема](docs/screenshots/ticket-conversation-light.png) |
-| Профиль | ![Профиль — тёмная тема](docs/screenshots/profile.png) | ![Профиль — светлая тема](docs/screenshots/profile-light.png) |
-| Помощь | ![Помощь — тёмная тема](docs/screenshots/help.png) | ![Помощь — светлая тема](docs/screenshots/help-light.png) |
-
-</details>
-
-<details>
-<summary><strong>Формы и дополнительные действия</strong></summary>
-
-| Экран | Тёмная тема | Светлая тема |
-| --- | --- | --- |
-| Выбор тарифа | ![Выбор тарифа — тёмная тема](docs/screenshots/order.png) | ![Выбор тарифа — светлая тема](docs/screenshots/order-light.png) |
-| Пополнение баланса | ![Пополнение баланса — тёмная тема](docs/screenshots/payment.png) | ![Пополнение баланса — светлая тема](docs/screenshots/payment-light.png) |
-| Промокод | ![Промокод — тёмная тема](docs/screenshots/promo.png) | ![Промокод — светлая тема](docs/screenshots/promo-light.png) |
-| QR-код подписки | ![QR-код подписки — тёмная тема](docs/screenshots/subscription-qr.png) | ![QR-код подписки — светлая тема](docs/screenshots/subscription-qr-light.png) |
-| Создание обращения | ![Создание обращения — тёмная тема](docs/screenshots/ticket-create.png) | ![Создание обращения — светлая тема](docs/screenshots/ticket-create-light.png) |
-| Смена пароля | ![Смена пароля — тёмная тема](docs/screenshots/password-change.png) | ![Смена пароля — светлая тема](docs/screenshots/password-change-light.png) |
-| Настройка 2FA | ![Настройка 2FA — тёмная тема](docs/screenshots/two-factor.png) | ![Настройка 2FA — светлая тема](docs/screenshots/two-factor-light.png) |
-| Passkey | ![Passkey — тёмная тема](docs/screenshots/passkey.png) | ![Passkey — светлая тема](docs/screenshots/passkey-light.png) |
-
-</details>
-
-<details>
-<summary><strong>Мобильная версия — 390 px</strong></summary>
-
-| Экран | Тёмная тема | Светлая тема |
-| --- | --- | --- |
-| Стартовая страница | ![Стартовая страница — тёмная тема](docs/screenshots/mobile-landing-dark.png) | ![Стартовая страница — светлая тема](docs/screenshots/mobile-landing-light.png) |
-| AJAX-вход | ![AJAX-вход — тёмная тема](docs/screenshots/mobile-login-dark.png) | ![AJAX-вход — светлая тема](docs/screenshots/mobile-login-light.png) |
-| Регистрация | ![Регистрация — тёмная тема](docs/screenshots/mobile-register-dark.png) | ![Регистрация — светлая тема](docs/screenshots/mobile-register-light.png) |
-| Главная | ![Главная — тёмная тема](docs/screenshots/mobile-dashboard.png) | ![Главная — светлая тема](docs/screenshots/mobile-dashboard-light.png) |
-| Мои услуги | ![Мои услуги — тёмная тема](docs/screenshots/mobile-services.png) | ![Мои услуги — светлая тема](docs/screenshots/mobile-services-light.png) |
-| Карточка услуги | ![Карточка услуги — тёмная тема](docs/screenshots/mobile-service.png) | ![Карточка услуги — светлая тема](docs/screenshots/mobile-service-light.png) |
-| Центр устройств | ![Центр устройств — тёмная тема](docs/screenshots/mobile-devices.png) | ![Центр устройств — светлая тема](docs/screenshots/mobile-devices-light.png) |
-| Выбор тарифа | ![Выбор тарифа — тёмная тема](docs/screenshots/mobile-order.png) | ![Выбор тарифа — светлая тема](docs/screenshots/mobile-order-light.png) |
-| Баланс | ![Баланс — тёмная тема](docs/screenshots/mobile-balance.png) | ![Баланс — светлая тема](docs/screenshots/mobile-balance-light.png) |
-| История операций | ![История операций — тёмная тема](docs/screenshots/mobile-operations.png) | ![История операций — светлая тема](docs/screenshots/mobile-operations-light.png) |
-| Уведомления | ![Уведомления — тёмная тема](docs/screenshots/mobile-notifications.png) | ![Уведомления — светлая тема](docs/screenshots/mobile-notifications-light.png) |
-| Поддержка | ![Поддержка — тёмная тема](docs/screenshots/mobile-tickets.png) | ![Поддержка — светлая тема](docs/screenshots/mobile-tickets-light.png) |
-| Переписка | ![Переписка — тёмная тема](docs/screenshots/mobile-conversation.png) | ![Переписка — светлая тема](docs/screenshots/mobile-conversation-light.png) |
-| Профиль | ![Профиль — тёмная тема](docs/screenshots/mobile-profile.png) | ![Профиль — светлая тема](docs/screenshots/mobile-profile-light.png) |
-| Помощь | ![Помощь — тёмная тема](docs/screenshots/mobile-help.png) | ![Помощь — светлая тема](docs/screenshots/mobile-help-light.png) |
-
-</details>
-
-<details>
-<summary><strong>Стартовая страница целиком</strong></summary>
-
-| Экран | Тёмная тема | Светлая тема |
-| --- | --- | --- |
-| Все блоки стартовой страницы | ![Все блоки стартовой страницы — тёмная тема](docs/screenshots/landing-dark.png) | ![Все блоки стартовой страницы — светлая тема](docs/screenshots/landing-light.png) |
+| ![Все разделы — тёмная тема](docs/screenshots/current-menu-mobile-dark.png) | ![Все разделы — светлая тема](docs/screenshots/current-menu-mobile-light.png) |
 
 </details>
 

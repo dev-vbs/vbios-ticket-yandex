@@ -73,3 +73,20 @@
 .service-primary-card > .mantine-Stack-root > .mantine-Button-root { grid-column:1/-1; }
 .service-primary-card > .mantine-Stack-root > .mantine-Group-root { align-items:flex-start; }
 @media(max-width:600px){.service-primary-card > .mantine-Stack-root > .mantine-Group-root:not(:first-child){flex-direction:column;gap:6px}.service-primary-card .mantine-Text-root{overflow-wrap:anywhere}}
+
+/* Subscription overview: scan status, price and expiry before opening details. */
+.services-overview .services-header-card { background:transparent; border:0; padding:0 0 8px; }
+.services-overview .services-summary { border:1px solid var(--ui-border); background:var(--ui-surface); border-radius:18px; gap:0; overflow:hidden; }
+.services-overview .services-summary>div { border:0; background:transparent; border-radius:0; padding:20px 24px; }
+.services-overview .services-summary>div+div { border-inline-start:1px solid var(--ui-border); }
+.services-overview .services-search { max-width:520px; }
+.services-card-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; }
+.services-card-grid>.mantine-Center-root { grid-column:1/-1; }
+.services-card-grid>.mantine-Box-root { min-width:0; }
+.services-overview .service-overview-card { height:100%; border-radius:18px!important; transition:border-color .15s,box-shadow .15s; }
+.services-overview .service-overview-card:hover { border-color:var(--ui-accent); box-shadow:0 8px 24px #10233b08; }
+.services-overview .service-overview-card .mantine-Button-root { min-height:44px; margin-top:8px; }
+.services-overview .mantine-Accordion-item { background:transparent; border:0; }
+.services-overview .mantine-Accordion-control { padding:14px 0; border-radius:10px; }
+.services-overview .mantine-Accordion-content { padding:4px 0 12px; }
+@media(max-width:700px){.services-card-grid{grid-template-columns:1fr}.services-overview .services-summary>div{padding:14px 12px}.services-overview .services-summary .mantine-Text-root{overflow-wrap:anywhere}.services-overview .services-header-card__actions{flex-wrap:wrap}.services-overview .services-header-card__actions .mantine-Button-root{min-height:44px}.services-overview .services-search{max-width:none}}

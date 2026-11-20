@@ -674,7 +674,7 @@ function ServiceCard({ service, onClick, isChild = false, isLastChild = false }:
         <Group justify="space-between" align="flex-start" gap="md">
           <div style={{ minWidth: 0 }}>
             <Text size="xs" c="dimmed" mb={4}>Услуга #{service.user_service_id}</Text>
-            <Text size="sm" fw={600} style={{ overflowWrap: 'anywhere' }}>{service.service.name}</Text>
+            <Text size="lg" fw={700} style={{ overflowWrap: 'anywhere' }}>{service.service.name}</Text>
           </div>
           <Badge color={statusColor} variant="light" size="md" radius="sm">{statusLabel}</Badge>
         </Group>
@@ -690,7 +690,7 @@ function ServiceCard({ service, onClick, isChild = false, isLastChild = false }:
           </Stack>
         </Group>
         {expiry.label && <Text size="xs" className={`service-card__expiry expiry-indicator--${expiry.tone}`}>{expiry.label}</Text>}
-        <Button fullWidth variant="light" size="sm" rightSection={<IconArrowRight size={15} />} onClick={(event) => { event.stopPropagation(); onClick(); }}>Открыть услугу</Button>
+        <Button fullWidth variant="light" size="sm" aria-label={`Открыть услугу ${service.service.name}, №${service.user_service_id}`} rightSection={<IconArrowRight size={15} />} onClick={(event) => { event.stopPropagation(); onClick(); }}>Управлять подпиской</Button>
       </Stack>
     </Card>
   );
@@ -898,16 +898,17 @@ export default function Services() {
         <div><Text size="xs" c="dimmed">Всего услуг</Text><Text fw={750} size="xl">{flatServices.length}</Text></div>
       </div>
 
-      <TextInput size="md" radius="md" className="services-search" value={search} onChange={(event) => setSearch(event.currentTarget.value)} placeholder="Поиск по названию или номеру услуги" leftSection={<IconSearch size={16} />} />
+      <TextInput size="md" radius="md" className="services-search" aria-label="Поиск услуг" value={search} onChange={(event) => setSearch(event.currentTarget.value)} placeholder="Найти услугу по названию или номеру" leftSection={<IconSearch size={16} />} />
 
       {Object.keys(groupedServices).length === 0 ? (
         <Paper withBorder p="xl" radius="md">
           <Center>
             <Stack align="center" gap="md">
-              <Text c="dimmed">{t('services.noServices')}</Text>
-              <Button leftSection={<IconPlus size={16} />} onClick={emailBlocked ? () => setOpenEmailModal(true) : (config.EMAIL_VERIFY_REQUIRED === "true"  && !userEmailVerified ? () => setConfirmEmailNotVerified(true) : openOrderModal)}>
+              <Text fw={600}>{searchValue ? 'Ничего не найдено' : t('services.noServices')}</Text>
+              <Text size="sm" c="dimmed" ta="center">{searchValue ? 'Попробуйте другое название или номер услуги.' : 'Выберите тариф — после оплаты здесь появятся настройки подключения.'}</Text>
+              {searchValue ? <Button variant="light" onClick={() => setSearch('')}>Сбросить поиск</Button> : <Button leftSection={<IconPlus size={16} />} onClick={emailBlocked ? () => setOpenEmailModal(true) : (config.EMAIL_VERIFY_REQUIRED === "true"  && !userEmailVerified ? () => setConfirmEmailNotVerified(true) : openOrderModal)}>
                 {t('services.orderService')}
-              </Button>
+              </Button>}
             </Stack>
           </Center>
         </Paper>
@@ -934,7 +935,7 @@ export default function Services() {
                 </Group>
               </Accordion.Control>
               <Accordion.Panel>
-                <Stack gap="sm">
+                <div className="services-card-grid">
                   {paginatedServices.map((service) => (
                     <Box key={service.user_service_id}>
                       <ServiceCard
@@ -966,7 +967,7 @@ export default function Services() {
                       />
                     </Center>
                   )}
-                </Stack>
+                </div>
               </Accordion.Panel>
             </Accordion.Item>
             );

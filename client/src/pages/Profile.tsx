@@ -536,7 +536,7 @@ export default function Profile() {
       <Grid>
         <Grid.Col span={{ base: 12, md: 6 }} style={{ display: 'flex' }}>
           <Card className="profile-card profile-card--account" withBorder radius="lg" p="lg" style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-            <Group>
+            <Group className="profile-identity">
               <Avatar
                 size={56}
                 radius="xl"
@@ -545,32 +545,26 @@ export default function Profile() {
               >
                 {profile.full_name?.charAt(0) || profile.login?.charAt(0)?.toUpperCase() || '?'}
               </Avatar>
-              <FileButton onChange={uploadAvatar} accept="image/jpeg,image/png,image/webp,image/gif">
+              <div className="profile-photo-actions"><FileButton onChange={uploadAvatar} accept="image/jpeg,image/png,image/webp,image/gif">
                 {(props) => <Button {...props} size="xs" variant="light" leftSection={<IconCamera size={14} />} loading={avatarUploading}>Фото профиля</Button>}
               </FileButton>
-              {avatarUrl && <Button size="xs" variant="subtle" color="red" leftSection={<IconTrash size={14} />} onClick={() => void deleteAvatar()}>Удалить</Button>}
-              <div>
+              {avatarUrl && <Button size="xs" variant="subtle" color="red" leftSection={<IconTrash size={14} />} onClick={() => void deleteAvatar()}>Удалить</Button>}</div>
+              <div className="profile-identity-copy">
                 <Text fw={500} size="lg">{profile.full_name || profile.login || t('profile.user')}</Text>
                 <Text size="sm" c="cyan">{t('profile.id')}: {profile.user_id}
-                  <ActionIcon color={clipboardId.copied ? 'teal' : 'cyan'} variant="subtle" onClick={() => clipboardId.copy(profile.user_id)}>                      {clipboardId.copied ? <IconCheck size={16} /> : <IconCopy size={16} />}
+                  <ActionIcon aria-label="Скопировать ID аккаунта" color={clipboardId.copied ? 'teal' : 'cyan'} variant="subtle" onClick={() => clipboardId.copy(profile.user_id)}>                      {clipboardId.copied ? <IconCheck size={16} /> : <IconCopy size={16} />}
                   </ActionIcon>
                 </Text>
                 <Text size="sm" c="dimmed">{t('profile.login')}: {profile.login || '-'}</Text>
                 { profile.discount && profile.discount > 0 ? ( <Text size="xm" style={{ color: colorScheme === 'dark' ? '#4ade80' : '#16a34a' }}>{t('profile.discount')}: {profile.discount}%</Text>) : undefined}
               </div>
             </Group>
-            {!avatarUrl && !telegramPhoto && <Alert mt="md" color="cyan" variant="light" title="Добавьте аватарку">
-              Персональная фотография поможет сотрудникам быстрее узнать ваше обращение. Она будет показана в личном кабинете и в Telegram-теме поддержки.
-              <Text size="xs" c="dimmed" mt={5}>JPG, PNG, WebP или GIF · до 5 МБ</Text>
-              <FileButton onChange={uploadAvatar} accept="image/jpeg,image/png,image/webp,image/gif">
-                {(props) => <Button {...props} mt="sm" size="xs" variant="light" leftSection={<IconCamera size={14} />} loading={avatarUploading}>Загрузить аватарку</Button>}
-              </FileButton>
-            </Alert>}
+            <Text size="xs" c="dimmed" mt="sm">Фото необязательно · JPG, PNG, WebP или GIF · до 5 МБ</Text>
 
             <Divider my="md" />
 
             <Group>
-              <div style={{ maxWidth: '80%', width: '100%' }}>
+              <div style={{ minWidth: 0, width: '100%' }}><Text fw={600} size="sm" mb={8}>Пригласить друзей</Text>
                 <Group wrap="nowrap" gap="xs" align="center">
                   <Text
                     size="sm"
@@ -648,7 +642,7 @@ export default function Profile() {
                     value={telegramId || ''}
                     readOnly
                     placeholder={telegramLoading ? 'Загружаем…' : 'Аккаунт не привязан'}
-                    description="ID привязанного аккаунта. Изменение доступно через подтверждённую привязку в разделе Telegram ниже."
+                    description="Привязать или сменить аккаунт можно в разделе Telegram ниже."
                   />
                 </Grid.Col>
                 <Grid.Col span={{ base: 12, sm: 6 }}>

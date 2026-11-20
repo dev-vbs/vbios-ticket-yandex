@@ -20,3 +20,17 @@
   .profile-page .profile-completeness > .mantine-Group-root:first-child { display: grid; }
   .profile-page .profile-completeness .mantine-Badge-root { justify-self: start; }
 }
+
+/* Profile: identity, contact details and security form distinct reading groups. */
+.profile-page .profile-card { padding:26px!important; }
+.profile-page .profile-card:before { display:none!important; }
+.profile-identity { display:grid!important; grid-template-columns:64px minmax(0,1fr); gap:12px 18px!important; align-items:center; }
+.profile-identity>.mantine-Avatar-root { grid-column:1; grid-row:1; }
+.profile-identity-copy { grid-column:2; grid-row:1; min-width:0; overflow-wrap:anywhere; }
+.profile-photo-actions { grid-column:1/-1; display:flex; flex-wrap:wrap; gap:8px; }
+.profile-page .profile-form .mantine-Input-description { font-size:12px; line-height:1.6; }
+.profile-page .profile-card--account>.mantine-Button-root:last-child { margin-top:auto; }
+.profile-page .mantine-Tabs-list { gap:6px; padding:5px; background:var(--ui-surface-soft); border-radius:12px; }
+.profile-page .mantine-Tabs-tab { min-height:44px; border-radius:8px; }
+.profile-page .mantine-Tabs-tab[data-active] { background:var(--ui-surface); color:var(--ui-accent-strong); }
+@media(max-width:700px){.profile-page .profile-card{padding:20px!important}.profile-page .profile-card--details>.mantine-Group-root{gap:12px}.profile-page .mantine-Button-root{min-height:40px}.profile-page .mantine-Tabs-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}.profile-page .mantine-Tabs-tab{white-space:normal;padding:10px 6px;font-size:12px}}
