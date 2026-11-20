@@ -107,3 +107,9 @@ docker compose config --quiet
 ```
 
 Не публикуйте полный вывод docker compose config: он содержит секреты. Перед передачей логов удалите токены, cookies, пароли и ссылки подписок.
+
+
+## Дополнительные сервисы
+
+- [Push-уведомления: ключи, HTTPS, iOS, Android и PC](WEB-PUSH-RU.md). Для работы нужны новые образы push/client/core/api/spool и настройки `.env`.
+- [Страница подписки Remnawave: домен и запуск](SUBSCRIPTION-PAGE-RU.md). Включается отдельно профилем `subscription`, оплату обслуживает SHM.

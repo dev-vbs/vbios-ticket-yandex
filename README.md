@@ -4,6 +4,8 @@
 
 **[Полная инструкция установки на чистый сервер](docs/INSTALLATION-RU.md)** · [Обновление работающего сервера](docs/PRODUCTION-UPDATE-RU.md) · [Все скриншоты](docs/screenshots/README.md)
 
+**Новое:** [Страница подписки в стиле кабинета](docs/SUBSCRIPTION-PAGE-RU.md) · [Push для iOS, Android и PC](docs/WEB-PUSH-RU.md)
+
 ## С чего начать
 
 | Ваша задача | Что открыть |
@@ -239,3 +241,12 @@ docker compose logs --tail=50 client
 | Состояние проекта | [Реализованные функции и ограничения](docs/IMPLEMENTATION-STATUS.md) |
 
 Секреты хранятся в закрытой конфигурации SHM и .env. Публичный config.main предназначен только для содержимого сайта и разрешённых настроек мониторинга.
+
+
+## Отдельная страница подписки
+
+Запускается рядом с Remnawave независимо от SHM: [инструкция и compose](docs/SUBSCRIPTION-PAGE-RU.md). Примеры ниже используют демонстрационную подписку.
+
+| Светлая тема | Тёмная тема на телефоне |
+| --- | --- |
+| ![Страница подписки](docs/screenshots/subscription-page-desktop-light.png) | ![Страница подписки на телефоне](docs/screenshots/subscription-page-mobile-dark.png) |

@@ -1,0 +1,273 @@
+{
+  "version": "1",
+  "locales": [
+    "ru"
+  ],
+  "brandingSettings": {
+    "title": "vBios",
+    "logoUrl": "",
+    "supportUrl": "https://bill.example.com/tickets"
+  },
+  "uiConfig": {
+    "subscriptionInfoBlockType": "cards",
+    "installationGuidesBlockType": "cards"
+  },
+  "baseSettings": {
+    "metaTitle": "Subscription",
+    "metaDescription": "Subscription",
+    "showConnectionKeys": false,
+    "hideGetLinkButton": false
+  },
+  "baseTranslations": {
+    "installationGuideHeader": {
+      "ru": "Как подключиться"
+    },
+    "connectionKeysHeader": {
+      "ru": "Параметры подключения"
+    },
+    "linkCopied": {
+      "ru": "Ссылка скопирована"
+    },
+    "linkCopiedToClipboard": {
+      "ru": "Откройте приложение"
+    },
+    "getLink": {
+      "ru": "Добавить подписку"
+    },
+    "scanQrCode": {
+      "ru": "QR-код"
+    },
+    "scanQrCodeDescription": {
+      "ru": "Отсканируйте в приложении"
+    },
+    "copyLink": {
+      "ru": "Копировать ссылку"
+    },
+    "name": {
+      "ru": "Аккаунт"
+    },
+    "status": {
+      "ru": "Статус"
+    },
+    "active": {
+      "ru": "Активна"
+    },
+    "inactive": {
+      "ru": "Неактивна"
+    },
+    "expires": {
+      "ru": "Действует до"
+    },
+    "bandwidth": {
+      "ru": "Трафик"
+    },
+    "scanToImport": {
+      "ru": "Импорт подписки"
+    },
+    "expiresIn": {
+      "ru": "Осталось"
+    },
+    "expired": {
+      "ru": "Истекла"
+    },
+    "unknown": {
+      "ru": "Нет данных"
+    },
+    "indefinitely": {
+      "ru": "Без ограничений"
+    }
+  },
+  "svgLibrary": {
+    "device": "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\"><rect x=\"5\" y=\"2\" width=\"14\" height=\"20\" rx=\"3\"/><path d=\"M10 18h4\"/></svg>"
+  },
+  "platforms": {
+    "ios": {
+      "displayName": {
+        "ru": "iPhone и iPad"
+      },
+      "svgIconKey": "device",
+      "apps": [
+        {
+          "name": "Happ",
+          "featured": true,
+          "blocks": [
+            {
+              "svgIconKey": "device",
+              "svgIconColor": "blue",
+              "title": {
+                "ru": "1. Установите приложение"
+              },
+              "description": {
+                "ru": "Скачайте Happ из официального источника для своего устройства."
+              },
+              "buttons": []
+            },
+            {
+              "svgIconKey": "device",
+              "svgIconColor": "teal",
+              "title": {
+                "ru": "2. Добавьте подписку"
+              },
+              "description": {
+                "ru": "Нажмите кнопку ссылки подписки вверху страницы или отсканируйте QR-код."
+              },
+              "buttons": []
+            },
+            {
+              "svgIconKey": "device",
+              "svgIconColor": "green",
+              "title": {
+                "ru": "3. Подключитесь"
+              },
+              "description": {
+                "ru": "Откройте приложение, обновите подписку и выберите доступную локацию."
+              },
+              "buttons": []
+            }
+          ]
+        }
+      ]
+    },
+    "android": {
+      "displayName": {
+        "ru": "Android"
+      },
+      "svgIconKey": "device",
+      "apps": [
+        {
+          "name": "Happ",
+          "featured": true,
+          "blocks": [
+            {
+              "svgIconKey": "device",
+              "svgIconColor": "blue",
+              "title": {
+                "ru": "1. Установите приложение"
+              },
+              "description": {
+                "ru": "Скачайте Happ из официального источника для своего устройства."
+              },
+              "buttons": []
+            },
+            {
+              "svgIconKey": "device",
+              "svgIconColor": "teal",
+              "title": {
+                "ru": "2. Добавьте подписку"
+              },
+              "description": {
+                "ru": "Нажмите кнопку ссылки подписки вверху страницы или отсканируйте QR-код."
+              },
+              "buttons": []
+            },
+            {
+              "svgIconKey": "device",
+              "svgIconColor": "green",
+              "title": {
+                "ru": "3. Подключитесь"
+              },
+              "description": {
+                "ru": "Откройте приложение, обновите подписку и выберите доступную локацию."
+              },
+              "buttons": []
+            }
+          ]
+        }
+      ]
+    },
+    "windows": {
+      "displayName": {
+        "ru": "Windows"
+      },
+      "svgIconKey": "device",
+      "apps": [
+        {
+          "name": "Happ",
+          "featured": true,
+          "blocks": [
+            {
+              "svgIconKey": "device",
+              "svgIconColor": "blue",
+              "title": {
+                "ru": "1. Установите приложение"
+              },
+              "description": {
+                "ru": "Скачайте Happ из официального источника для своего устройства."
+              },
+              "buttons": []
+            },
+            {
+              "svgIconKey": "device",
+              "svgIconColor": "teal",
+              "title": {
+                "ru": "2. Добавьте подписку"
+              },
+              "description": {
+                "ru": "Нажмите кнопку ссылки подписки вверху страницы или отсканируйте QR-код."
+              },
+              "buttons": []
+            },
+            {
+              "svgIconKey": "device",
+              "svgIconColor": "green",
+              "title": {
+                "ru": "3. Подключитесь"
+              },
+              "description": {
+                "ru": "Откройте приложение, обновите подписку и выберите доступную локацию."
+              },
+              "buttons": []
+            }
+          ]
+        }
+      ]
+    },
+    "macos": {
+      "displayName": {
+        "ru": "macOS"
+      },
+      "svgIconKey": "device",
+      "apps": [
+        {
+          "name": "Happ",
+          "featured": true,
+          "blocks": [
+            {
+              "svgIconKey": "device",
+              "svgIconColor": "blue",
+              "title": {
+                "ru": "1. Установите приложение"
+              },
+              "description": {
+                "ru": "Скачайте Happ из официального источника для своего устройства."
+              },
+              "buttons": []
+            },
+            {
+              "svgIconKey": "device",
+              "svgIconColor": "teal",
+              "title": {
+                "ru": "2. Добавьте подписку"
+              },
+              "description": {
+                "ru": "Нажмите кнопку ссылки подписки вверху страницы или отсканируйте QR-код."
+              },
+              "buttons": []
+            },
+            {
+              "svgIconKey": "device",
+              "svgIconColor": "green",
+              "title": {
+                "ru": "3. Подключитесь"
+              },
+              "description": {
+                "ru": "Откройте приложение, обновите подписку и выберите доступную локацию."
+              },
+              "buttons": []
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

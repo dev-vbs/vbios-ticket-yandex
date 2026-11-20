@@ -19,7 +19,7 @@ ${escapeHtml(files.slice(0, 1000) || 'Изменения опубликован�
 Сборка и публикация Docker-образов в GitHub Actions успешно завершены.
 
 В папке с <code>docker-compose.yml</code> выполните:
-<pre><code class="language-shell">docker compose pull client admin core api spool
+<pre><code class="language-shell">docker compose pull client admin core api spool push
 docker compose stop spool
 docker compose up -d --no-deps --force-recreate core
 docker compose logs --tail=50 core</code></pre>

@@ -1,0 +1,21 @@
+# Самостоятельный запуск: docker compose -f docker-compose.subscription.yml up -d
+services:
+  remnawave-subscription-page:
+    image: "${SUBSCRIPTION_VERSION:-ghcr.io/dev-vbs/vbios-subscription:latest}"
+    container_name: remnawave-subscription-page
+    hostname: remnawave-subscription-page
+    restart: unless-stopped
+    environment:
+      REMNAWAVE_PANEL_URL: "${SUBPAGE_PANEL_URL:?Укажите URL панели Remnawave в .env}"
+      REMNAWAVE_API_TOKEN: "${SUBPAGE_API_TOKEN:?Укажите новый API-токен панели в .env}"
+      APP_PORT: "3010"
+      SUBPAGE_CONFIG_UUID: "${SUBPAGE_CONFIG_UUID:-00000000-0000-0000-0000-000000000000}"
+      VBIOS_CABINET_URL: "${SUBPAGE_CABINET_URL:-}"
+      TRUST_PROXY: "${SUBPAGE_TRUST_PROXY:-1}"
+    ports:
+      - "${SUBSCRIPTION_PORT:-127.0.0.1:3010}:3010"
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"

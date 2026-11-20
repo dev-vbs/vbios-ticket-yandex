@@ -1,3 +1,4 @@
+import PushSettings from '../components/PushSettings';
 import { Link } from 'react-router-dom';
 
 import axios from 'axios';
@@ -829,6 +830,7 @@ export default function Profile() {
       )}
 
       <section id="profile-security"><SecuritySettings /></section>
+      <PushSettings />
 
       <PayModal opened={payModalOpen} onClose={() => setPayModalOpen(false)} initialAmount={payModalAmount} />
 

@@ -160,3 +160,11 @@
 | ![Мобильное меню](current-menu-mobile-light.png) | ![Мобильное меню](current-menu-mobile-dark.png) |
 
 </details>
+
+
+## Страница подписки Remnawave
+
+Демонстрационные данные; снимки интерфейса не подтверждают подключение к реальной панели.
+
+- [Компьютер, светлая](subscription-page-desktop-light.png) · [тёмная](subscription-page-desktop-dark.png)
+- [Телефон, светлая](subscription-page-mobile-light.png) · [тёмная](subscription-page-mobile-dark.png)

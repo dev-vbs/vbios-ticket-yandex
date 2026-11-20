@@ -40,9 +40,9 @@ self.addEventListener('notificationclick', (event) => {
   event.notification.close()
   const notifData = event.notification.data as { url?: string; title?: string; body?: string }
   const path = notifData?.url || '/'
-  const target = new URL(path, self.location.origin)
-  if (notifData?.title) target.searchParams.set('_nt', notifData.title)
-  if (notifData?.body) target.searchParams.set('_nb', notifData.body)
+  let target: URL
+  try { target = new URL(path, self.location.origin) } catch { target = new URL('/notifications', self.location.origin) }
+  if (target.origin !== self.location.origin) target = new URL('/notifications', self.location.origin)
 
   event.waitUntil(
     (async () => {

@@ -1,4 +1,3 @@
-import { usePushNotifications } from '../hooks/usePushNotifications';
 import { type ReactNode, useRef, useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Avatar, Drawer, Menu } from '@mantine/core';
@@ -30,7 +29,6 @@ export function CabinetLayout({ children }: { children: ReactNode }) {
   const location = useLocation();
   const [menuOpened, setMenuOpened] = useState(false);
   const { user, avatarUrl, telegramPhoto, setAvatarUrl, logout, hasNewTicketMessages } = useStore();
-  const push = usePushNotifications();
   const main = useRef<HTMLElement>(null);
   const previousPath = useRef(location.pathname);
   // Keep the profile photo available in every cabinet view (including the
@@ -73,7 +71,6 @@ export function CabinetLayout({ children }: { children: ReactNode }) {
             <Menu.Item component={Link} to="/profile" leftSection={<IconSettings size={17} />}>Профиль и безопасность</Menu.Item>
             <Menu.Item component={Link} to="/operations" leftSection={<IconReceipt size={17} />}>История операций</Menu.Item>
             <Menu.Item component={Link} to="/notifications" leftSection={<IconBell size={17} />}>Уведомления</Menu.Item>
-            {push.isSupported && <Menu.Item disabled={push.isLoading} leftSection={<IconBell size={17} />} onClick={() => void (push.isSubscribed ? push.unsubscribe() : push.subscribe())}>{push.isSubscribed ? 'Отключить push-уведомления' : 'Включить push-уведомления'}</Menu.Item>}
             <Menu.Divider />
             <Menu.Item color="red" onClick={logout} leftSection={<IconLogout size={17} />}>Выйти из аккаунта</Menu.Item>
           </Menu.Dropdown>

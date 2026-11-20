@@ -1,0 +1,13 @@
+html, body { min-height:100%; margin:0; background:var(--mantine-color-body); color:var(--mantine-color-text); }
+#root { min-height:100vh; }
+[data-mantine-color-scheme="light"] { --mantine-color-body:#f4f7fb; }
+[data-mantine-color-scheme="dark"] { --mantine-color-body:#101722; }
+.header-wrapper { background:var(--mantine-color-default); border-bottom:1px solid var(--mantine-color-default-border); }
+.animated-background { display:none; }
+.logo-text-highlight { color:var(--mantine-primary-color-filled); }
+.logo-text-normal { color:var(--mantine-color-text); }
+[class*="info-card-"] { background:var(--mantine-color-default); border:1px solid var(--mantine-color-default-border); }
+.vbios-intro { padding:28px; border:1px solid var(--mantine-color-default-border); border-radius:24px; background:var(--mantine-color-default); }
+.vbios-intro h1 { font-size:clamp(26px,5vw,40px); line-height:1.2; letter-spacing:-.035em; margin:10px 0; }
+
+body, p, button, input, select, textarea { font-family: Inter, system-ui, -apple-system, Segoe UI, sans-serif; }

@@ -1,3 +1,4 @@
+import PushSettings from '../components/PushSettings';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Alert, Button, Loader, Stack, Text, Title, Switch, Group } from '@mantine/core';
@@ -60,6 +61,7 @@ export default function NotificationsPage() {
   const visibleRemna = remnaNotices.filter(n => n.kind === 'traffic' ? preferences.traffic : preferences.devices);
   const showReply = preferences.support && hasReply;
   return <Stack gap="xl"><header><Title order={1}>Уведомления</Title><Text c="dimmed" mt="sm">Сроки услуг, баланс и ответы поддержки.</Text></header>
+    <PushSettings />
     <section className="vpn-finance-panel"><Stack gap="md"><Title order={3}>Какие события показывать</Title><Text size="sm" c="dimmed">Настройки действуют в этом браузере для вашего аккаунта. Они не изменяют рассылки Telegram и email.</Text>{([['expiry', 'Окончание подписки и необходимость оплаты'], ['balance', 'Недостаточно средств для продления'], ['support', 'Ответы поддержки'], ['traffic', 'Приближение к лимиту трафика'], ['devices', 'Новые устройства подписки']] as const).map(([key, label]) => <Switch key={key} label={label} checked={preferences[key]} onChange={event => change(key, event.currentTarget.checked)} />)}</Stack></section>
     <Text size="sm" c="dimmed">Данные подписки проверяются при открытии этой страницы. Новые устройства определяются относительно предыдущей проверки; при первом посещении создаётся исходный список.</Text>
     {loading && services.length > 0 && <Group gap="xs"><Loader size="xs"/><Text size="sm" c="dimmed">Проверяем подписки…</Text></Group>}

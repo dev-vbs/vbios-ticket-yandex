@@ -23,6 +23,13 @@ jobs:
       - uses: actions/checkout@v4
       - name: Install Perl test dependencies
         run: sudo apt-get update && sudo apt-get install -y libjson-perl libwww-perl liburi-perl
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Проверить Web Push
+        run: |
+          npm ci --prefix push
+          npm test --prefix push
       - name: Check ticket delivery and responder selection
         run: prove help-apps-test.t media-multipart-test.t media-private-copy-test.t ticket-delivery-test.t support-caption-test.t oidc-cabinet-test.t security-boundaries-test.t telegram-binding-test.t telegram-oidc-identity-test.t telegram-widget-binding-test.t telegram-oidc-verification-test.t
       - name: Check Remnawave customer access and paid fulfillment
@@ -47,6 +54,12 @@ jobs:
           - image: vbios-clients
             context: ./client
             target: client
+          - image: vbios-subscription
+            context: ./subscription-page
+            target: subscription
+          - image: vbios-push
+            context: ./push
+            target: push
           - image: vbios-admin
             context: ./admin
             target: admin
