@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import NodeLatency from './NodeLatency';
 import './ServerMonitor.css';
 
@@ -30,7 +31,7 @@ export default function ServerMonitor({ monitor }: { monitor: MonitorData }) {
   return <section className="server-status-panel" aria-label="Доступность серверов">
     <header><div><span className="server-status-eyebrow">📡 Мониторинг сети</span><h2>Доступность серверов</h2></div><span className="server-status-summary">{stale ? 'Нет свежих данных' : failures ? `${failures} недоступно` : verified ? `${verified} из ${nodes.length} проверено` : 'Автоматическая проверка'}</span></header>
     {nodes.length ? <ul>{nodes.map((node, index) => <ServerRow key={`${node.name}-${index}`} node={node} stale={stale} />)}</ul> : <p className="server-status-empty">⚪ Данных о серверах пока нет. Проверка обновляется автоматически.</p>}
-    <footer><span>🟢 Доступен</span><span>🔴 Недоступен</span><span>⚪ Нет замера</span></footer>
+    <footer><span>🟢 Доступен</span><span>🔴 Недоступен</span><span>⚪ Нет замера</span><Link to="/status">История проверок →</Link></footer>
     <p className="server-status-help">Задержка от биллинга и с вашего устройства может отличаться. Нет замера — доступность не подтверждена.</p>
   </section>;
 }

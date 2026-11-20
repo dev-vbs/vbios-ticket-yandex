@@ -21,6 +21,7 @@ const desktopItems = [
   { path: '/notifications', label: 'Уведомления', icon: IconBell },
   { path: '/tickets', label: 'Поддержка', icon: IconHeadset },
   { path: '/help', label: 'Помощь', icon: IconHelpCircle },
+  { path: '/status', label: 'Состояние сети', icon: IconShieldLock },
 ];
 const mobileItems = [desktopItems[0], desktopItems[1], desktopItems[2], desktopItems[5]];
 const allItems = [...desktopItems, { path: '/profile', label: 'Профиль', icon: IconUser }];

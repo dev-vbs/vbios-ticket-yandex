@@ -34,6 +34,7 @@ const Tickets = lazy(() => import('./pages/Tickets'));
 const NotificationsPage = lazy(() => import('./pages/NotificationsPage'));
 const HelpPage = lazy(() => import('./pages/HelpPage'));
 const Login = lazy(() => import('./pages/Login'));
+const StatusPage = lazy(() => import('./pages/StatusPage'));
 import NotFound from './pages/NotFound';
 const AddToHomeScreen = lazy(() => import('./pages/AddToHomeScreen'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
@@ -156,6 +157,10 @@ function AppContent() {
   if (hasAddToHomeScreen) {
     if (isPWA) return <Navigate to="/" replace />;
     return <AddToHomeScreen />;
+  }
+
+  if (location.pathname === '/status') {
+    return <Suspense fallback={<Center mih="100vh"><Loader /></Center>}><StatusPage /></Suspense>;
   }
 
   if (isLoading) {
