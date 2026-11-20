@@ -51,6 +51,7 @@ local $ENV{TICKET_S3_SECRET_KEY}='TESTSECRET';
     sub do {
         my ($s,$sql,$attr,@params)=@_;
         push @{$s->{writes}},$sql;
+        push @{$s->{operations}},[$sql,@params];
         $s->{responder}=$params[1] if $sql =~ /INSERT INTO ticket_preferences/;
         return 1;
     }
@@ -99,6 +100,33 @@ like($@,qr/Choose ai or human/,'invalid responder rejected');
 }
 is(scalar @{$db->{writes}},0,'human choice skips AI before claiming job or calling provider');
 $db->{responder}='ai';
+{
+    local $config->{ticket}{ai}{enabled}=0;
+    $db->{writes}=[];
+    Core::TicketAI->reply($ticket,1,9);
+    ok((grep {/status='skipped'/} @{$db->{writes}}),'disabled AI does not leave queued messages blocking the queue');
+}
+{
+    $db->{writes}=[];
+    no warnings 'redefine';
+    local *LWP::UserAgent::request=sub { die 'Provider must not be called for an old message' };
+    Core::TicketAI->reply($ticket,1,9);
+    ok((grep {/status='skipped'/} @{$db->{writes}}),'a superseded queued message is skipped');
+    ok(!(grep {/status='processing'/} @{$db->{writes}}),'a newer message is not claimed by the old job');
+}
+$db->{writes}=[];
+{
+    $db->{operations}=[];
+    my @warnings;
+    no warnings 'redefine';
+    local $SIG{__WARN__}=sub { push @warnings, @_ };
+    local *LWP::UserAgent::request=sub { HTTP::Response->new(429,'Too Many Requests',[],'sensitive provider response') };
+    Core::TicketAI->reply($ticket,1,10);
+    ok((grep { $_->[0] =~ /status='error'/ && $_->[1] eq 'HTTP 429' } @{$db->{operations}}),'provider failure is recorded for the claimed job');
+    like(join('',@warnings),qr/HTTP 429/,'provider failure is visible in worker logs');
+    unlike(join('',@warnings),qr/sensitive provider response/,'provider response body is not logged');
+}
+$db->{writes}=[];
 {
     no warnings 'redefine';
     local *LWP::UserAgent::request=sub {

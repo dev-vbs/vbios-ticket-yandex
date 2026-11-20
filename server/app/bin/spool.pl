@@ -58,7 +58,8 @@ for (;;) {
         eval { cleanup_closed_tickets(); 1 } or warn "Ticket cleanup error: $@";
         $last_ticket_cleanup = time;
     }
-    eval { require Core::TicketAI; Core::TicketAI->process_queued(); 1 };
+    eval { require Core::TicketAI; Core::TicketAI->process_queued(); 1 }
+        or warn "Ticket AI queue processing failed\n";
     my $task_exists = 0;
     do {
         try {

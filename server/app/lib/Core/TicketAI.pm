@@ -34,7 +34,7 @@ sub process_queued {
         return;
     }
     my $ticket=get_service('Ticket',user_id=>$row->{user_id});
-    eval { $class->reply($ticket,$row->{ticket_id}); 1 } or do {
+    eval { $class->reply($ticket,$row->{ticket_id},$row->{source_message_id}); 1 } or do {
         my $error = "$@" || 'AI processing failed';
         $error =~ s/[\r\n]+/ /g;
         $error = substr($error, 0, 240);
@@ -48,10 +48,15 @@ sub process_queued {
 }
 
 sub reply {
-    my ($class,$ticket,$id)=@_;
+    my ($class,$ticket,$id,$queued_mid)=@_;
     my $cfg=get_service('config')->data_by_name('ticket') || {};
     my $ai=$cfg->{ai};
-    return unless ref($ai) eq 'HASH' && defined($ai->{enabled}) && $ai->{enabled} =~ /^(?:1|true)$/i;
+    unless (ref($ai) eq 'HASH' && defined($ai->{enabled}) && $ai->{enabled} =~ /^(?:1|true)$/i) {
+        if (defined $queued_mid) {
+            $ticket->dbh_auto_commit->do("UPDATE ticket_ai_jobs SET status='skipped',error=? WHERE source_message_id=? AND status='queued'", undef, 'AI disabled', $queued_mid);
+        }
+        return;
+    }
     my $mode=$ai->{reply_mode} || 'draft';
     die 'Invalid AI mode' unless $mode eq 'draft' || $mode eq 'auto';
     # The AI credential is configured only in config.ticket.ai.api_key.
@@ -78,11 +83,20 @@ sub reply {
     local $db->{PrintError}=0;
     my $json=JSON->new->utf8;
     my $row=$db->selectrow_hashref('SELECT * FROM tickets WHERE ticket_id=?',undef,$id);
-    return unless $row && $row->{status} ne 'closed' && $row->{status} ne 'archived';
+    unless ($row && $row->{status} ne 'closed' && $row->{status} ne 'archived') {
+        $db->do("UPDATE ticket_ai_jobs SET status='skipped',error=? WHERE source_message_id=? AND status='queued'", undef, 'Ticket is not eligible for AI processing', $queued_mid) if defined $queued_mid;
+        return;
+    }
     my ($responder)=$db->selectrow_array('SELECT responder FROM ticket_preferences WHERE ticket_id=?',undef,$id);
-    return if ($responder || '') eq 'human';
+    if (($responder || '') eq 'human') {
+        $db->do("UPDATE ticket_ai_jobs SET status='skipped',error=? WHERE source_message_id=? AND status='queued'", undef, 'Ticket assigned to staff', $queued_mid) if defined $queued_mid;
+        return;
+    }
     my $source=$db->selectrow_hashref('SELECT * FROM ticket_messages WHERE ticket_id=? ORDER BY message_id DESC LIMIT 1',undef,$id);
-    return unless $source && !$source->{is_admin} && $source->{message} =~ /\S/;
+    unless ($source && !$source->{is_admin} && defined($source->{message}) && $source->{message} =~ /\S/ && (!defined($queued_mid) || $source->{message_id} == $queued_mid)) {
+        $db->do("UPDATE ticket_ai_jobs SET status='skipped',error=? WHERE source_message_id=? AND status='queued'", undef, 'Message superseded or ineligible', $queued_mid) if defined $queued_mid;
+        return;
+    }
     my $mid=$source->{message_id};
     # Permanent claim gives at most one provider attempt per source message.
     my $claim=$db->do("UPDATE ticket_ai_jobs SET status='processing' WHERE source_message_id=? AND status='queued'",undef,$mid);
@@ -90,9 +104,9 @@ sub reply {
     return unless $claim && $claim ne '0E0';
     my $stage='read_history';
     eval {
-        my ($count)=$db->selectrow_array("SELECT COUNT(*) FROM ticket_ai_jobs WHERE ticket_id=?",undef,$id);
+        my ($count)=$db->selectrow_array("SELECT COUNT(*) FROM ticket_ai_jobs WHERE ticket_id=? AND status IN ('done','draft')",undef,$id);
         my ($human)=$db->selectrow_array('SELECT COUNT(*) FROM ticket_messages m WHERE m.ticket_id=? AND m.is_admin<>0 AND NOT EXISTS(SELECT 1 FROM ticket_ai_jobs j WHERE j.reply_message_id=m.message_id)',undef,$id);
-        if ($human || $count > _limit($ai->{max_replies_per_ticket},5,20)) {
+        if ($human || $count >= _limit($ai->{max_replies_per_ticket},5,20)) {
             $db->do("UPDATE ticket_ai_jobs SET status='skipped' WHERE source_message_id=?",undef,$mid);
             return;
         }
@@ -104,22 +118,13 @@ sub reply {
         $request->content($json->encode({model=>$ai->{model} || 'dashscope/qwen3.5-flash',messages=>\@messages,max_tokens=>_limit($ai->{max_tokens},600,4000),stream=>JSON::false()}));
         # Provider responses often take longer than a few seconds. Keep a safe
         # lower bound so an overly aggressive config cannot disable AI entirely.
-        my $timeout = _limit($ai->{timeout_seconds},12,30);
-        $timeout = 12 if $timeout < 12;
+        my $timeout = _limit($ai->{timeout_seconds},45,90);
+        $timeout = 30 if $timeout < 30;
         my $ua=LWP::UserAgent->new(timeout=>$timeout,max_size=>2_000_000,requests_redirectable=>[]);
         $stage='provider_request';
         my $response=$ua->request($request);
         unless ($response->is_success) {
-            die 'provider_http_429 detail=rate_limited' if $response->code == 429;
-            my $detail = eval { $json->decode($response->content)->{error}{message} } || '';
-            $detail = '' if ref($detail);
-            $detail = substr($response->content,0,2000) unless length($detail);
-            $detail =~ s/\Q$key\E/[REDACTED]/g;
-            $detail =~ s/Bearer\s+\S+/Bearer [REDACTED]/gi;
-            $detail =~ s/sk-[A-Za-z0-9_-]+/[REDACTED]/g;
-            $detail =~ s/eyJ[A-Za-z0-9_.-]+/[REDACTED]/g;
-            $detail =~ s/[\r\n\t]+/ /g;
-            die 'provider_http_' . $response->code . ' detail=' . substr($detail,0,160) . "\n";
+            die 'provider_http_' . $response->code . "\n";
         }
         $stage='decode_provider_json';
         my $body=$json->decode($response->content);
@@ -155,9 +160,10 @@ sub reply {
     } or do {
         # Redacted error code only; never persist the response body or request key.
         my $error = $@ || '';
-        my $code = $error =~ /provider_http_(\d+) detail=([^\n]*)/ ? 'HTTP '.$1.' '.$2 : 'AI stage=' . $stage . ($error =~ /Empty AI response/ ? ' empty_content' : '') . (defined($db->err) ? ' db_code=' . $db->err : '');
+        my $code = $error =~ /provider_http_(\d+)/ ? 'HTTP '.$1 : 'AI stage=' . $stage . ($error =~ /Empty AI response/ ? ' empty_content' : '') . (defined($db->err) ? ' db_code=' . $db->err : '');
         $code=substr($code,0,240);
-        $db->do("UPDATE ticket_ai_jobs SET status='error',error=? WHERE source_message_id=?",undef,$code,$mid);
+        $db->do("UPDATE ticket_ai_jobs SET status='error',error=? WHERE source_message_id=? AND status='processing'",undef,$code,$mid);
+        warn "Ticket AI job $mid failed: $code\n";
     };
 }
 1;
