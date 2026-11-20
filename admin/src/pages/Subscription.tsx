@@ -70,7 +70,7 @@ function Subscription() {
 
     if (subscriptionInfo && subscriptionInfo.status === 'PROGRESS') {
       // Обновляем каждую секунду для статуса "В процессе"
-      pollingIntervalRef.current = setInterval(() => {
+      pollingIntervalRef.current = window.setInterval(() => {
         loadSubscriptionInfo(true); // Передаем флаг фонового обновления
       }, 1000);
     }

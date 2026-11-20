@@ -334,8 +334,15 @@ function ConfigurationTabs() {
   const generateSecret = () => {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
     let secret = '';
-    for (let i = 0; i < 50; i++) {
-      secret += chars.charAt(Math.floor(Math.random() * chars.length));
+    const random = new Uint8Array(64);
+    const limit = 256 - (256 % chars.length);
+    while (secret.length < 50) {
+      crypto.getRandomValues(random);
+      for (const value of random) {
+        if (value >= limit) continue;
+        secret += chars.charAt(value % chars.length);
+        if (secret.length === 50) break;
+      }
     }
     return secret;
   };

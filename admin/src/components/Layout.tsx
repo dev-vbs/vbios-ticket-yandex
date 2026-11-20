@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { lazy, Suspense, useState, useEffect, useRef } from 'react';
 import { Link, useLocation, useNavigate, Outlet } from 'react-router-dom';
 import SelectedUserDropdown from './SelectedUserDropdown';
 import {
@@ -29,7 +29,7 @@ import { useBrandingStore } from '../store/brandingStore';
 import { useThemeStore, ThemeMode } from '../store/themeStore';
 import { useSettingsStore } from '../store/settingsStore';
 import toast from 'react-hot-toast';
-import TemplateModal from '../modals/TemplateModal';
+const TemplateModal = lazy(() => import('../modals/TemplateModal'));
 import { shm_request } from '../lib/shm_request';
 
 interface MenuItem {

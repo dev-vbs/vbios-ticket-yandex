@@ -1,35 +1,35 @@
-import { useEffect } from 'react';
+import { lazy, Suspense, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import toast from 'react-hot-toast';
 import { useAuthStore } from './store/authStore';
 import Layout from './components/Layout';
-import Login from './pages/Login';
-import Users from './pages/Users';
-import Services from './pages/Services';
-import UserServices from './pages/UserServices';
-import Withdraws from './pages/Withdraws';
-import Spool from './pages/Spool';
-import Pays from './pages/Pays';
-import Servers from './pages/Servers';
-import Templates from './pages/Templates';
-import Promo from './pages/Promo';
-import Dashboard from './pages/Dashboard';
-import Analytics from './pages/Analytics';
-import Profiles from './pages/Profiles';
-import Bonuses from './pages/Bonuses';
-import Storage from './pages/Storage';
-import Events from './pages/Events';
-import ServerGroups from './pages/ServerGroups';
-import Identities from './pages/Identities';
-import SpoolHistory from './pages/SpoolHistory';
-import SHMCloud from './pages/SHMCloud';
-import Subscription from './pages/Subscription';
-import PaymentSystems from './pages/PaymentSystems';
-import CurrencyConverter from './pages/CurrencyConverter';
-import ConfigurationTabs from './pages/ConfigurationTabs';
-import Topology from './pages/Topology';
-import NotFound from './pages/NotFound';
+const Login = lazy(() => import('./pages/Login'));
+const Users = lazy(() => import('./pages/Users'));
+const Services = lazy(() => import('./pages/Services'));
+const UserServices = lazy(() => import('./pages/UserServices'));
+const Withdraws = lazy(() => import('./pages/Withdraws'));
+const Spool = lazy(() => import('./pages/Spool'));
+const Pays = lazy(() => import('./pages/Pays'));
+const Servers = lazy(() => import('./pages/Servers'));
+const Templates = lazy(() => import('./pages/Templates'));
+const Promo = lazy(() => import('./pages/Promo'));
+const Dashboard = lazy(() => import('./pages/Dashboard'));
+const Analytics = lazy(() => import('./pages/Analytics'));
+const Profiles = lazy(() => import('./pages/Profiles'));
+const Bonuses = lazy(() => import('./pages/Bonuses'));
+const Storage = lazy(() => import('./pages/Storage'));
+const Events = lazy(() => import('./pages/Events'));
+const ServerGroups = lazy(() => import('./pages/ServerGroups'));
+const Identities = lazy(() => import('./pages/Identities'));
+const SpoolHistory = lazy(() => import('./pages/SpoolHistory'));
+const SHMCloud = lazy(() => import('./pages/SHMCloud'));
+const Subscription = lazy(() => import('./pages/Subscription'));
+const PaymentSystems = lazy(() => import('./pages/PaymentSystems'));
+const CurrencyConverter = lazy(() => import('./pages/CurrencyConverter'));
+const ConfigurationTabs = lazy(() => import('./pages/ConfigurationTabs'));
+const Topology = lazy(() => import('./pages/Topology'));
+const NotFound = lazy(() => import('./pages/NotFound'));
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated } = useAuthStore();
@@ -87,6 +87,7 @@ function App() {
           className: 'toast-with-close',
         }}
       />
+      <Suspense fallback={<div role="status" aria-live="polite" style={{padding:24,color:"var(--theme-content-text-muted)"}}>Загружаем раздел…</div>}>
       <Routes>
         <Route path="login" element={<Login />} />
         <Route
@@ -124,6 +125,7 @@ function App() {
         </Route>
         <Route path="*" element={<NotFound />} />
       </Routes>
+      </Suspense>
     </BrowserRouter>
   );
 }

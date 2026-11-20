@@ -86,7 +86,7 @@ export function AreaLineChart({
               color: 'var(--theme-content-text)',
             }}
             labelStyle={{ color: 'var(--theme-content-text-muted)' }}
-            formatter={(value: number) => [valueFormatter(value), title || 'Значение']}
+            formatter={(value) => [typeof value === "number" ? valueFormatter(value) : "Нет данных", title || 'Значение']}
             cursor={{ stroke: 'rgba(0, 0, 0, 0.3)', strokeWidth: 1, fill: 'rgba(0, 0, 0, 0.15)' }}
           />
           {showLegend && <Legend />}

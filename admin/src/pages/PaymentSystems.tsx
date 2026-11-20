@@ -36,9 +36,9 @@ function PaymentSystems() {
     setLoading(true);
     try {
       const response = await shm_request('shm/v1/admin/cloud/proxy/service/paysystems/list');
-      const systems = Array.isArray(response.data) ? response.data : (Array.isArray(response) ? response : []);
+      const systems: PaymentSystem[] = Array.isArray(response.data) ? response.data : (Array.isArray(response) ? response : []);
       setAvailableNames(systems.map((item: PaymentSystem) => item.name));
-      const configured = new Map(systems.map((item: PaymentSystem) => [item.name, item]));
+      const configured = new Map<string, PaymentSystem>(systems.map((item: PaymentSystem) => [item.name, item]));
       setPaymentSystems(catalog.map(item => configured.get(item.name) || item).concat(systems.filter((item: PaymentSystem) => !catalog.some(c => c.name === item.name))));
     } catch (error) {
       setPaymentSystems(catalog);

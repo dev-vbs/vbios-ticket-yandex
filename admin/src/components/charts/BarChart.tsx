@@ -111,7 +111,7 @@ export function BarChart({
               color: 'var(--theme-content-text)',
             }}
             labelStyle={{ color: 'var(--theme-content-text-muted)' }}
-            formatter={(value: number) => [valueFormatter(value), 'Значение']}
+            formatter={(value) => [typeof value === "number" ? valueFormatter(value) : "Нет данных", 'Значение']}
             cursor={{ fill: 'rgba(0, 0, 0, 0.3)' }}
           />
           {showLegend && <Legend />}

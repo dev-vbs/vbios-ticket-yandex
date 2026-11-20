@@ -8,7 +8,7 @@
     "devs": "vite --config vite.config-s.ts",
     "dev:server": "node server/index.js",
     "dev:all": "concurrently \"npm run dev:server\" \"npm run dev\"",
-    "build": "vite build",
+    "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "start": "node server/index.js"
   },
