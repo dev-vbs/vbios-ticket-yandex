@@ -1,8 +1,8 @@
 import { usePushNotifications } from '../hooks/usePushNotifications';
-import { type ReactNode, useRef, useEffect } from 'react';
+import { type ReactNode, useRef, useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Avatar, Menu } from '@mantine/core';
-import { IconHeadset, IconLogout, IconShieldLock, IconSettings, IconLayoutDashboard, IconWallet, IconReceipt, IconBell, IconChevronDown, IconUser, IconHelpCircle } from '@tabler/icons-react';
+import { Avatar, Drawer, Menu } from '@mantine/core';
+import { IconHeadset, IconLogout, IconShieldLock, IconSettings, IconLayoutDashboard, IconWallet, IconReceipt, IconBell, IconChevronDown, IconUser, IconHelpCircle, IconMenu2, IconArrowUpRight } from '@tabler/icons-react';
 import { config } from '../config';
 import { DEFAULT_AVATAR_URL, useStore } from '../store/useStore';
 import { userApi } from '../api/client';
@@ -11,6 +11,7 @@ import LanguageSwitcher from './LanguageSwitcher';
 import { LegalLinks } from './LegalLinks';
 import '../pages/Dashboard.css';
 import './VpnCabinet.css';
+import './CabinetDesign.css';
 
 const desktopItems = [
   { path: '/', label: 'Главная', icon: IconLayoutDashboard },
@@ -21,10 +22,12 @@ const desktopItems = [
   { path: '/tickets', label: 'Поддержка', icon: IconHeadset },
   { path: '/help', label: 'Помощь', icon: IconHelpCircle },
 ];
-const mobileItems = [desktopItems[0], desktopItems[1], desktopItems[2], desktopItems[5], { path: '/profile', label: 'Профиль', icon: IconUser }];
+const mobileItems = [desktopItems[0], desktopItems[1], desktopItems[2], desktopItems[5]];
+const allItems = [...desktopItems, { path: '/profile', label: 'Профиль', icon: IconUser }];
 
 export function CabinetLayout({ children }: { children: ReactNode }) {
   const location = useLocation();
+  const [menuOpened, setMenuOpened] = useState(false);
   const { user, avatarUrl, telegramPhoto, setAvatarUrl, logout, hasNewTicketMessages } = useStore();
   const push = usePushNotifications();
   const main = useRef<HTMLElement>(null);
@@ -53,7 +56,7 @@ export function CabinetLayout({ children }: { children: ReactNode }) {
   }, [location.pathname]);
   const active = (path: string) => path === '/' ? location.pathname === '/' : location.pathname.startsWith(path);
   const nav = (items: typeof desktopItems) => items.map(({ path, label, icon: Icon }) => (
-    <Link key={path} to={path} aria-current={active(path) ? 'page' : undefined} className={active(path) ? 'is-active' : ''}>
+    <Link key={path} to={path} onClick={() => setMenuOpened(false)} aria-current={active(path) ? 'page' : undefined} className={active(path) ? 'is-active' : ''}>
       <span className="vpn-nav-icon"><Icon size={19} />{path === '/tickets' && hasNewTicketMessages && <i className="vpn-unread" aria-label="Есть новые ответы" />}</span><span>{label}</span>
     </Link>
   ));
@@ -78,14 +81,15 @@ export function CabinetLayout({ children }: { children: ReactNode }) {
     </div></header>
     <div className="vpn-workspace">
       <aside className="vpn-sidebar" aria-label="Навигация кабинета">
-        <div className="vpn-sidebar__caption">УПРАВЛЕНИЕ</div>
-        <nav className="vpn-sidebar__nav">{nav(desktopItems)}</nav>
-        <div className="vpn-sidebar__footer">Безопасный кабинет<br /><span>vBios</span></div>
+        <div className="vpn-sidebar__caption">Личный кабинет</div>
+        <nav className="vpn-sidebar__nav">{nav(allItems)}</nav>
+        <Link to="/help" className="cabinet-sidebar-help"><IconHelpCircle size={24} /><strong>Поможем подключиться</strong><span>Инструкции для ваших устройств</span><IconArrowUpRight size={18} /></Link>
       </aside>
       <div className="vpn-content">
         <main ref={main} id="cabinet-content" tabIndex={-1} className="cabinet-main cabinet-page-main">{children}<footer className="cabinet-legal"><LegalLinks /></footer></main>
       </div>
     </div>
-    <nav className="vpn-bottom-nav" aria-label="Навигация кабинета">{nav(mobileItems)}</nav>
+    <nav className="vpn-bottom-nav" aria-label="Навигация кабинета">{nav(mobileItems)}<button type="button" aria-label="Все разделы кабинета" aria-expanded={menuOpened} onClick={() => setMenuOpened(true)} className={!mobileItems.some(item => active(item.path)) ? 'is-active' : ''}><IconMenu2 size={19} /><span>Ещё</span></button></nav>
+    <Drawer opened={menuOpened} onClose={() => setMenuOpened(false)} position="bottom" size="min(460px, 85dvh)" title="Разделы кабинета" className="cabinet-mobile-menu"><nav className="cabinet-mobile-menu__links" aria-label="Все разделы">{nav(allItems)}</nav></Drawer>
   </div>;
 }

@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 import { notifications } from '@mantine/notifications';
 import { monitorApi, userApi } from '../api/client';
 import { useStore } from '../store/useStore';
-import { IconAlertCircle, IconArrowRight, IconCalendarEvent, IconCircleCheck, IconCreditCard, IconRefresh, IconServer, IconWallet, IconPlus, IconHeadset, IconActivity } from '@tabler/icons-react';
+import { IconAlertCircle, IconArrowRight, IconCalendarEvent, IconCircleCheck, IconCreditCard, IconRefresh, IconServer, IconWallet, IconPlus, IconHeadset, IconActivity, IconShieldLock, IconHelpCircle } from '@tabler/icons-react';
 const PayModal = lazy(() => import('../components/PayModal'));
 import './Dashboard.css';
 
@@ -88,7 +88,7 @@ export default function Dashboard() {
   const blockedServices = services.filter((service) => ['BLOCK', 'block'].includes(service.status || ''));
   return <div className="dashboard-overview">
     <header className="cabinet-header">
-      <div><h1>Главная</h1><p>Здравствуйте, {user?.full_name || user?.login || 'пользователь'}. Всё важное по вашему аккаунту.</p></div>
+      <div><h1>Здравствуйте, {user?.full_name || user?.login || 'пользователь'}!</h1><p>Ваши подключения, оплата и помощь — всегда под рукой.</p></div>
       <button type="button" className="refresh-button" onClick={() => void load()} disabled={loading} aria-label="Обновить данные кабинета">
         <IconRefresh className={loading ? 'spin' : ''} size={17} /><span>Обновить</span>
       </button>
@@ -98,15 +98,10 @@ export default function Dashboard() {
       {expiringServices.slice(0, 2).map(service => <Link key={service.user_service_id} to={`/services/${service.user_service_id}`}><IconCalendarEvent size={19} /><span>{service.service?.name || service.name || `Услуга #${service.user_service_id}`} · {expiry(service.expire)}</span><IconArrowRight size={16} /></Link>)}
       {hasNewTicketMessages && <Link to="/tickets"><IconHeadset size={19} /><span>Новый ответ поддержки</span><IconArrowRight size={16} /></Link>}
     </section>}
-    <section className="dashboard-stats" aria-label="Сводка по аккаунту">
-      <Link to="/services" className="dashboard-stat"><span className="dashboard-stat__label">Активные услуги</span><strong>{!servicesUpdated ? '—' : activeServices.length}</strong><span className="dashboard-stat__hint">управление VPN</span></Link>
-      <Link to="/services" className="dashboard-stat dashboard-stat--warning"><span className="dashboard-stat__label">Истекают скоро</span><strong>{!servicesUpdated ? '—' : expiringServices.length}</strong><span className="dashboard-stat__hint">требуют внимания</span></Link>
-      <Link to="/services" className="dashboard-stat dashboard-stat--muted"><span className="dashboard-stat__label">Приостановлены</span><strong>{!servicesUpdated ? '—' : blockedServices.length}</strong><span className="dashboard-stat__hint">проверить услуги</span></Link>
-    </section>
 
     <div className="dashboard-primary">
       <section className="dashboard-funds" aria-label="Баланс аккаунта">
-        <div className="dashboard-section-label"><IconWallet size={18} />Ваш баланс</div>
+        <div className="dashboard-section-label"><IconWallet size={18} />Баланс аккаунта</div>
         <div className="dashboard-amount">{rubles(Number(user?.balance || 0))}<span> ₽</span></div>
         <p>{hasBalance ? 'Для оплаты и продления услуг' : 'Пополните баланс перед оплатой услуги'}</p>
         <button type="button" className="dashboard-pay" onClick={() => setPayModalOpen(true)}><IconPlus size={18} />Пополнить баланс</button>
@@ -120,6 +115,17 @@ export default function Dashboard() {
         {servicesUpdated && activeServices.length > 0 && <Link className="dashboard-section-footer" to="/services">Мои услуги<IconArrowRight size={16} /></Link>}
       </section>
     </div>
+    <section className="cabinet-shortcuts" aria-label="Быстрые действия">
+      <Link to="/services"><IconShieldLock size={22} /><span><strong>Подключить устройство</strong><small>Ссылка, QR-код и настройки</small></span><IconArrowRight size={18} /></Link>
+      <Link to="/help"><IconHelpCircle size={22} /><span><strong>Как начать пользоваться</strong><small>Инструкции для вашего устройства</small></span><IconArrowRight size={18} /></Link>
+      <Link to="/tickets"><IconHeadset size={22} /><span><strong>Получить помощь</strong><small>Напишите нам, если нужна поддержка</small></span><IconArrowRight size={18} /></Link>
+    </section>
+    <section className="dashboard-stats" aria-label="Сводка по аккаунту">
+      <Link to="/services" className="dashboard-stat"><span className="dashboard-stat__label">Активные услуги</span><strong>{!servicesUpdated ? '—' : activeServices.length}</strong><span className="dashboard-stat__hint">управление VPN</span></Link>
+      <Link to="/services" className="dashboard-stat dashboard-stat--warning"><span className="dashboard-stat__label">Истекают скоро</span><strong>{!servicesUpdated ? '—' : expiringServices.length}</strong><span className="dashboard-stat__hint">требуют внимания</span></Link>
+      <Link to="/services" className="dashboard-stat dashboard-stat--muted"><span className="dashboard-stat__label">Приостановлены</span><strong>{!servicesUpdated ? '—' : blockedServices.length}</strong><span className="dashboard-stat__hint">проверить услуги</span></Link>
+    </section>
+
     {monitor.enabled && <section className="node-monitor" aria-labelledby="node-monitor-title"><div className="node-monitor__head"><div><span className="node-monitor__eyebrow"><IconActivity size={14} />Сеть</span><h2 id="node-monitor-title">Доступность серверов</h2></div><span className={`node-monitor__live node-monitor__live--${monitorHealth}`}><i />{monitorHealth === 'online' ? 'Все работают' : monitorHealth === 'warning' ? 'Есть ограничения' : 'Нет свежих данных'}</span></div><div className="node-monitor__list">{(monitor.nodes || []).map((node, index) => <div className="node-monitor__row" key={`${node.name}-${node.country}-${index}`}><span className={`node-monitor__dot node-monitor__dot--${node.status}`} /><div><strong>{node.name}</strong><small>{node.country || 'Сервер Remnawave'}</small></div><span className={`node-monitor__status node-monitor__status--${node.status}`}><NodeLatency url={node.ping_url} serverLatency={node.latency_ms} />{node.status === 'online' ? 'РАБОТАЕТ' : node.status === 'maintenance' ? 'ТЕХРАБОТЫ' : node.status === 'offline' ? 'НЕДОСТУПЕН' : 'ПРОВЕРКА'}</span></div>)}</div></section>}
     <section className="cabinet-panel dashboard-payments" aria-labelledby="payments-heading">
       <div className="panel-title"><h2 id="payments-heading">Последние пополнения</h2><Link className="dashboard-text-action" to="/operations">Все операции<IconArrowRight size={16} /></Link></div>
