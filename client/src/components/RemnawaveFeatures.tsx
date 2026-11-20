@@ -1,3 +1,4 @@
+import TrafficChart from "./TrafficChart";
 import { useEffect, useState } from "react";
 import {
   Alert,
@@ -170,68 +171,9 @@ function SectionBody({
     );
   if (section === "traffic") {
     const values = (data.bytes || []).map((n) => Math.max(0, Number(n) || 0));
-    const max = Math.max(1, ...values);
-    return (
-      <Stack>
-        <Group justify="space-between">
-          <Text fw={650}>Последние 30 дней · UTC</Text>
-          <Badge variant="light">{gb(values.reduce((a, b) => a + b, 0))}</Badge>
-        </Group>
-        {!values.length ? (
-          <Text c="dimmed">Данных за этот период пока нет.</Text>
-        ) : (
-          <>
-            <div
-              className="remna-chart"
-              role="img"
-              aria-label="Расход трафика по дням. Значения доступны в таблице ниже."
-            >
-              {values.map((v, i) => (
-                <div
-                  className="remna-chart-column"
-                  key={i}
-                  title={`${data.days?.[i]}: ${gb(v)}`}
-                >
-                  <span
-                    style={{ height: `${Math.max(2, (v / max) * 100)}%` }}
-                  />
-                </div>
-              ))}
-            </div>
-            <Group justify="space-between">
-              <Text size="xs" c="dimmed">
-                {data.days?.[0]}
-              </Text>
-              <Text size="xs" c="dimmed">
-                {data.days?.[data.days.length - 1]}
-              </Text>
-            </Group>
-            <details>
-              <summary>Значения по дням</summary>
-              <div className="remna-table-wrap">
-                <table className="remna-table">
-                  <thead>
-                    <tr>
-                      <th>День</th>
-                      <th>Трафик</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {values.map((v, i) => (
-                      <tr key={i}>
-                        <td>{data.days?.[i]}</td>
-                        <td>{gb(v)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </details>
-          </>
-        )}
-      </Stack>
-    );
+    return <TrafficChart values={values} days={data.days || []} />;
   }
+
   if (section === "history")
     return (
       <Stack>
