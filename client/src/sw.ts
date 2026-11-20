@@ -12,26 +12,22 @@ self.addEventListener('fetch', (event) => {
 })
 
 self.addEventListener('push', (event) => {
-  if (!event.data) return
-
   let data: { title?: string; body?: string; icon?: string; badge?: string; url?: string; tag?: string } = {}
   try {
-    data = event.data.json()
+    data = event.data?.json() || {}
   } catch {
-    data = { body: event.data.text() }
+    data = { body: event.data?.text() || '' }
   }
 
-  const { title = 'Уведомление', body = '', icon, badge, url = '/', tag } = data
+  const { title = 'Новое уведомление', body = 'Откройте кабинет, чтобы узнать подробности.', url = '/notifications', tag } = data
 
   event.waitUntil(
     self.registration.showNotification(title, {
       body,
-      icon: icon || './icon-192.png',
-      badge: badge || './icon-512.png',
-      tag: tag || 'shm',
+      icon: '/icon-192.png',
+      badge: '/icon-192.png',
+      ...(tag ? { tag } : {}),
       data: { url, title, body },
-    }).then(() => {
-    }).catch(() => {
     })
   )
 })
