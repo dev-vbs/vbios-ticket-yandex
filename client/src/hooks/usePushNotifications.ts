@@ -63,7 +63,11 @@ export function usePushNotifications() {
     const sub = await (await registration()).pushManager.getSubscription();
     if (!sub) throw Error('Сначала включите уведомления.');
     const result = await request('test', 'POST', { endpoint: sub.endpoint });
-    if (!result.sent) throw Error(result.expired ? 'Подписка устарела. Отключите уведомления и включите их заново.' : 'Push-служба не подтвердила отправку. Проверьте ключи VAPID на сервере.');
+    if (!result.sent) {
+      if (result.expired) throw Error('Подписка устарела. Отключите уведомления и включите их заново.');
+      const detail = Array.isArray(result.errors) && result.errors.length ? ` (${result.errors.join(', ')})` : '';
+      throw Error(`Push-провайдер не принял сообщение${detail}. Проверьте логи push-сервиса.`);
+    }
     setMessage('Тест передан push-службе. Проверьте уведомления устройства и режим «Не беспокоить».');
   });
   return { isEnabled: settings.enabled, isSupported: supported && settings.enabled, browserSupported: supported, isSubscribed, isLoading, error, message, subscribe, unsubscribe, test };

@@ -21,6 +21,12 @@ test('Push endpoints and navigation cannot target arbitrary hosts', () => {
   assert.equal(notification({ body: 'x'.repeat(1000) }).body.length, 300);
 });
 
+test('Push subscriptions accept browser endpoint providers', () => {
+  for (const host of ['fcm.googleapis.com', 'updates.push.services.mozilla.com', 'web.push.apple.com']) {
+    assert(validSubscription({ ...sub, endpoint: `https://${host}/wpush/${'a'.repeat(20)}` }));
+  }
+});
+
 test('SHM authentication, same-origin writes and subscription ownership', async () => {
   const dir = mkdtempSync(join(tmpdir(), 'vbios-push-'));
   const shm = createServer((req, res) => { res.setHeader('Content-Type','application/json'); const validClient = req.headers['user-agent'] === 'test-browser' && req.headers['x-forwarded-for'] === '203.0.113.5'; res.end(JSON.stringify(validClient && req.headers.cookie === 'session_id=session-user-2' ? {data:[{user_id:2}]} : validClient && req.headers.cookie === 'session_id=session-user-3' ? {data:[{user_id:3}]} : {error:'unauthorized'})); });

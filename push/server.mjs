@@ -41,17 +41,23 @@ async function userId(req) {
 async function send(user, payload, endpoint) {
   const rows = endpoint ? db.prepare('SELECT * FROM subscriptions WHERE user_id=? AND endpoint=?').all(user, endpoint) : db.prepare('SELECT * FROM subscriptions WHERE user_id=?').all(user);
   let sent = 0, expired = 0, failed = 0;
+  const errors = [];
   // Four concurrent deliveries bound both provider load and total response time.
   for (let start = 0; start < rows.length; start += 4) {
     await Promise.all(rows.slice(start, start + 4).map(async (row) => {
     try { await webpush.sendNotification(JSON.parse(row.subscription), JSON.stringify(payload), { TTL: 3600, timeout: 10000 }); sent++; }
     catch (error) {
       if ([404, 410].includes(error.statusCode)) { db.prepare('DELETE FROM subscriptions WHERE endpoint=?').run(row.endpoint); expired++; }
-      else failed++;
+      else {
+        failed++;
+        const status = Number(error.statusCode) || 0;
+        errors.push(status ? `HTTP ${status}` : 'ошибка соединения');
+        console.error(`Push delivery failed (${status || 'network'})`);
+      }
     }
     }));
   }
-  return { sent, expired, failed };
+  return { sent, expired, failed, errors: [...new Set(errors)].slice(0, 5) };
 }
 export const server = createServer(async (req, res) => {
   const reply = (code, value) => { res.writeHead(code, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' }); res.end(JSON.stringify(value)); };
