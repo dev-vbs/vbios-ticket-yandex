@@ -75,6 +75,30 @@ sub _notify_safe {
     };
 }
 
+sub _push_reply_safe {
+    my ($self, $ticket_id, $message_id, $message, $source) = @_;
+    return unless ($ENV{WEB_PUSH_ENABLE} || '') eq 'true';
+    return unless $ticket_id && $ticket_id =~ /^\d+$/ && $message_id && $message_id =~ /^\d+$/;
+
+    my $body = $message // '';
+    $body =~ s/\s+/ /g;
+    $body =~ s/^\s+|\s+$//g;
+    $body = length($body) > 180 ? substr($body, 0, 177) . '...' : $body;
+    $body ||= 'Откройте обращение, чтобы прочитать ответ.';
+
+    eval {
+        my $push = $self->srv('Push') or die 'Push service unavailable';
+        my $result = $push->send(
+            title => $source eq 'ai' ? 'Ответ ИИ-помощника' : 'Ответ поддержки',
+            body => $body,
+            url => '/tickets',
+            tag => 'ticket-' . $ticket_id,
+        );
+        die 'Push provider delivery failed' if ref($result) eq 'HASH' && ($result->{failed} || 0) > 0;
+        1;
+    } or logger->error("Ticket push notification failed for message #$message_id");
+}
+
 sub api_options {
     my $cfg=get_service('config')->data_by_name('ticket') || {};
     my $ai=$cfg->{ai} || {};

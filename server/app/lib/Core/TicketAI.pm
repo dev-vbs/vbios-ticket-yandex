@@ -135,6 +135,7 @@ sub reply {
         # Serialize against api_close and recheck new messages after the slow HTTP call.
         $stage='begin_transaction';
         $db->begin_work;
+        my $published_reply_id;
         eval {
             $stage='lock_ticket';
             my $current=$db->selectrow_hashref('SELECT status FROM tickets WHERE ticket_id=? FOR UPDATE',undef,$id);
@@ -152,10 +153,12 @@ sub reply {
                 my $reply_id=$db->{mysql_insertid};
                 $db->do("UPDATE ticket_ai_jobs SET status='done',answer=?,reply_message_id=? WHERE source_message_id=?",undef,$answer,$reply_id,$mid);
                 $db->do("UPDATE tickets SET status='waiting',updated=NOW() WHERE ticket_id=?",undef,$id);
+                $published_reply_id=$reply_id;
             }
             $stage='commit_reply';
             $db->commit or die 'AI commit failed'; 1;
         } or do { my $failure=$@; eval { $db->rollback }; die $failure; };
+        $ticket->_push_reply_safe($id,$published_reply_id,$answer,'ai') if $published_reply_id;
         1;
     } or do {
         # Redacted error code only; never persist the response body or request key.

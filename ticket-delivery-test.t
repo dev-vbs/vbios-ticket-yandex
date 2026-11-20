@@ -1,5 +1,6 @@
 use strict;
 use warnings;
+use utf8;
 use Test::More;
 use HTTP::Response;
 use lib 'server/app/lib';
@@ -56,7 +57,7 @@ local $ENV{TICKET_S3_SECRET_KEY}='TESTSECRET';
         return 1;
     }
     sub begin_work {1}
-    sub commit {1}
+    sub commit {$_[0]{commits}++; 1}
     sub rollback {1}
     sub err {undef}
     package TicketFixture;
@@ -66,6 +67,11 @@ local $ENV{TICKET_S3_SECRET_KEY}='TESTSECRET';
     sub user_id {1}
     sub telegram_sync { $_[0]{notified}++; $_[0]{handoff}=$_[2]; }
     sub _result { return {ticket_id=>$_[1],responder=>$_[0]{db}{responder}} }
+    sub srv { $_[0]{push} }
+    package PushFixture;
+    sub send { my ($self,%args)=@_; push @{$self->{sent}},\%args; die 'push unavailable' if $self->{fail}; return {sent=>1} }
+    package LogFixture;
+    sub error { $_[0]{errors}++ }
 }
 $config=bless {ticket=>{ai=>{enabled=>1,reply_mode=>'auto',api_key=>'TEST',instructions=>'Support',max_tokens=>100}}},'ConfigFixture';
 my $storage=Core::TicketStorage->new({bucket=>'test-bucket',access_key=>'TESTACCESS',secret_key=>'TESTSECRET'});
@@ -80,6 +86,26 @@ eval {$storage->download_url('test-bucket','../private')};
 like($@,qr/Invalid object key/,'unsafe object keys rejected');
 my $db=bless {responder=>'human',writes=>[]},'DBFixture';
 my $ticket=bless {db=>$db},'TicketFixture';
+{
+    local $ENV{WEB_PUSH_ENABLE}='true';
+    my $push=bless {sent=>[]},'PushFixture';
+    $ticket->{push}=$push;
+    $ticket->_push_reply_safe(42,100,"Ответ\nподдержки",'human');
+    is($push->{sent}[0]{title},'Ответ поддержки','support push identifies the sender');
+    is($push->{sent}[0]{body},'Ответ поддержки','support push contains a readable message');
+    is($push->{sent}[0]{url},'/tickets','support push opens the ticket list');
+    is($push->{sent}[0]{tag},'ticket-42','notifications for a ticket share a tag');
+    $ticket->_push_reply_safe(42,101,'x' x 200,'ai');
+    is($push->{sent}[1]{title},'Ответ ИИ-помощника','AI push identifies the sender');
+    is(length($push->{sent}[1]{body}),180,'long replies are bounded');
+    my $log=bless {},'LogFixture';
+    $push->{fail}=1;
+    no warnings 'redefine';
+    local *Core::Ticket::logger=sub { $log };
+    eval { $ticket->_push_reply_safe(42,102,'Ответ','human') };
+    is($@,'','push delivery failure does not fail the saved reply');
+    is($log->{errors},1,'push delivery failure is logged');
+}
 ok($ticket->api_options->{ai_available},'configured automatic AI is available');
 $config->{ticket}{ai}{reply_mode}='draft';
 ok(!$ticket->api_options->{ai_available},'draft-only AI is not offered as an automatic responder');
@@ -100,6 +126,18 @@ like($@,qr/Choose ai or human/,'invalid responder rejected');
 }
 is(scalar @{$db->{writes}},0,'human choice skips AI before claiming job or calling provider');
 $db->{responder}='ai';
+{
+    $db->{mysql_insertid}=91;
+    $db->{commits}=0;
+    my @pushes;
+    no warnings 'redefine';
+    local *Core::Ticket::_push_reply_safe=sub { push @pushes, [@_, $db->{commits}] };
+    local *LWP::UserAgent::request=sub { HTTP::Response->new(200,'OK',[],'{"choices":[{"message":{"content":"AI answer"}}]}') };
+    Core::TicketAI->reply($ticket,1,10);
+    is(scalar @pushes,1,'a published AI reply sends one push');
+    is($pushes[0][2],91,'push refers to the saved reply');
+    ok($pushes[0][-1] > 0,'push is sent after commit');
+}
 {
     local $config->{ticket}{ai}{enabled}=0;
     $db->{writes}=[];

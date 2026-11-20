@@ -1524,7 +1524,8 @@ sub ticket_group_update {
     my $profile_data = $tg_data->{$self->profile_name} || $tg_data;
     my $user_chat = $profile_data->{chat_id} || $profile_data->{user_id};
     # Commit support reply before the network call. Telegram cannot roll back SHM.
-    $self->dbh->commit;
+    $self->dbh->commit or die 'Support reply commit failed';
+    $ticket->_push_reply_safe($row->{ticket_id},$support_mid,$text,'human');
     my $delivery_error;
     if ($user_chat && $user_chat =~ /^[1-9][0-9]*$/) {
         eval {

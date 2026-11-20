@@ -56,14 +56,15 @@ like($@,qr/code=403/,'blocked private chat is reported as failed delivery');
     sub selectrow_hashref { return {ticket_id=>7,user_id=>2,status=>'open'} }
     sub selectrow_array {0}
     sub do {my ($self,$sql,$attr,@params)=@_;push @{$self->{writes}},[$sql,@params];return 1}
-    sub commit {1}
+    sub commit {$_[0]{commits}++; 1}
     sub rollback {1}
     package SupportUser;
     sub settings {$_[0]{settings}}
     package SupportGroup;
     our @ISA=('SupportTG');
     sub cfg {{id=>-100777}}
-    sub get_service {{}}
+    our @pushes;
+    sub get_service { my ($name,%args)=@_; return bless {user_id=>$args{user_id}},'SupportTicket' }
     sub logger {bless {},'SupportLogger'}
     sub dbh {$_[0]{db}}
     sub message {$_[0]{message}}
@@ -72,6 +73,8 @@ like($@,qr/code=403/,'blocked private chat is reported as failed delivery');
     sub ticket_link_reply {my $self=shift;push @{$self->{links}},[@_]}
     package SupportLogger;
     sub error {1}
+    package SupportTicket;
+    sub _push_reply_safe { push @SupportGroup::pushes, [@_] }
 }
 open my $source,'<:encoding(UTF-8)','server/app/lib/Core/Transport/Telegram.pm' or die $!;
 my $code=do {local $/;<$source>};close $source;
@@ -95,6 +98,9 @@ is_deeply([@$attachment[1,2]],[42,88],'actual handler links image to same cabine
 is(scalar @{$group->{calls}},1,'actual handler does not send a detached text notification');
 is($group->{calls}[0]{data}{caption},$caption,'actual handler sends caption with photo');
 is_deeply($group->{links}[0],[123456,901,7,2],'native Reply on photo maps to correct owner and ticket');
+is(scalar @SupportGroup::pushes,1,'support reply sends one push');
+is($SupportGroup::pushes[0][0]{user_id},2,'push is addressed to the ticket owner');
+is_deeply([@{$SupportGroup::pushes[0]}[1..4]],[7,42,$caption,'human'],'push uses the saved reply and caption');
 $group->{calls}=[];
 $group->{links}=[];
 $group->{owner}{settings}={};
