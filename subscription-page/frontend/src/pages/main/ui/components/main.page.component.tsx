@@ -88,7 +88,7 @@ export const MainPageComponent = ({ isMobile, platform }: IMainPageComponentProp
                     </section>
                     <div className="subscription-hero-panels">
                     <Paper withBorder radius="lg" p={{ base: 'md', sm: 'xl' }} className="subscription-panel subscription-summary">
-                        <Group justify="space-between" className="subscription-panel-top" align="flex-start"><IconShieldCheck className="subscription-shield" size={46} stroke={1.35} /><IconArrowRight className="subscription-panel-arrow" size={23} stroke={1.5} /></Group>
+                        <div className="subscription-panel-top"><span className="subscription-icon-wrap"><IconShieldCheck className="subscription-shield" size={30} stroke={1.5} /></span></div>
                         <Group justify="space-between" align="flex-start" gap="xs">
                             <Box>
                                 <Text size="sm" c="dimmed">Подписка</Text>
@@ -100,7 +100,7 @@ export const MainPageComponent = ({ isMobile, platform }: IMainPageComponentProp
                         {serviceUrl && <Button component="a" href={serviceUrl} variant="filled" fullWidth mt="lg" rightSection={<IconArrowRight size={17} />}>Управлять услугой</Button>}
                     </Paper>
                     {!config.baseSettings.hideGetLinkButton && <Paper withBorder radius="lg" p={{ base: 'md', sm: 'xl' }} className="subscription-panel subscription-quick-connect">
-                        <Group justify="space-between" className="subscription-panel-top" align="flex-start"><IconQrcode className="subscription-shield" size={46} stroke={1.35} /><IconArrowRight className="subscription-panel-arrow" size={23} stroke={1.5} /></Group>
+                        <div className="subscription-panel-top"><span className="subscription-icon-wrap"><IconQrcode className="subscription-shield" size={30} stroke={1.5} /></span></div>
                         <Title order={2} className="subscription-quick-title">Подключить устройство</Title>
                         <Text className="subscription-quick-description">Откройте QR-код или скопируйте ссылку для приложения.</Text>
                         <SubscriptionLinkWidget buttonOnly hideGetLink={false} supportUrl="" />

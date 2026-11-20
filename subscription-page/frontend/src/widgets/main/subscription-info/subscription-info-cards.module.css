@@ -1,8 +1,8 @@
 .cardItem {
-    padding: var(--mantine-spacing-lg);
-    background: var(--mantine-color-default);
-    border: 1px solid var(--mantine-color-default-border);
-    border-radius: var(--mantine-radius-md);
+    padding: 12px;
+    background: var(--subscription-panel-alt);
+    border: 1px solid var(--subscription-border);
+    border-radius: 12px;
 }
 
 .iconBlue {
