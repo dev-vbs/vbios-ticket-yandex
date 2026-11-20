@@ -40,24 +40,24 @@ jobs:
           [[ -n "${FILES}" ]] || FILES="Изменения опубликованы в Docker-образах."
           MESSAGE=$(cat <<EOF
           🔔 Обновление личного кабинета
-          
+
           📦 Репозиторий: ${REPOSITORY}
           🌿 Ветка: ${BRANCH}
           🔖 Коммит: ${COMMIT_SHA:0:7}
           👤 Автор: ${AUTHOR}
-          
+
           📝 Что изменилось:
           ${SUBJECT}
           ${FILES}
-          
+
           🚀 Как обновить кабинет:
           docker compose pull client admin core api
           docker compose up -d --no-deps --force-recreate client admin core api
-          
+
           🔎 Проверить состояние:
           docker compose ps
           docker compose logs --tail=50 client admin core api
-          
+
           🔗 ${COMMIT_URL}
           EOF
           )
