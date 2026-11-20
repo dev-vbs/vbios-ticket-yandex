@@ -1,56 +1,58 @@
 import { useState } from "react";
 
-const colors = ["#f16c52", "#f5c85c", "#7fb0e2", "#a474c4", "#97c96b"];
 const gb = (value: number) => `${(value / 1073741824).toLocaleString("ru-RU", { maximumFractionDigits: 2 })} ГБ`;
 const day = (value?: string) => value && Number.isFinite(Date.parse(value))
-  ? new Date(value).toLocaleDateString("ru-RU", { day: "numeric", month: "short", timeZone: "UTC" }) : value || "—";
+  ? new Date(value).toLocaleDateString("ru-RU", { day: "numeric", month: "short", timeZone: "UTC" }) : value || "Дата не указана";
 
 export default function TrafficChart({ values, days }: { values: number[]; days: string[] }) {
   const [selected, setSelected] = useState<number | null>(null);
-  const total = values.reduce((sum, value) => sum + value, 0);
-  const size = Math.max(1, Math.ceil(values.length / 5));
-  const periods = Array.from({ length: Math.ceil(values.length / size) }, (_, index) => {
-    const start = index * size, end = Math.min(values.length, start + size);
-    return { value: values.slice(start, end).reduce((sum, value) => sum + value, 0),
-      label: start === end - 1 ? day(days[start]) : `${day(days[start])} — ${day(days[end - 1])}` };
-  });
-  let offset = 0;
-  const active = selected === null ? null : periods[selected];
-  const percent = (value: number) => (total ? value / total * 100 : 0).toLocaleString("ru-RU", { maximumFractionDigits: 1 });
-  return <div className="remna-traffic">
-    <header className="remna-traffic-heading"><div><strong>Расход трафика</strong><p>Последние 30 дней · время UTC</p></div><span>{values.length} дней</span></header>
-    {!values.length ? <p>Данных за этот период пока нет.</p> : <>
-      <div className="remna-traffic-overview">
-        <div className="remna-donut">
-          <svg viewBox="0 0 240 240" role="img" aria-label={`Расход: ${gb(total)}. Значения доступны в таблице ниже.`}>
-            <circle cx="120" cy="120" r="86" fill="none" stroke="var(--mantine-color-default-border)" strokeWidth="30" />
-            {periods.map((period, index) => {
-              const share = total ? period.value / total * 100 : 0, start = offset; offset += share;
-              return share > 0 ? <circle key={index} cx="120" cy="120" r="86" fill="none" stroke={colors[index]}
-                strokeWidth={selected === index ? 36 : 30} pathLength="100" strokeDasharray={`${share} ${100 - share}`}
-                strokeDashoffset={-start} transform="rotate(-90 120 120)" opacity={selected !== null && selected !== index ? 0.3 : 1}>
-                <title>{period.label}: {gb(period.value)} · {percent(period.value)}%</title>
-              </circle> : null;
-            })}
-          </svg>
-          <div className="remna-donut-center"><span>{active ? "За период" : "Всего потрачено"}</span><strong>{gb(active ? active.value : total)}</strong><small>{active ? active.label : "за 30 дней"}</small></div>
-        </div>
-        <div className="remna-traffic-legend" aria-label="Расход по периодам">
-          {periods.map((period, index) => <button type="button" key={index} aria-pressed={selected === index}
-            onClick={() => setSelected(selected === index ? null : index)} className="remna-traffic-period">
-            <i style={{ background: colors[index] }} /><span>{period.label}<small>{gb(period.value)}</small></span><strong>{percent(period.value)}%</strong>
-          </button>)}
+  const samples = values.map((value) => Number.isFinite(value) && value >= 0 ? value : null);
+  const valid = samples.filter((value): value is number => value !== null);
+  const total = valid.reduce((sum, value) => sum + value, 0);
+  const peak = Math.max(0, ...valid);
+  const active = selected !== null && selected < samples.length ? selected : null;
+  const peakIndex = samples.findIndex((value) => value === peak);
+  const dateRange = days.length ? `${day(days[0])} — ${day(days[Math.min(days.length, samples.length) - 1])}` : "Доступный период";
+  return <div className="remna-traffic remna-traffic-v2">
+    <header className="remna-traffic-heading">
+      <div><strong>Как вы расходуете трафик</strong><p>{dateRange} · даты по UTC</p></div>
+      <span className="traffic-period-label">По дням</span>
+    </header>
+    {!valid.length ? <div className="traffic-empty"><strong>Пока нет статистики</strong><p>Когда панель передаст данные, здесь появится расход по дням.</p></div> : <>
+      <div className="traffic-metrics">
+        <div className="traffic-metric traffic-metric-primary"><span>Всего за период</span><strong>{gb(total)}</strong><small>Сумма доступных дневных замеров</small></div>
+        <div className="traffic-metric"><span>В среднем за день</span><strong>{gb(total / valid.length)}</strong><small>По дням с данными: {valid.length}</small></div>
+        <div className="traffic-metric"><span>Самый активный день</span><strong>{gb(peak)}</strong><small>{day(days[peakIndex])}</small></div>
+      </div>
+      <div className="traffic-plot-heading">
+        <div><i /> <strong>Расход по дням</strong></div>
+        <span>Нажмите на столбец, чтобы узнать расход</span>
+      </div>
+      <div className="traffic-selection" aria-live="polite">
+        <span>{active === null ? "Выберите день на графике" : day(days[active])}</span>
+        <strong>{active === null ? "Каждый столбец — один день" : samples[active] === null ? "Нет данных" : gb(samples[active]!)}</strong>
+        {active !== null && <button type="button" onClick={() => setSelected(null)}>Сбросить выбор</button>}
+      </div>
+      <p className="traffic-scroll-hint">Проведите по графику, чтобы посмотреть остальные дни →</p>
+      <div className="traffic-plot-scroll" tabIndex={0} role="region" aria-label="График расхода трафика по дням, прокручивается по горизонтали">
+        <div className="traffic-plot" style={{ minWidth: Math.max(280, samples.length * 30) }}>
+          <div className="traffic-y-labels" aria-hidden="true"><span>{gb(peak)}</span><span>{gb(peak / 2)}</span><span>0 ГБ</span></div>
+          <div className="traffic-bars" role="group" aria-label="Выберите день">
+            {samples.map((value, index) => <button key={index} type="button" className="traffic-day" aria-pressed={active === index}
+              aria-label={`${day(days[index])}: ${value === null ? "нет данных" : gb(value)}`}
+              onClick={() => setSelected(active === index ? null : index)}>
+              <span className="traffic-day-track"><i className={value === null ? "is-missing" : value === 0 ? "is-zero" : ""}
+                style={{ height: `${value === null || peak === 0 ? 0 : value / peak * 100}%` }} /></span>
+              <span className="traffic-day-label">{index === 0 || index === samples.length - 1 || index % Math.max(1, Math.ceil(samples.length / 7)) === 0 ? day(days[index]) : ""}</span>
+            </button>)}
+          </div>
         </div>
       </div>
-      {total === 0 && <p>За этот период трафик не расходовался.</p>}
-      <details className="remna-traffic-details" open><summary>Расход по дням <span>{values.length} дней</span></summary>
+      <p className="traffic-chart-note">{total === 0 ? "В доступных замерах расход равен нулю." : "Показан расход, а не скорость соединения."} Лимит подписки и остаток смотрите в диагностике.</p>
+      <details className="remna-traffic-details"><summary>Все значения по дням <span>{valid.length} с данными</span></summary>
         <div className="remna-table-wrap"><table className="remna-table remna-traffic-table">
-          <thead><tr><th>Дата · UTC</th><th>Трафик</th><th>Доля за период</th></tr></thead>
-          <tbody><tr className="remna-traffic-total"><td>Всего</td><td>{gb(total)}</td><td>{total ? "100%" : "—"}</td></tr>
-            {values.map((value, index) => <tr key={index}><td>{day(days[index])}</td><td>{gb(value)}</td><td>
-              <div className="remna-traffic-share"><span>{percent(value)}%</span><div><i style={{ width: `${total ? value / total * 100 : 0}%`, background: colors[Math.floor(index / size)] }} /></div></div>
-            </td></tr>)}
-          </tbody>
+          <thead><tr><th>Дата · UTC</th><th>Трафик</th><th>Доля расхода</th></tr></thead>
+          <tbody>{samples.map((value, index) => <tr key={index}><td>{day(days[index])}</td><td>{value === null ? "Нет данных" : gb(value)}</td><td>{value === null || total === 0 ? "—" : `${(value / total * 100).toLocaleString("ru-RU", { maximumFractionDigits: 1 })}%`}</td></tr>)}</tbody>
         </table></div>
       </details>
     </>}
