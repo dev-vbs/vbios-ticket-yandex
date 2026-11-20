@@ -62,3 +62,11 @@ P0: backend-enforced granular admin permissions и audit log. Перед реа�
 - Mock browser QA проверяет dashboard и login refresh/error state.
 - Remnawave `/api/nodes` остаётся источником status; TCP/HTTP latency явно подписана по источнику.
 - CPU/RAM/disk/network history, thresholds, incidents и Telegram alerts ещё не реализованы: для них нужен отдельный backend контракт, storage и staging проверка.
+
+## Product flow optimization
+
+- Balance page copy now describes the actual SHM flow: пополнение → тариф → «Показать».
+- Payment, promo, payment history and withdrawal history modals are lazy-loaded only when opened.
+- Client build passed after the change; PayModal/PromoModal became separate async chunks.
+- Monitoring refresh changes and configuration are documented in MONITORING.md.
+- A full redesign of every business module is not claimed complete; remaining roadmap covers backend RBAC, CRM/finance expansion, Server Intelligence history and tenant architecture.
