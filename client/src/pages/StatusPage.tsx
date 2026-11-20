@@ -37,19 +37,19 @@ export default function StatusPage() {
     refresh.current = () => { void load(); };
     const visible = () => { if (!document.hidden) void load(); };
     void load();
-    const timer = window.setInterval(() => { setNow(Date.now()); void load(); }, 60000);
+    const timer = window.setInterval(() => { setNow(Date.now()); void load(); }, 5 * 60000);
     document.addEventListener('visibilitychange', visible);
     return () => { disposed = true; clearInterval(timer); document.removeEventListener('visibilitychange', visible); refresh.current = () => {}; };
   }, []);
   const nodes = data.nodes || [];
-  const stale = error || data.state === 'unknown' || !data.checked_at || now / 1000 - data.checked_at > 180;
+  const stale = error || data.state === 'unknown' || !data.checked_at || now / 1000 - data.checked_at > 360;
   const states = nodes.map(node => nodeState(node, stale));
   const online = states.filter(state => state === 'online').length;
   const summary = loading ? 'Получаем состояние серверов' : error ? 'Не удалось обновить данные' : !data.enabled ? 'Мониторинг не включён' : !nodes.length ? 'Нет данных о серверах' : states.includes('offline') ? 'Есть недоступные серверы' : states.includes('maintenance') ? 'На части серверов идут техработы' : online === nodes.length ? 'Все проверенные серверы доступны' : 'Ожидаем подтверждения доступности';
   const currentMinute = Math.floor(now / 60000) * 60;
   return <div className="status-page"><div className="status-container">
     <header className="status-header"><Link to="/">{config.APP_NAME}</Link><div><Link to="/">В кабинет</Link><ThemeToggle /></div></header>
-    <main><div className="status-title"><h1>Состояние сети</h1><p>Доступность нод и задержка подключения. Обновляем раз в минуту.</p></div>
+    <main><div className="status-title"><h1>Состояние сети</h1><p>Доступность нод и задержка подключения. Обновляем каждые 5 минут.</p></div>
       <section className="status-overview" aria-live="polite" data-state={stale ? 'unknown' : states.includes('offline') ? 'offline' : online === nodes.length && nodes.length ? 'online' : 'unknown'}><span className="status-dot" /><div><h2>{summary}</h2><p>{data.checked_at ? 'Последняя проверка: ' + new Date(data.checked_at * 1000).toLocaleTimeString('ru-RU') : 'Первая проверка ещё не получена'}</p></div><button type="button" onClick={() => refresh.current()}>Обновить</button></section>
       <div className="status-counts"><span><b>{online}</b> доступны</span><span><b>{states.filter(state => state === 'offline').length}</b> недоступны</span><span><b>{nodes.length}</b> всего нод</span></div>
       <section className="status-nodes" aria-label="Состояние нод">{nodes.map((node, index) => {
