@@ -63,6 +63,39 @@
 ) }}
 ```
 
+**ID `Push_Service_Changed_LOCAL`**
+
+```text
+{{ result = user.srv('Push').send(
+    title = 'Настройки услуги обновлены'
+    body = 'Параметры услуги изменились. Откройте кабинет, чтобы проверить подключение.'
+    url = '/services'
+    tag = 'service-changed'
+) }}
+```
+
+**ID `Push_Service_Changed_Tariff_LOCAL`**
+
+```text
+{{ result = user.srv('Push').send(
+    title = 'Тариф изменён'
+    body = 'Новый тариф и его условия доступны в карточке услуги.'
+    url = '/services'
+    tag = 'service-tariff-changed'
+) }}
+```
+
+**ID `Push_Service_Remove_LOCAL`**
+
+```text
+{{ result = user.srv('Push').send(
+    title = 'Услуга удалена'
+    body = 'Услуга больше недоступна в личном кабинете. Если это ошибка, обратитесь в поддержку.'
+    url = '/services'
+    tag = 'service-removed'
+) }}
+```
+
 ## Привяжите события
 
 В разделе событий SHM добавьте отдельное правило для каждого необходимого уведомления. Существующие правила Remnawave сохраните. В каждом правиле укажите `kind` равным `UserService`, `server_gid` равным `0`, а `name` и `template_id` возьмите из таблицы.
@@ -74,6 +107,9 @@
 | `PROLONGATE` | `Push_Service_Prolongate_LOCAL` | Продление услуги |
 | `BLOCK` | `Push_Service_Block_LOCAL` | Приостановка услуги |
 | `NOT_ENOUGH_MONEY` | `Push_Service_No_Money_LOCAL` | Недостаточно средств для создаваемой услуги |
+| `CHANGED` | `Push_Service_Changed_LOCAL` | Изменились параметры услуги |
+| `CHANGED_TARIFF` | `Push_Service_Changed_Tariff_LOCAL` | Изменился тариф услуги |
+| `REMOVE` | `Push_Service_Remove_LOCAL` | Услуга удалена |
 
 Пример `settings` для правила `PROLONGATE`. Замените `remna` на фактическую категорию основной услуги в вашей установке.
 
@@ -86,6 +122,8 @@
 ```
 
 Для остальных правил поменяйте `name` и `template_id` по таблице. Если поля в панели отображаются отдельно, задайте те же значения в них. Не используйте пример категории, пока не проверите категорию своей услуги. Добавляйте правила отдельно от действующих правил создания и управления Remnawave.
+
+В SHM также есть внутренние переходы `BLOCK FORCE` и `ACTIVATE FORCE`, но они не входят в список обычных событий `UserService` и не добавляются этим комплектом. Если ваша установка действительно создаёт для них отдельные правила, используйте отдельные шаблоны с теми же текстами, что для `BLOCK` и `ACTIVATE`, и проверьте это на тестовой услуге.
 
 ## Проверьте на тестовом пользователе
 
