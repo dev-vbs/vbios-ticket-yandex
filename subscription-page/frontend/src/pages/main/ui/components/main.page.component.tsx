@@ -133,7 +133,7 @@ export const MainPageComponent = ({ isMobile, platform }: IMainPageComponentProp
                         </Stack>
                     </Paper>}
                     <Center><LanguagePicker currentLang={currentLang} locales={config.locales} onLanguageChange={setLanguage} /></Center>
-                    <Center><Anchor href="https://github.com/dev-vbs/vbios-ticket-yandex/tree/main/subscription-page" size="xs" target="_blank" rel="noopener noreferrer">Исходный код · Remnawave / vBios</Anchor></Center>
+                    <Center><Anchor href="https://pbalka.ru" size="xs" target="_blank" rel="noopener noreferrer">Remnawave / vBios</Anchor></Center>
                 </Stack>
             </Container>
         </Page>
