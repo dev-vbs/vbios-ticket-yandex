@@ -319,6 +319,24 @@ Client Secret и токен бота — разные секреты. Настр
 
 Для входящих ответов нужен установленный бот-шаблон SHM и Telegram webhook с секретом; один group ID не включает обработку ответов. Настройте их через установленный Telegram-модуль SHM, используя его **реальный template_id**, профиль и URL кабинета. Путь обработчика проекта: `/shm/v1/telegram/bot/<template_id>?tg_profile=vBios_BOT`. Сгенерируйте `openssl rand -hex 32` и сохраните значение в `config.telegram.vBios_BOT.secret`; при регистрации webhook передайте тот же `secret_token`. Секрет webhook должен совпадать с конфигурацией профиля; запросы без настроенного секрета отклоняются. Не подставляйте OIDC callback вместо bot webhook.
 
+### Push для новостей из Telegram-шаблонов
+
+Чтобы новость, объявление или ответ из локального Telegram-шаблона дублировались в личный кабинет, добавьте в настройки шаблона:
+
+```json
+{
+  "telegram": {
+    "profile": "vBios_BOT",
+    "push_enable": 1,
+    "push_title": "Новости сервиса",
+    "push_url": "/notifications",
+    "push_tag": "service-news"
+  }
+}
+```
+
+`push_enable` включается только для нужных новостей и ответов. Меню, `/start` и служебные callback-сообщения оставляйте без этого флага. В окружении должны быть включены `WEB_PUSH_ENABLE=true`, `PUSH_INTERNAL_TOKEN` и запущен контейнер `push`. Ответы поддержки по тикетам отправляются в Push автоматически.
+
 ### Вложения, аватары, ИИ
 
 [Пошаговая настройка Yandex Object Storage](new-server/YANDEX-CLOUD-TICKETS.md): закрытый бакет, сервисный аккаунт и статические S3-ключи. В `.env` задайте TICKET_S3_ACCESS_KEY / TICKET_S3_SECRET_KEY; в config.ticket.storage — provider yandex и имя бакета. Не делайте бакет публичным. Ключи передаются только core/spool.

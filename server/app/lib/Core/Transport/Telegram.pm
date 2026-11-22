@@ -268,6 +268,26 @@ sub task_send {
     );
     return SUCCESS, { msg => "Шаблон не содержит данных" } unless $message;
 
+    # Optional delivery of the same local template to the user's cabinet.
+    # It is opt-in so menus and callback acknowledgements do not create noise.
+    if ($tpl_settings_tg->{push_enable} && $self->user_id && !ref($message)) {
+        my $push_body = $message;
+        $push_body =~ s/<[^>]+>//g;
+        $push_body =~ s/\s+/ /g;
+        $push_body =~ s/^\s+|\s+$//g;
+        $push_body = substr($push_body, 0, 180);
+        eval {
+            my $push = $self->srv('Push') or die 'Push service unavailable';
+            $push->send(
+                title => $tpl_settings_tg->{push_title} || 'Новое сообщение',
+                body => $push_body,
+                url => $tpl_settings_tg->{push_url} || '/notifications',
+                tag => $tpl_settings_tg->{push_tag} || 'telegram-template',
+            );
+            1;
+        } or logger->error('Telegram template push delivery failed');
+    }
+
     if ( my $tg_method = $tpl_settings_tg->{raw} ) {
         my $json = decode_json( $message );
         $message = $json if ref $json eq 'HASH' || ref $json eq 'ARRAY';
