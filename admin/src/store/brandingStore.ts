@@ -17,7 +17,7 @@ interface BrandingState {
 }
 
 const DEFAULT_BRANDING: BrandingSettings = {
-  name: 'SHM Admin',
+  name: 'vBios Admin',
   logoUrl: '',
 };
 
