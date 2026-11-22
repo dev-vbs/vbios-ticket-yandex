@@ -1442,6 +1442,11 @@ sub ticket_main_chat {
     return 0 unless length($text) && $text !~ m{^/} && !$msg->{reply_to_message};
     my $chat=$msg->{chat}{id};
     return 0 unless $chat && $chat =~ /^[1-9][0-9]*$/;
+    my $message_id=$msg->{message_id};
+    if ($message_id) {
+        my ($seen)=$self->dbh->selectrow_array('SELECT 1 FROM ticket_telegram_received WHERE profile=? AND chat_id=? AND telegram_message_id=? LIMIT 1',undef,$self->profile_name,$chat,$message_id);
+        return 1 if $seen;
+    }
     my $ticket=get_service('Ticket',user_id=>$user->id);
     my $subject='Telegram chat '.$self->profile_name;
     my $row=$self->dbh->selectrow_hashref("SELECT ticket_id FROM tickets WHERE user_id=? AND subject=? AND status NOT IN ('closed','archived') ORDER BY ticket_id DESC LIMIT 1",undef,$user->id,$subject);
@@ -1453,6 +1458,11 @@ sub ticket_main_chat {
         } else {
             my $created=$ticket->api_create(subject=>$subject,message=>$text,responder=>$operator?'human':'ai');
             $id=$created->{ticket_id};
+        }
+        if ($message_id) {
+            my $claimed=$self->dbh->do('INSERT IGNORE INTO ticket_telegram_received(profile,chat_id,telegram_message_id,ticket_id) VALUES(?,?,?,?)',undef,$self->profile_name,$chat,$message_id,$id);
+            return 1 if !$claimed || $claimed eq '0E0';
+            $self->dbh->commit;
         }
         my $answer=$self->dbh->selectrow_hashref("SELECT m.message_id,m.message FROM ticket_ai_jobs j JOIN ticket_messages m ON m.message_id=j.reply_message_id WHERE j.ticket_id=? AND j.status='done' AND j.reply_message_id=(SELECT MAX(message_id) FROM ticket_messages WHERE ticket_id=j.ticket_id) ORDER BY j.source_message_id DESC LIMIT 1",undef,$id);
         my $state=$ticket->_row($id);
