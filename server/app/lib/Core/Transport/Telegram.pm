@@ -1531,7 +1531,7 @@ sub ticket_group_update {
         eval {
             # Photo/document + caption + Reply button is a single private send.
             # No copyMessage from the support group and no preceding text gate.
-            my $sent=Core::TicketTelegramMedia->support_reply($self,$msg,$user_chat,$row->{ticket_id});
+            my $sent=Core::TicketTelegramMedia->support_reply($self,$msg,$user_chat,$row->{ticket_id},$row->{subject});
             $self->ticket_link_reply($user_chat,$sent->{message_id},$row->{ticket_id},$row->{user_id});
             $self->dbh->do('UPDATE tickets SET telegram_error=NULL WHERE ticket_id=?',undef,$row->{ticket_id});
             $self->dbh->commit;
