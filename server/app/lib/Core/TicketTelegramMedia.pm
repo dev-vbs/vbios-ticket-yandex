@@ -55,7 +55,7 @@ sub support_reply {
     die 'Invalid private destination' unless defined($private_chat) && $private_chat =~ /\A[1-9][0-9]*\z/;
     die 'Invalid ticket' unless defined($ticket_id) && $ticket_id =~ /\A[1-9][0-9]*\z/;
     my $keyboard={inline_keyboard=>[[{text=>'↩️ Ответить · #'.$ticket_id,callback_data=>'ticket_reply '.$ticket_id}]]};
-    my %data=(chat_id=>$private_chat,reply_markup=>$keyboard,parse_mode=>'HTML');
+    my %data=(chat_id=>$private_chat,reply_markup=>$keyboard);
     my $escape = sub {
         my ($value)=@_; $value='' unless defined $value;
         $value =~ s/&/&amp;/g; $value =~ s/</&lt;/g; $value =~ s/>/&gt;/g;
@@ -73,8 +73,14 @@ sub support_reply {
         $data{$photo?'photo':'document'}=$file->{file_id};
         # Do not prepend text: that can overflow Telegram's caption limit and
         # shift UTF-16 entity offsets. The button carries the ticket reference.
-        my $caption=$msg->{caption} || 'Изображение поддержки';
-        $data{caption}=substr($header."\n\n💬 ".$escape->($caption),0,1000);
+        my $caption=$msg->{caption};
+        if (defined($caption) && length($caption)) {
+            # Preserve the sender's caption and entity offsets exactly.
+            $data{caption}=$caption;
+            $data{caption_entities}=$msg->{caption_entities} if ref($msg->{caption_entities}) eq 'ARRAY';
+        } else {
+            $data{caption}='🛡️ Ответ поддержки по тикету #'.$ticket_id;
+        }
     } else {
         $method='sendMessage';
         $data{text}=$header."\n\n💬 ".$escape->(substr(($msg->{text}||''),0,3000)).
