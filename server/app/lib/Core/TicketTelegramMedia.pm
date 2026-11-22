@@ -61,8 +61,9 @@ sub support_reply {
         $value =~ s/&/&amp;/g; $value =~ s/</&lt;/g; $value =~ s/>/&gt;/g;
         return $value;
     };
-    my $header = '💬 <b>Ответ поддержки · тикет #'.$ticket_id.'</b>';
-    $header .= "\n📌 ".$escape->($subject) if defined($subject) && length($subject);
+    my $header = '🛡️ <b>Ответ поддержки · тикет #'.$ticket_id.'</b>';
+    $header .= "\n📌 <i>".$escape->($subject)."</i>" if defined($subject) && length($subject);
+    $header .= "\n━━━━━━━━━━━━━━";
     my $file=$class->file_info($msg);
     my $method;
     if ($file) {
@@ -73,11 +74,11 @@ sub support_reply {
         # Do not prepend text: that can overflow Telegram's caption limit and
         # shift UTF-16 entity offsets. The button carries the ticket reference.
         my $caption=$msg->{caption} || 'Изображение поддержки';
-        $data{caption}=substr($header."\n\n".$escape->($caption),0,1000);
+        $data{caption}=substr($header."\n\n💬 ".$escape->($caption),0,1000);
     } else {
         $method='sendMessage';
-        $data{text}=$header."\n\n".$escape->(substr(($msg->{text}||''),0,3000)).
-            "\n\nНажмите «↩️ Ответить», чтобы отправить текст или изображение с подписью. Также можно ответить обычным Telegram Reply.";
+        $data{text}=$header."\n\n💬 ".$escape->(substr(($msg->{text}||''),0,3000)).
+            "\n\n<i>Нажмите кнопку ниже, чтобы продолжить переписку.</i>";
     }
     return $class->result($tg->http($method,chat_id=>$private_chat,data=>\%data));
 }
