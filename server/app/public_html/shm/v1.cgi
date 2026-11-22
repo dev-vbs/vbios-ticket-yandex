@@ -162,6 +162,32 @@ state $routes //= {
         swagger => { summary => 'Изменение личных данных пользователя' },
     },
 },
+'/user/notifications' => {
+    GET => {
+        controller => 'User',
+        method => 'api_notifications',
+        params => {},
+        swagger => { summary => 'Получение уведомлений и настройки рассылок' },
+    },
+    POST => {
+        controller => 'User',
+        method => 'api_notifications_settings',
+        params => {
+            enabled => { type => 'boolean', required => 1 },
+        },
+        swagger => { summary => 'Включение или отключение рассылок в личном кабинете' },
+    },
+},
+'/user/notifications/settings' => {
+    POST => {
+        controller => 'User',
+        method => 'api_notifications_settings',
+        params => {
+            enabled => { type => 'boolean', required => 1 },
+        },
+        swagger => { summary => 'Включение или отключение рассылок в личном кабинете' },
+    },
+},
 '/user/avatar' => {
     PUT => { controller => 'User', method => 'api_avatar_upload', params => { data => { type => 'string', required => 1, max_length => 6990508 }, mime_type => { type => 'string', max_length => 100 }, name => { type => 'string', max_length => 255 } }, swagger => { summary => 'Загрузка фотографии профиля' } },
     GET => { controller => 'User', method => 'api_avatar', params => {}, swagger => { summary => 'Получение фотографии профиля' } },

@@ -1158,7 +1158,16 @@ sub api_profile_update {
 sub api_notifications {
     my ($self) = @_;
     my $items = $self->settings->{cabinet_notifications};
-    return { notifications => ref($items) eq 'ARRAY' ? $items : [] };
+    return { notifications => ref($items) eq 'ARRAY' ? $items : [], broadcasts_enabled => $self->settings->{cabinet_broadcasts_enabled} ne 0 ? 1 : 0 };
+}
+
+sub api_notifications_settings {
+    my ($self, %args) = @_;
+    my $enabled = exists $args{enabled} ? $args{enabled} : $self->res->{enabled};
+    die 'enabled must be boolean' unless defined($enabled) && "$enabled" =~ /^(?:0|1|true|false)$/i;
+    $enabled = "$enabled" =~ /^(?:1|true)$/i ? 1 : 0;
+    $self->set_settings({ cabinet_broadcasts_enabled => $enabled });
+    return { broadcasts_enabled => $enabled };
 }
 
 sub _avatar_storage_config { my $self=shift; my $cfg=get_service('config')->data_by_name('ticket')||{}; my $s=$cfg->{storage}||{}; die 'Avatar object storage is not configured' unless ($s->{provider}||'') eq 'yandex' && $s->{bucket}; return $s; }

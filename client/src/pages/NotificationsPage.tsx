@@ -20,6 +20,8 @@ export default function NotificationsPage() {
   const [remnaFailed, setRemnaFailed] = useState(false);
   const [services, setServices] = useState<Service[]>([]);
   const [cabinetNotices, setCabinetNotices] = useState<CabinetNotice[]>([]);
+  const [broadcastsEnabled, setBroadcastsEnabled] = useState(true);
+  const [broadcastsBusy, setBroadcastsBusy] = useState(false);
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
   const loadId = useRef(0);
@@ -30,6 +32,11 @@ export default function NotificationsPage() {
     const next = { ...preferences, [key]: enabled }; setPreferences(next);
     try { localStorage.setItem(preferenceKey, JSON.stringify(next)); } catch { /* Current session remains usable. */ }
   };
+  const changeBroadcasts = async (enabled: boolean) => {
+    setBroadcastsBusy(true);
+    try { await api.post('/user/notifications/settings', { enabled }); setBroadcastsEnabled(enabled); if (!enabled) setCabinetNotices([]); }
+    finally { setBroadcastsBusy(false); }
+  };
   const load = useCallback(async () => {
     const id = ++loadId.current;
     setLoading(true); setFailed(false);
@@ -39,6 +46,7 @@ export default function NotificationsPage() {
       if (id !== loadId.current) return;
       setServices(r.data.data);
       setCabinetNotices(Array.isArray(noticeResponse.data?.data?.notifications) ? noticeResponse.data.data.notifications : []);
+      setBroadcastsEnabled(noticeResponse.data?.data?.broadcasts_enabled !== 0);
       setRemnaNotices([]); setRemnaFailed(false);
       const queue: Service[] = r.data.data.filter((s: Service) => s.status === 'ACTIVE' && (proxyCategories.has((s.service?.category || '').toLowerCase()) || /proxy|remna/i.test(s.service?.category || '')));
       const found: {serviceId: number; name: string; kind: string; text: string}[] = [];
@@ -65,6 +73,7 @@ export default function NotificationsPage() {
   const showReply = preferences.support && hasReply;
   return <Stack gap="xl"><header><Title order={1}>Уведомления</Title><Text c="dimmed" mt="sm">Сроки услуг, новости из Telegram и ответы поддержки.</Text></header>
     <PushSettings />
+    <section className="vpn-finance-panel"><Group justify="space-between" align="flex-start"><div><Title order={3}>Рассылки в кабинете</Title><Text size="sm" c="dimmed" mt={5}>Новости из Telegram и spool будут видны в разделе уведомлений.</Text></div><Switch checked={broadcastsEnabled} disabled={broadcastsBusy} onChange={event => void changeBroadcasts(event.currentTarget.checked)} aria-label="Получать рассылки в личном кабинете" /></Group></section>
     <section className="vpn-finance-panel"><Stack gap="md"><Title order={3}>Какие события показывать</Title><Text size="sm" c="dimmed">Настройки действуют в этом браузере для вашего аккаунта. Они не изменяют рассылки Telegram и email.</Text>{([['expiry', 'Окончание подписки и необходимость оплаты'], ['balance', 'Недостаточно средств для продления'], ['support', 'Ответы поддержки'], ['traffic', 'Приближение к лимиту трафика'], ['devices', 'Новые устройства подписки']] as const).map(([key, label]) => <Switch key={key} label={label} checked={preferences[key]} onChange={event => change(key, event.currentTarget.checked)} />)}</Stack></section>
     <Text size="sm" c="dimmed">Данные подписки проверяются при открытии этой страницы. Новые устройства определяются относительно предыдущей проверки; при первом посещении создаётся исходный список.</Text>
     {loading && services.length > 0 && <Group gap="xs"><Loader size="xs"/><Text size="sm" c="dimmed">Проверяем подписки…</Text></Group>}

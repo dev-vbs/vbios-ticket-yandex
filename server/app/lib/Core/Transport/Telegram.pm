@@ -270,6 +270,7 @@ sub task_send {
     );
     return SUCCESS, { msg => "Шаблон не содержит данных" } unless $message;
 
+    my $cabinet_allowed = 1;
     if ($push_enabled && !ref($message)) {
         my $recipient_id = $task->settings->{user_id} || $self->user_id;
         my $plain = $message;
@@ -283,6 +284,10 @@ sub task_send {
                 $owner = eval { get_service('User', _id => $recipient_id) };
             }
             my $items = $owner && $owner->settings->{cabinet_notifications};
+            if ($owner && exists($owner->settings->{cabinet_broadcasts_enabled}) && !$owner->settings->{cabinet_broadcasts_enabled}) {
+                $cabinet_allowed = 0;
+                return 1;
+            }
             $items = [] unless ref($items) eq 'ARRAY';
             unshift @$items, { id => time . '-' . ($recipient_id || 0), title => $tpl_settings_tg->{push_title} || 'Новое сообщение', body => $plain, url => $tpl_settings_tg->{push_url} || '/notifications', created => scalar localtime };
             splice @$items, 30 if @$items > 30;
@@ -293,7 +298,7 @@ sub task_send {
 
     # Optional delivery of the same local template to the user's cabinet.
     # It is opt-in so menus and callback acknowledgements do not create noise.
-    if ($push_enabled && !ref($message)) {
+    if ($push_enabled && $cabinet_allowed && !ref($message)) {
         my $recipient_id = $task->settings->{user_id} || $self->user_id;
         my $push_body = $message;
         $push_body =~ s/<[^>]+>//g;
