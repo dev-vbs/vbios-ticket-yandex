@@ -270,6 +270,24 @@ sub task_send {
     );
     return SUCCESS, { msg => "Шаблон не содержит данных" } unless $message;
 
+    if ($push_enabled && !ref($message)) {
+        my $recipient_id = $task->settings->{user_id} || $self->user_id;
+        my $plain = $message;
+        $plain =~ s/<[^>]+>//g;
+        $plain =~ s/\s+/ /g;
+        $plain =~ s/^\s+|\s+$//g;
+        $plain = substr($plain, 0, 180);
+        eval {
+            my $owner = $self->user;
+            my $items = $owner && $owner->settings->{cabinet_notifications};
+            $items = [] unless ref($items) eq 'ARRAY';
+            unshift @$items, { id => time . '-' . ($recipient_id || 0), title => $tpl_settings_tg->{push_title} || 'Новое сообщение', body => $plain, url => $tpl_settings_tg->{push_url} || '/notifications', created => scalar localtime };
+            splice @$items, 30 if @$items > 30;
+            $owner->set_settings({ cabinet_notifications => $items }) if $owner;
+            1;
+        } or logger->error('Telegram template cabinet notification save failed');
+    }
+
     # Optional delivery of the same local template to the user's cabinet.
     # It is opt-in so menus and callback acknowledgements do not create noise.
     if ($push_enabled && !ref($message)) {

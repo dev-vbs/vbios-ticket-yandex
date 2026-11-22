@@ -10,6 +10,7 @@ const proxyCategories = new Set((config.PROXY_CATEGORY || 'proxy').toLowerCase()
 
 type Service = { user_service_id: number; status: string; expire?: string; name?: string; service?: { name?: string; cost?: number; category?: string } };
 type Preferences = { expiry: boolean; balance: boolean; support: boolean; traffic: boolean; devices: boolean };
+type CabinetNotice = { id: string; title: string; body: string; url?: string; created?: string };
 export default function NotificationsPage() {
   const hasReply = useStore(s => s.hasNewTicketMessages);
   const user = useStore(s => s.user);
@@ -18,6 +19,7 @@ export default function NotificationsPage() {
   const [remnaNotices, setRemnaNotices] = useState<{serviceId: number; name: string; kind: string; text: string}[]>([]);
   const [remnaFailed, setRemnaFailed] = useState(false);
   const [services, setServices] = useState<Service[]>([]);
+  const [cabinetNotices, setCabinetNotices] = useState<CabinetNotice[]>([]);
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
   const loadId = useRef(0);
@@ -32,10 +34,11 @@ export default function NotificationsPage() {
     const id = ++loadId.current;
     setLoading(true); setFailed(false);
     try {
-      const r = await userApi.getServices();
+      const [r, noticeResponse] = await Promise.all([userApi.getServices(), api.get('/user/notifications')]);
       if (!Array.isArray(r.data?.data)) throw new Error('Invalid response');
       if (id !== loadId.current) return;
       setServices(r.data.data);
+      setCabinetNotices(Array.isArray(noticeResponse.data?.data?.notifications) ? noticeResponse.data.data.notifications : []);
       setRemnaNotices([]); setRemnaFailed(false);
       const queue: Service[] = r.data.data.filter((s: Service) => s.status === 'ACTIVE' && (proxyCategories.has((s.service?.category || '').toLowerCase()) || /proxy|remna/i.test(s.service?.category || '')));
       const found: {serviceId: number; name: string; kind: string; text: string}[] = [];
@@ -60,12 +63,12 @@ export default function NotificationsPage() {
   const lowBalance = preferences.balance && relevant.some(s => Number(s.service?.cost) > Number(user?.balance ?? 0));
   const visibleRemna = remnaNotices.filter(n => n.kind === 'traffic' ? preferences.traffic : preferences.devices);
   const showReply = preferences.support && hasReply;
-  return <Stack gap="xl"><header><Title order={1}>Уведомления</Title><Text c="dimmed" mt="sm">Сроки услуг, баланс и ответы поддержки.</Text></header>
+  return <Stack gap="xl"><header><Title order={1}>Уведомления</Title><Text c="dimmed" mt="sm">Сроки услуг, новости из Telegram и ответы поддержки.</Text></header>
     <PushSettings />
     <section className="vpn-finance-panel"><Stack gap="md"><Title order={3}>Какие события показывать</Title><Text size="sm" c="dimmed">Настройки действуют в этом браузере для вашего аккаунта. Они не изменяют рассылки Telegram и email.</Text>{([['expiry', 'Окончание подписки и необходимость оплаты'], ['balance', 'Недостаточно средств для продления'], ['support', 'Ответы поддержки'], ['traffic', 'Приближение к лимиту трафика'], ['devices', 'Новые устройства подписки']] as const).map(([key, label]) => <Switch key={key} label={label} checked={preferences[key]} onChange={event => change(key, event.currentTarget.checked)} />)}</Stack></section>
     <Text size="sm" c="dimmed">Данные подписки проверяются при открытии этой страницы. Новые устройства определяются относительно предыдущей проверки; при первом посещении создаётся исходный список.</Text>
     {loading && services.length > 0 && <Group gap="xs"><Loader size="xs"/><Text size="sm" c="dimmed">Проверяем подписки…</Text></Group>}
     {remnaFailed && <Alert color="orange">Не все подписки удалось проверить. Откройте нужную услугу для диагностики.</Alert>}
     {failed && <Alert color="orange">Не удалось обновить события. Ранее загруженные данные сохранены.<Button display="block" mt="sm" size="xs" onClick={() => void load()}>Повторить</Button></Alert>}
-    {loading && !services.length ? <Loader /> : <section className="vpn-finance-panel"><Stack gap="md">{showReply && <Link className="vpn-notice" to="/tickets"><IconMessageCircle /><div><strong>Новый ответ поддержки</strong><small>Прочитать сообщение →</small></div></Link>}{lowBalance && <Link className="vpn-notice" to="/balance"><IconBell /><div><strong>Проверьте баланс перед продлением</strong><small>Текущего баланса может не хватить на следующий период одной из услуг. Пополнить баланс →</small></div></Link>}{visibleRemna.map((n, i) => <Link className="vpn-notice" key={`${n.serviceId}-${n.kind}-${i}`} to={`/services/${n.serviceId}`}><IconBell /><div><strong>{n.name}</strong><small>{n.text}</small></div></Link>)}{notices.map(s => <Link className="vpn-notice" key={s.user_service_id} to={`/services/${s.user_service_id}`}><IconBell /><div><strong>{s.service?.name || s.name || `Услуга #${s.user_service_id}`}</strong><small>{s.status === 'NOT PAID' ? 'Услуга ожидает оплаты. Оплатить →' : s.status === 'BLOCK' ? 'Услуга заблокирована. Проверить →' : 'Срок действия заканчивается или уже истёк. Продлить →'}</small></div></Link>)}{!loading && !failed && !showReply && !lowBalance && !notices.length && !visibleRemna.length && !remnaFailed && <Stack align="center" py={48}><IconBell size={36} /><Title order={3}>Всё спокойно</Title><Text c="dimmed" ta="center">Нет выбранных событий, требующих вашего внимания.</Text><Button component={Link} to="/services" variant="light">Мои услуги</Button></Stack>}</Stack></section>}</Stack>;
+    {loading && !services.length ? <Loader /> : <section className="vpn-finance-panel"><Stack gap="md">{cabinetNotices.map(n => <Link className="vpn-notice" key={n.id} to={n.url || '/notifications'}><IconBell /><div><strong>{n.title}</strong><small>{n.body}</small></div></Link>)}{showReply && <Link className="vpn-notice" to="/tickets"><IconMessageCircle /><div><strong>Новый ответ поддержки</strong><small>Прочитать сообщение →</small></div></Link>}{lowBalance && <Link className="vpn-notice" to="/balance"><IconBell /><div><strong>Проверьте баланс перед продлением</strong><small>Текущего баланса может не хватить на следующий период одной из услуг. Пополнить баланс →</small></div></Link>}{visibleRemna.map((n, i) => <Link className="vpn-notice" key={`${n.serviceId}-${n.kind}-${i}`} to={`/services/${n.serviceId}`}><IconBell /><div><strong>{n.name}</strong><small>{n.text}</small></div></Link>)}{notices.map(s => <Link className="vpn-notice" key={s.user_service_id} to={`/services/${s.user_service_id}`}><IconBell /><div><strong>{s.service?.name || s.name || `Услуга #${s.user_service_id}`}</strong><small>{s.status === 'NOT PAID' ? 'Услуга ожидает оплаты. Оплатить →' : s.status === 'BLOCK' ? 'Услуга заблокирована. Проверить →' : 'Срок действия заканчивается или уже истёк. Продлить →'}</small></div></Link>)}{!loading && !failed && !showReply && !lowBalance && !notices.length && !visibleRemna.length && !remnaFailed && !cabinetNotices.length && <Stack align="center" py={48}><IconBell size={36} /><Title order={3}>Всё спокойно</Title><Text c="dimmed" ta="center">Нет выбранных событий, требующих вашего внимания.</Text><Button component={Link} to="/services" variant="light">Мои услуги</Button></Stack>}</Stack></section>}</Stack>;
 }
