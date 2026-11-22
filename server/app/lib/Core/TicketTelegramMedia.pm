@@ -61,9 +61,6 @@ sub support_reply {
         $value =~ s/&/&amp;/g; $value =~ s/</&lt;/g; $value =~ s/>/&gt;/g;
         return $value;
     };
-    my $header = '🛡️ <b>Ответ поддержки · тикет #'.$ticket_id.'</b>';
-    $header .= "\n📌 <i>".$escape->($subject)."</i>" if defined($subject) && length($subject);
-    $header .= "\n━━━━━━━━━━━━━━";
     my $file=$class->file_info($msg);
     my $method;
     if ($file) {
@@ -82,6 +79,9 @@ sub support_reply {
             $data{caption}='🛡️ Ответ поддержки по тикету #'.$ticket_id;
         }
     } else {
+        my $header = '🛡️ <b>Ответ поддержки · тикет #'.$ticket_id.'</b>';
+        $header .= "\n📌 <i>".$escape->($subject)."</i>" if defined($subject) && length($subject);
+        $header .= "\n━━━━━━━━━━━━━━";
         $method='sendMessage';
         $data{text}=$header."\n\n💬 ".$escape->(substr(($msg->{text}||''),0,3000)).
             "\n\n<i>Нажмите кнопку ниже, чтобы продолжить переписку.</i>";
