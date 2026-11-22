@@ -425,7 +425,7 @@ function ServiceDetail({ service, onDelete, onChangeTariff }: ServiceDetailProps
             <Paper withBorder radius="lg" p="lg" className="service-primary-card">
               <Stack gap="md" className="service-detail-summary">
                 <Group justify="space-between" gap="md" className="service-detail-summary__heading">
-                  <div><Text size="xs" c="dimmed">Подписка · №{service.user_service_id}</Text><Title order={2}>{service.service.name}</Title></div>
+                  <div className="service-detail-summary__title"><Text size="xs" c="dimmed">Подписка · №{service.user_service_id}</Text><Title order={2}>{service.service.name}</Title><Text size="sm" c="dimmed">Управление подключением и доступом</Text></div>
                   <Badge color={statusColor} variant="light" size="sm" radius="sm">{statusLabel}</Badge>
                 </Group>
                 <Divider />
@@ -479,7 +479,7 @@ function ServiceDetail({ service, onDelete, onChangeTariff }: ServiceDetailProps
             <Paper withBorder p="lg" radius="md" className="service-connection-card">
               <Stack gap="md">
                 <Group justify="space-between" align="flex-start">
-                  <div>
+                  <div className="service-connection-card__title">
                     <Text fw={700} size="lg">{t('services.connectionTo', { service: service.service.name, defaultValue: `Подключение к ${service.service.name}` })}</Text>
                     <Text size="sm" c="dimmed">{isProxy ? t('services.subscriptionHint', { defaultValue: 'Ссылка подписки обновляет конфигурацию автоматически.' }) : t('services.vpnConfigHint', { defaultValue: 'Скачайте конфигурацию или отсканируйте QR-код.' })}</Text>
                   </div>
@@ -530,7 +530,7 @@ function ServiceDetail({ service, onDelete, onChangeTariff }: ServiceDetailProps
                   </Alert>
                 )}
 
-                <Group grow align="stretch">
+                <Group grow align="stretch" className="service-connection-actions">
                   {(!isProxy || showProxyQr) && <Button leftSection={<IconQrcode size={17} />} variant="light" disabled={isProxy ? !subscriptionUrl : !storageData} onClick={() => setQrModalOpen(true)}>{t('services.qrCode')}</Button>}
                   {isProxy ? <Button leftSection={<IconDeviceMobileCog size={17} />} disabled={!subscriptionUrl} onClick={() => urlSchema ? handleOpenUrlSchema() : handleConfigure()}>{t('services.openInApp', { defaultValue: 'Установить' })}</Button> : <Button leftSection={<IconDownload size={17} />} disabled={!storageData} onClick={downloadConfig} loading={downloading}>{t('services.downloadConfig')}</Button>}
                 </Group>

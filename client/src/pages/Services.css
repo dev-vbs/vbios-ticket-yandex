@@ -103,9 +103,22 @@
 @media(max-width:430px){.services-summary{gap:8px}.services-summary__item{gap:8px}.services-summary__icon{width:30px;height:30px;border-radius:10px}.services-summary>div{padding:12px 9px}.services-summary .mantine-Text-root{font-size:.72rem}.services-summary .mantine-Text-root:last-child{font-size:1.25rem}}
 
 .service-detail-page .service-primary-card { padding:28px; border-radius:22px; background:linear-gradient(120deg,var(--ui-accent-soft),var(--ui-surface) 55%); }
+.service-detail-page__back { margin-bottom:2px; font-weight:650; }
+.service-detail-summary__title h2 { margin-bottom:5px; }
+.service-detail-summary__title > .mantine-Text-root:last-child { max-width:42ch; }
+.service-detail-summary__heading .mantine-Badge-root { margin-top:4px; }
+.service-technical-details { background:color-mix(in srgb, var(--ui-accent-soft) 28%, transparent); border-color:color-mix(in srgb, var(--ui-accent) 22%, var(--ui-border)); }
+.service-technical-details > summary { list-style:none; display:flex; align-items:center; justify-content:space-between; gap:14px; padding:2px 2px; color:var(--ui-text); }
+.service-technical-details > summary::-webkit-details-marker { display:none; }
+.service-technical-details > summary::after { content:'+'; display:grid; place-items:center; width:26px; height:26px; border-radius:50%; color:var(--ui-accent); background:var(--ui-surface); font-size:20px; font-weight:400; }
+.service-technical-details[open] > summary::after { content:'−'; }
+.service-connection-card__title h3 { letter-spacing:-.02em; }
+.service-connection-actions .mantine-Button-root { min-height:46px; border-radius:12px; }
+.service-connection-card { box-shadow:0 10px 30px rgba(22,37,59,.06); }
 .connection-check-details { border:1px solid var(--ui-border); border-radius:12px; padding:14px; }
 .connection-check-details>summary { font-size:13px; color:var(--ui-muted); cursor:pointer; }
 .connection-check-details .connection-diagnostics { border:0; padding:16px 0 0; background:transparent; }
 .service-primary-card>.service-detail-summary{gap:24px}.service-detail-summary__heading h2{font-size:30px;letter-spacing:-.035em;margin-top:8px;overflow-wrap:anywhere}.service-detail-summary__metric{flex-direction:column;align-items:flex-start!important;padding:20px;background:var(--ui-surface);border:1px solid var(--ui-border);border-radius:16px}.service-detail-summary__metric>.mantine-Text-root{font-size:28px}.service-detail-summary>.mantine-Button-root{min-height:48px;border-radius:12px}.service-detail-summary__heading{align-items:flex-start!important}
 @media(max-width:600px){.service-detail-summary__heading h2{font-size:25px}.service-detail-summary__metric{padding:14px}.service-detail-summary__metric>.mantine-Text-root{font-size:22px}.service-detail-summary__metric>.mantine-Group-root{gap:6px}.service-detail-summary__metric .mantine-Text-root{overflow-wrap:anywhere}}
 @media(max-width:600px){.service-primary-card>.service-detail-summary{grid-template-columns:1fr;gap:14px}.service-primary-card .service-detail-summary>.service-detail-summary__metric{flex-direction:row!important;align-items:center!important;gap:12px}.service-detail-summary__metric>.mantine-Text-root{white-space:nowrap;font-size:21px}.service-detail-summary__metric>.mantine-Group-root{max-width:50%;flex-wrap:nowrap;align-items:center}.service-detail-summary__metric>.mantine-Group-root>.mantine-Text-root{font-size:12px}.service-detail-summary__metric svg{flex-shrink:0}.service-detail-page .service-primary-card{padding:20px}}
+@media(max-width:600px){.service-detail-summary__title h2{font-size:25px}.service-detail-summary__title > .mantine-Text-root:last-child{font-size:12px}.service-connection-card__title h3{font-size:18px}.service-technical-details > summary{font-size:14px}.service-connection-actions{display:grid;grid-template-columns:1fr;gap:8px}}
