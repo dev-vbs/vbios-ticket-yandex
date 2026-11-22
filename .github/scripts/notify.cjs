@@ -3,6 +3,14 @@ const { execFileSync } = require('node:child_process');
 const escapeHtml = (value) => String(value).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
 
 function buildPayload(env, subject, author, files) {
+  const services = (env.UPDATE_SERVICES || 'core spool client').trim().split(/\s+/);
+  if (!services.length || services.some((name) => !/^[a-zA-Z0-9][a-zA-Z0-9_.-]*$/.test(name))) {
+    throw new Error('UPDATE_SERVICES содержит недопустимое имя сервиса.');
+  }
+  if (env.TELEGRAM_MESSAGE_THREAD_ID && !/^[1-9]\d*$/.test(env.TELEGRAM_MESSAGE_THREAD_ID)) {
+    throw new Error('TELEGRAM_MESSAGE_THREAD_ID должен быть положительным числом.');
+  }
+  const serviceList = services.join(' ');
   const text = `🔔 <b>Обновление личного кабинета</b>
 
 📦 <b>Репозиторий:</b> ${escapeHtml(env.REPOSITORY)}
@@ -14,23 +22,21 @@ function buildPayload(env, subject, author, files) {
 ${escapeHtml(subject.slice(0, 400))}
 ${escapeHtml(files.slice(0, 1000) || 'Изменения опубликованы в Docker-образах.')}
 
+📦 <b>Опубликованы образы</b>
+vbios-core, vbios-api, vbios-clients, vbios-admin, vbios-push, vbios-subscription
+
 🚀 <b>Как обновить кабинет на сервере</b>
 
 Сборка и публикация Docker-образов в GitHub Actions успешно завершены.
 
-В папке с <code>docker-compose.yml</code> выполните:
-<pre><code class="language-shell">docker compose pull client admin core api spool push
-docker compose stop spool
-docker compose up -d --no-deps --force-recreate core
-docker compose logs --tail=50 core</code></pre>
-Убедитесь, что core запустился без ошибок миграции, затем выполните:
-<pre><code class="language-shell">docker compose up -d --no-deps --force-recreate api admin client spool</code></pre>
-🔎 <b>Проверить состояние:</b>
-<pre><code class="language-shell">docker compose ps
-docker compose logs --tail=50 client admin core api spool</code></pre>
-Перед обновлением сохраните резервную копию. В <code>docker-compose.yml</code> должны использоваться образы и теги, опубликованные вашей сборкой.`;
+<pre><code>cd /opt/shm
+docker compose pull ${escapeHtml(serviceList)}
+docker compose up -d --no-deps --force-recreate ${escapeHtml(serviceList)}
+docker compose ps</code></pre>
+Указанные сервисы должны существовать в вашем Docker Compose и использовать опубликованные образы.`;
   return {
     chat_id: env.TELEGRAM_CHAT_ID,
+    ...(env.TELEGRAM_MESSAGE_THREAD_ID ? { message_thread_id: Number(env.TELEGRAM_MESSAGE_THREAD_ID) } : {}),
     text,
     parse_mode: 'HTML',
     link_preview_options: { is_disabled: true },
@@ -43,7 +49,7 @@ docker compose logs --tail=50 client admin core api spool</code></pre>
 
 async function main() {
   const env = process.env;
-  if (env.BUILD_CONCLUSION !== 'success' || env.BRANCH !== 'main') {
+  if (env.BUILD_CONCLUSION !== 'success' || env.BRANCH !== 'main' || !['push', 'workflow_dispatch'].includes(env.BUILD_EVENT)) {
     console.log('Сборка ветки main не завершилась успешно; уведомление пропущено.');
     return;
   }
@@ -66,7 +72,7 @@ async function main() {
 }
 
 module.exports = { buildPayload };
-if (require.main === module) main().catch(() => {
-  console.error('Не удалось отправить уведомление Telegram. Проверьте токен, ID группы и права бота.');
+if (require.main === module) main().catch((error) => {
+  console.error(`Не удалось отправить уведомление Telegram: ${error.message}. Проверьте настройки и права бота.`);
   process.exitCode = 1;
 });

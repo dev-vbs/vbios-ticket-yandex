@@ -1,23 +1,27 @@
-# Уведомления о новых коммитах
+# Уведомления о публикации образов
 
-Workflow `.github/workflows/publish.yml` отправляет уведомление в Telegram после успешной сборки и публикации образов из ветки `main`.
+После успешной сборки и публикации образов из ветки `main` GitHub Actions отправляет сообщение в Telegram. В нём указаны коммит, изменённые файлы, опубликованные образы и команды обновления.
 
-Добавьте в настройках репозитория GitHub → **Settings → Secrets and variables → Actions** два Repository secrets:
+В репозитории откройте **Settings → Secrets and variables → Actions** и добавьте следующие значения.
 
-- `TELEGRAM_BOT_TOKEN` — токен бота от BotFather;
-- `TELEGRAM_CHAT_ID` — ID личного чата, группы или канала, куда отправлять уведомления. Для группы обычно используется отрицательный ID вида `-1001234567890`.
+| Имя | Где указать | Значение |
+| --- | --- | --- |
+| `TELEGRAM_BOT_TOKEN` | Repository secret | Токен бота от BotFather |
+| `TELEGRAM_CHAT_ID` | Repository secret или variable | Числовой ID группы, например `-1001234567890` |
+| `TELEGRAM_MESSAGE_THREAD_ID` | Repository secret или variable | Числовой ID темы форума, например `42`. Необязательный параметр |
+| `UPDATE_SERVICES` | Repository variable | Имена сервисов Compose через пробел. По умолчанию `core spool client` |
 
-Бота нужно добавить в группу или канал и дать ему право отправлять сообщения. Узнать ID группы можно через служебного бота Telegram или по обновлениям Bot API. Не указывайте ID с кавычками и не добавляйте пробелы.
+Добавьте бота в группу и разрешите ему отправлять сообщения. Для форума включите темы в настройках группы и создайте тему для обновлений. ID группы и темы можно получить из ссылки на сообщение внутри темы. В ссылке вида `https://t.me/c/1234567890/42/100` ID группы будет `-1001234567890`, а ID темы — `42`. Для проверки можно отправить сообщение в нужную тему и посмотреть `message.chat.id` и `message.message_thread_id` в ответе Telegram Bot API `getUpdates`, если у бота не установлен webhook. Не публикуйте токен бота.
 
-Для разового запуска через **Actions → Build and publish vBios images → Run workflow** можно указать `telegram_chat_id` прямо в форме запуска. Для постоянных уведомлений используйте Repository secret `TELEGRAM_CHAT_ID` или Repository variable с таким же именем.
-
-Уведомление содержит репозиторий, ветку, короткий SHA коммита, автора, сообщение коммита, список изменённых файлов и команды обновления:
+По умолчанию сообщение содержит следующие команды.
 
 ```bash
-docker compose pull client admin core api
-docker compose up -d --no-deps --force-recreate client admin core api
+cd /opt/shm
+docker compose pull core spool client
+docker compose up -d --no-deps --force-recreate core spool client
 docker compose ps
-docker compose logs --tail=50 client admin core api
 ```
 
-Если секреты не настроены, workflow продолжит работу без отправки сообщения.
+Если на сервере установлены и другие опубликованные сервисы, добавьте их имена в `UPDATE_SERVICES`, например `core spool client push`. Указывайте только сервисы, существующие в вашем `docker-compose.yml` и использующие нужные образы. Список опубликованных образов в сообщении относится к сборке GitHub Actions и не означает, что каждый из них используется на сервере.
+
+Проверьте работу через **Actions → Build and publish vBios images → Run workflow**, выбрав ветку `main`. После успешной сборки откройте запуск **Notify about published vBios images**. При отсутствии токена или ID чата отправка пропускается. Ошибки отправки и неверный ID темы видны в журнале этого запуска.

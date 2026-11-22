@@ -431,7 +431,7 @@ docker compose logs --since=10m --tail=100 core spool api client admin
 
 В собственном fork включите Actions и разрешите публикацию Packages. Workflow использует GITHUB_TOKEN с packages:write. Проверьте, что опубликованы vbios-core, vbios-api, vbios-clients, vbios-admin, а owner в `.env` соответствует вашему GHCR. Для анонимного pull пакеты должны быть публичными.
 
-В Settings → Secrets and variables → Actions добавьте `TELEGRAM_BOT_TOKEN` (Secret), `TELEGRAM_CHAT_ID` (Secret или Variable), например ID группы `-100...`. Бот должен иметь право писать в эту группу. Уведомление отправляется после успешной сборки main; отправки в произвольную группу только по имени нет. Описания изменений берутся из заголовков коммитов — пишите их по-русски. Группа уведомлений сборки и группа тикетов — независимые настройки.
+В Settings → Secrets and variables → Actions добавьте `TELEGRAM_BOT_TOKEN` (Secret), `TELEGRAM_CHAT_ID` (Secret или Variable), например ID группы `-100...`. Для отправки в тему форума добавьте `TELEGRAM_MESSAGE_THREAD_ID` с числовым ID темы. Бот должен иметь право писать в группу. Уведомление отправляется после успешной публикации из main. Описания изменений берутся из заголовков коммитов. Подробная настройка, включая выбор сервисов в командах обновления, описана в [инструкции по уведомлениям](github-commit-notifications.md).
 
 ## 13. Резервные копии и восстановление
 
