@@ -278,7 +278,10 @@ sub task_send {
         $plain =~ s/^\s+|\s+$//g;
         $plain = substr($plain, 0, 180);
         eval {
-            my $owner = $self->user;
+            my $owner = eval { $self->user };
+            if (!$owner || !$recipient_id || !$owner->can('id') || $owner->id != $recipient_id) {
+                $owner = eval { get_service('User', _id => $recipient_id) };
+            }
             my $items = $owner && $owner->settings->{cabinet_notifications};
             $items = [] unless ref($items) eq 'ARRAY';
             unshift @$items, { id => time . '-' . ($recipient_id || 0), title => $tpl_settings_tg->{push_title} || 'Новое сообщение', body => $plain, url => $tpl_settings_tg->{push_url} || '/notifications', created => scalar localtime };
