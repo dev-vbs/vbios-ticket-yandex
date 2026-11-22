@@ -283,15 +283,16 @@ sub task_send {
             if (!$owner || !$recipient_id || !$owner->can('id') || $owner->id != $recipient_id) {
                 $owner = eval { get_service('User', _id => $recipient_id) };
             }
-            my $items = $owner && $owner->settings->{cabinet_notifications};
-            if ($owner && exists($owner->settings->{cabinet_broadcasts_enabled}) && !$owner->settings->{cabinet_broadcasts_enabled}) {
+            die 'Notification recipient is not available' unless $owner && $recipient_id;
+            if (exists($owner->settings->{cabinet_broadcasts_enabled}) && !$owner->settings->{cabinet_broadcasts_enabled}) {
                 $cabinet_allowed = 0;
-                return 1;
-            }
-            $items = [] unless ref($items) eq 'ARRAY';
+            } else {
+                my $items = $owner->settings->{cabinet_notifications};
+                $items = [] unless ref($items) eq 'ARRAY';
             unshift @$items, { id => time . '-' . ($recipient_id || 0), title => $tpl_settings_tg->{push_title} || 'Новое сообщение', body => $plain, url => $tpl_settings_tg->{push_url} || '/notifications', created => scalar localtime };
             splice @$items, 30 if @$items > 30;
-            $owner->set_settings({ cabinet_notifications => $items }) if $owner;
+                $owner->set_settings({ cabinet_notifications => $items });
+            }
             1;
         } or logger->error('Telegram template cabinet notification save failed');
     }

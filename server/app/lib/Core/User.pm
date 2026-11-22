@@ -1158,12 +1158,14 @@ sub api_profile_update {
 sub api_notifications {
     my ($self) = @_;
     my $items = $self->settings->{cabinet_notifications};
-    return { notifications => ref($items) eq 'ARRAY' ? $items : [], broadcasts_enabled => $self->settings->{cabinet_broadcasts_enabled} ne 0 ? 1 : 0 };
+    my $enabled = $self->settings->{cabinet_broadcasts_enabled};
+    return { notifications => ref($items) eq 'ARRAY' ? $items : [], broadcasts_enabled => !defined($enabled) || $enabled ? 1 : 0 };
 }
 
 sub api_notifications_settings {
-    my ($self, %args) = @_;
-    my $enabled = exists $args{enabled} ? $args{enabled} : $self->res->{enabled};
+    my $self = shift;
+    my %args = get_smart_args(@_);
+    my $enabled = $args{enabled};
     die 'enabled must be boolean' unless defined($enabled) && "$enabled" =~ /^(?:0|1|true|false)$/i;
     $enabled = "$enabled" =~ /^(?:1|true)$/i ? 1 : 0;
     $self->set_settings({ cabinet_broadcasts_enabled => $enabled });

@@ -22,6 +22,7 @@ export default function NotificationsPage() {
   const [cabinetNotices, setCabinetNotices] = useState<CabinetNotice[]>([]);
   const [broadcastsEnabled, setBroadcastsEnabled] = useState(true);
   const [broadcastsBusy, setBroadcastsBusy] = useState(false);
+  const [broadcastsError, setBroadcastsError] = useState(false);
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
   const loadId = useRef(0);
@@ -34,19 +35,29 @@ export default function NotificationsPage() {
   };
   const changeBroadcasts = async (enabled: boolean) => {
     setBroadcastsBusy(true);
-    try { await api.post('/user/notifications/settings', { enabled }); setBroadcastsEnabled(enabled); if (!enabled) setCabinetNotices([]); }
+    setBroadcastsError(false);
+    try { await api.post('/user/notifications/settings', { enabled }); setBroadcastsEnabled(enabled); }
+    catch { setBroadcastsError(true); }
     finally { setBroadcastsBusy(false); }
   };
   const load = useCallback(async () => {
     const id = ++loadId.current;
     setLoading(true); setFailed(false);
     try {
-      const [r, noticeResponse] = await Promise.all([userApi.getServices(), api.get('/user/notifications')]);
-      if (!Array.isArray(r.data?.data)) throw new Error('Invalid response');
+      const [servicesResult, noticeResult] = await Promise.allSettled([userApi.getServices(), api.get('/user/notifications')]);
       if (id !== loadId.current) return;
+      if (noticeResult.status === 'fulfilled') {
+        const data = noticeResult.value.data?.data;
+        const noticeData = Array.isArray(data) ? data[0] : data;
+        if (noticeData && Array.isArray(noticeData.notifications)) {
+          setCabinetNotices(noticeData.notifications);
+          setBroadcastsEnabled(noticeData.broadcasts_enabled !== 0 && noticeData.broadcasts_enabled !== false);
+          setBroadcastsError(false);
+        } else setBroadcastsError(true);
+      } else setBroadcastsError(true);
+      if (servicesResult.status !== 'fulfilled' || !Array.isArray(servicesResult.value.data?.data)) throw new Error('Invalid services response');
+      const r = servicesResult.value;
       setServices(r.data.data);
-      setCabinetNotices(Array.isArray(noticeResponse.data?.data?.notifications) ? noticeResponse.data.data.notifications : []);
-      setBroadcastsEnabled(noticeResponse.data?.data?.broadcasts_enabled !== 0);
       setRemnaNotices([]); setRemnaFailed(false);
       const queue: Service[] = r.data.data.filter((s: Service) => s.status === 'ACTIVE' && (proxyCategories.has((s.service?.category || '').toLowerCase()) || /proxy|remna/i.test(s.service?.category || '')));
       const found: {serviceId: number; name: string; kind: string; text: string}[] = [];
@@ -73,6 +84,7 @@ export default function NotificationsPage() {
   const showReply = preferences.support && hasReply;
   return <Stack gap="xl"><header><Title order={1}>Уведомления</Title><Text c="dimmed" mt="sm">Сроки услуг, новости из Telegram и ответы поддержки.</Text></header>
     <PushSettings />
+    {broadcastsError && <Alert color="orange">Не удалось загрузить рассылки или сохранить настройку. Попробуйте ещё раз.<Button display="block" mt="sm" size="xs" onClick={() => void load()}>Повторить</Button></Alert>}
     <section className="vpn-finance-panel"><Group justify="space-between" align="flex-start"><div><Title order={3}>Рассылки в кабинете</Title><Text size="sm" c="dimmed" mt={5}>Новости из Telegram и spool будут видны в разделе уведомлений.</Text></div><Switch checked={broadcastsEnabled} disabled={broadcastsBusy} onChange={event => void changeBroadcasts(event.currentTarget.checked)} aria-label="Получать рассылки в личном кабинете" /></Group></section>
     <section className="vpn-finance-panel"><Stack gap="md"><Title order={3}>Какие события показывать</Title><Text size="sm" c="dimmed">Настройки действуют в этом браузере для вашего аккаунта. Они не изменяют рассылки Telegram и email.</Text>{([['expiry', 'Окончание подписки и необходимость оплаты'], ['balance', 'Недостаточно средств для продления'], ['support', 'Ответы поддержки'], ['traffic', 'Приближение к лимиту трафика'], ['devices', 'Новые устройства подписки']] as const).map(([key, label]) => <Switch key={key} label={label} checked={preferences[key]} onChange={event => change(key, event.currentTarget.checked)} />)}</Stack></section>
     <Text size="sm" c="dimmed">Данные подписки проверяются при открытии этой страницы. Новые устройства определяются относительно предыдущей проверки; при первом посещении создаётся исходный список.</Text>
