@@ -446,7 +446,7 @@ function ServiceDetail({ service, onDelete, onChangeTariff }: ServiceDetailProps
               </Stack>
             </Paper>
             {service.next && (
-              <Group justify="space-between">
+              <Group justify="space-between" className="service-next-plan">
                 <Text size="sm" c="dimmed">{t('services.validUntilNext')}:</Text>
                 {nextServiceLoading ? (
                   <Text size="sm">{t('common.loading')}</Text>
@@ -459,8 +459,8 @@ function ServiceDetail({ service, onDelete, onChangeTariff }: ServiceDetailProps
             )}
             {service.children && service.children.length > 0 && (
               <>
-                <Text size="sm" c="dimmed" mt="md">{t('services.includedServices')}:</Text>
-                {service.children.map((child) => {
+                <div className="service-included"><Text size="sm" fw={650}>{t('services.includedServices')}</Text>
+                <Stack gap="xs" mt="sm">{service.children.map((child) => {
                   const childStatusColor = statusColors[child.status] || 'gray';
                   const childStatusLabel = t(`status.${child.status}`, child.status);
                   return (
@@ -469,7 +469,7 @@ function ServiceDetail({ service, onDelete, onChangeTariff }: ServiceDetailProps
                       <Badge size="sm" color={childStatusColor} variant="light">{childStatusLabel}</Badge>
                     </Group>
                   );
-                })}
+                })}</Stack></div>
               </>
             )}
           </Stack>

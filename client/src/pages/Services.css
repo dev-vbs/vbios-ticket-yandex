@@ -103,6 +103,13 @@
 @media(max-width:430px){.services-summary{gap:8px}.services-summary__item{gap:8px}.services-summary__icon{width:30px;height:30px;border-radius:10px}.services-summary>div{padding:12px 9px}.services-summary .mantine-Text-root{font-size:.72rem}.services-summary .mantine-Text-root:last-child{font-size:1.25rem}}
 
 .service-detail-page .service-primary-card { padding:28px; border-radius:22px; background:linear-gradient(120deg,var(--ui-accent-soft),var(--ui-surface) 55%); }
+.service-detail-page > .service-detail-page__back { color:var(--ui-accent); }
+.service-detail-summary__heading { position:relative; }
+.service-detail-summary__heading::before { content:""; width:10px; height:10px; border-radius:50%; background:var(--ui-accent); box-shadow:0 0 0 6px var(--ui-accent-soft); position:absolute; left:-16px; top:9px; }
+.service-next-plan { padding:13px 16px; border:1px solid var(--ui-border); border-radius:14px; background:var(--ui-surface); color:var(--ui-text); }
+.service-next-plan > .mantine-Text-root:last-child { font-weight:650; text-align:right; }
+.service-included { padding:16px; border:1px solid var(--ui-border); border-radius:16px; background:var(--ui-surface); }
+.service-included .mantine-Group-root { padding:9px 10px; border-radius:10px; background:var(--ui-surface-hover); }
 .service-detail-page__back { margin-bottom:2px; font-weight:650; }
 .service-detail-summary__title h2 { margin-bottom:5px; }
 .service-detail-summary__title > .mantine-Text-root:last-child { max-width:42ch; }
@@ -121,4 +128,4 @@
 .service-primary-card>.service-detail-summary{gap:24px}.service-detail-summary__heading h2{font-size:30px;letter-spacing:-.035em;margin-top:8px;overflow-wrap:anywhere}.service-detail-summary__metric{flex-direction:column;align-items:flex-start!important;padding:20px;background:var(--ui-surface);border:1px solid var(--ui-border);border-radius:16px}.service-detail-summary__metric>.mantine-Text-root{font-size:28px}.service-detail-summary>.mantine-Button-root{min-height:48px;border-radius:12px}.service-detail-summary__heading{align-items:flex-start!important}
 @media(max-width:600px){.service-detail-summary__heading h2{font-size:25px}.service-detail-summary__metric{padding:14px}.service-detail-summary__metric>.mantine-Text-root{font-size:22px}.service-detail-summary__metric>.mantine-Group-root{gap:6px}.service-detail-summary__metric .mantine-Text-root{overflow-wrap:anywhere}}
 @media(max-width:600px){.service-primary-card>.service-detail-summary{grid-template-columns:1fr;gap:14px}.service-primary-card .service-detail-summary>.service-detail-summary__metric{flex-direction:row!important;align-items:center!important;gap:12px}.service-detail-summary__metric>.mantine-Text-root{white-space:nowrap;font-size:21px}.service-detail-summary__metric>.mantine-Group-root{max-width:50%;flex-wrap:nowrap;align-items:center}.service-detail-summary__metric>.mantine-Group-root>.mantine-Text-root{font-size:12px}.service-detail-summary__metric svg{flex-shrink:0}.service-detail-page .service-primary-card{padding:20px}}
-@media(max-width:600px){.service-detail-summary__title h2{font-size:25px}.service-detail-summary__title > .mantine-Text-root:last-child{font-size:12px}.service-connection-card__title h3{font-size:18px}.service-technical-details > summary{font-size:14px}.service-connection-actions{display:grid;grid-template-columns:1fr;gap:8px}}
+@media(max-width:600px){.service-detail-summary__title h2{font-size:25px}.service-detail-summary__title > .mantine-Text-root:last-child{font-size:12px}.service-connection-card__title h3{font-size:18px}.service-technical-details > summary{font-size:14px}.service-connection-actions{display:grid;grid-template-columns:1fr;gap:8px}.service-detail-summary__heading::before{left:-10px}.service-next-plan{align-items:flex-start;flex-direction:column;gap:5px}.service-next-plan > .mantine-Text-root:last-child{text-align:left}.service-included{padding:12px}}
