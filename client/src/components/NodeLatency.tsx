@@ -6,8 +6,7 @@ export default function NodeLatency({ url, serverLatency, onResult }: { url?: st
   const [probeState, setProbeState] = useState<'checking' | 'missing' | 'failed' | 'ready'>('checking');
   useEffect(() => {
     setLatency(null);
-    if (typeof serverLatency === 'number' && Number.isFinite(serverLatency) && serverLatency >= 0) { setProbeState('ready'); return; }
-    if (!url) { setProbeState('missing'); return; }
+    if (!url) { setProbeState(typeof serverLatency === 'number' && Number.isFinite(serverLatency) ? 'ready' : 'missing'); return; }
     let target: URL;
     try { target = new URL(url); } catch { setProbeState('failed'); return; }
     if (target.protocol !== 'https:' || target.username || target.password) { setProbeState('failed'); return; }
@@ -41,7 +40,7 @@ export default function NodeLatency({ url, serverLatency, onResult }: { url?: st
     return () => { stopped = true; controller?.abort(); window.clearTimeout(timer); };
   }, [url, serverLatency]);
   useEffect(() => { onResult?.(probeState === 'ready'); }, [probeState, onResult]);
-  if (typeof serverLatency === 'number' && Number.isFinite(serverLatency) && serverLatency >= 0) return <span className="monitor-latency" title="TCP-задержка от сервера биллинга до порта узла Remnawave">~{Math.max(1, Math.round(serverLatency))} мс<small>от биллинга</small></span>;
+  if ((probeState === 'missing' || probeState === 'failed') && typeof serverLatency === 'number' && Number.isFinite(serverLatency) && serverLatency >= 0) return <span className="monitor-latency" title="Проверка от устройства недоступна, показана резервная TCP-задержка биллинга">{probeState === 'failed' ? 'Нет замера' : `~${Math.max(1, Math.round(serverLatency))} мс`}<small>резерв от биллинга</small></span>;
   const hint = probeState === 'missing' ? 'TCP-порт узла недоступен для биллинга; адрес браузерной проверки не настроен' : probeState === 'failed' ? 'HTTPS-проверка недоступна: проверьте сертификат, CORS и /ping' : 'HTTP-задержка от вашего браузера до сервера; медиана до трёх измерений';
   return <span className="monitor-latency" title={hint}>{latency === null ? (probeState === 'checking' ? 'Проверка…' : 'Нет замера') : `~${latency} мс`}{latency !== null && <small>с вашего устройства</small>}</span>;
 }
