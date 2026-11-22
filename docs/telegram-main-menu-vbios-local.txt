@@ -1,0 +1,78 @@
+{{# vBios · Главное меню Telegram · компактная пользовательская версия #}}
+{{ totalCount = user.services.count('where', { status => { '!=' => 'REMOVED' } }).rows_count || 0 }}
+{{ activeCount = user.services.count('where', { status => 'ACTIVE' }).rows_count || 0 }}
+{{ unpaidCount = user.services.count('where', { status => 'NOT PAID' }).rows_count || 0 }}
+{{ blockedCount = user.services.count('where', { status => 'BLOCK' }).rows_count || 0 }}
+{{ displayName = user.full_name || user.login || 'Пользователь' }}
+{{ bonus = user.get_bonus || 0 }}
+
+{{ TEXT = BLOCK }}
+🛡 <b>vBios</b>
+<i>Ваши услуги и подключение — в одном месте</i>
+
+👋 Здравствуйте, <b>{{ displayName FILTER html }}</b>!
+
+💳 Баланс: <b>{{ user.balance || 0 }} ₽</b>{{ IF bonus > 0 }}  ·  🎁 Бонусы: <b>{{ bonus }} ₽</b>{{ END }}
+
+🌐 <b>Состояние услуг</b>
+{{ IF totalCount == 0 }}
+Пока нет подключённых услуг.
+Выберите тариф, чтобы начать пользоваться сервисом.
+{{ ELSE }}
+Всего: <b>{{ totalCount }}</b>  ·  Активны: <b>{{ activeCount }}</b>
+{{ IF unpaidCount > 0 }}🟠 Ожидают оплаты: <b>{{ unpaidCount }}</b>{{ END }}
+{{ IF blockedCount > 0 }}
+🔴 Заблокированы: <b>{{ blockedCount }}</b>
+{{ END }}
+Откройте «Мои услуги», чтобы подключиться или продлить тариф.
+{{ END }}
+{{ END }}
+
+{{ buttons = [] }}
+
+{{# Основные действия #}}
+{{ buttons.push([
+  { text = '🌐 Мои услуги', callback_data = '/list' },
+  { text = '➕ Купить тариф', callback_data = '/pricelist' }
+]) }}
+
+{{ IF config.cli.url }}
+  {{ session = user.gen_session }}
+  {{ IF session.id }}
+    {{ cabinetUrl = config.cli.url _ '?session_id=' _ session.id }}
+    {{ buttons.push([{ text = '📱 Открыть личный кабинет', web_app = { url = cabinetUrl }, style = 'success' }]) }}
+  {{ END }}
+{{ END }}
+
+{{ IF config.api.url }}
+  {{ buttons.push([{ text = '💳 Пополнить баланс', callback_data = '/payment:webapp' }]) }}
+{{ END }}
+
+{{# Навигация без дублирования кнопок #}}
+{{ buttons.push([
+  { text = '👤 Профиль', callback_data = '/profile' },
+  { text = '⚙️ Подключение', callback_data = '/manage_services' }
+]) }}
+{{ buttons.push([
+  { text = '📜 Платежи', callback_data = '/pays' },
+  { text = '🏷 Промокод', callback_data = 'promocode' }
+]) }}
+{{ buttons.push([
+  { text = '🎁 Подарить', callback_data = '/gift' },
+  { text = '👥 Пригласить друзей', callback_data = '/referrals' }
+]) }}
+{{ buttons.push([
+  { text = '📺 Android TV / IPTV', callback_data = '/android_tv' },
+  { text = '💬 Помощь', callback_data = '/help' }
+]) }}
+{{ buttons.push([{ text = '🔄 Обновить меню', callback_data = '/menu' }]) }}
+
+{{ IF user.settings.role == 'admin' || user.settings.role == 'moderator' }}
+  {{ buttons.push([{ text = '⚙️ Панель управления', callback_data = 'admin:menu' }]) }}
+{{ END }}
+
+{{ IF config.logo.url }}
+  {{ tg_api(sendPhoto = { photo = config.logo.url, caption = TEXT, parse_mode = 'HTML', reply_markup = { inline_keyboard = buttons } }) }}
+{{ ELSE }}
+  {{ tg_api(sendMessage = { text = TEXT, parse_mode = 'HTML', reply_markup = { inline_keyboard = buttons } }) }}
+{{ END }}
