@@ -250,7 +250,9 @@ sub task_send {
     # Override chat_id if present (for backward compatible)
     $self->{chat_id} = $tpl_settings_tg->{chat_id} if $tpl_settings_tg->{chat_id};
 
-    unless ( scalar $self->user_profiles() ) {
+    my $push_enabled = $tpl_settings_tg->{push_enable} || $settings{push_enable};
+    my $has_telegram = scalar $self->user_profiles();
+    unless ($has_telegram || $push_enabled) {
         return SUCCESS, {
             error => "Пользователь ещё не добавил этого бота",
         }
@@ -270,15 +272,18 @@ sub task_send {
 
     # Optional delivery of the same local template to the user's cabinet.
     # It is opt-in so menus and callback acknowledgements do not create noise.
-    if ($tpl_settings_tg->{push_enable} && $self->user_id && !ref($message)) {
+    if ($push_enabled && !ref($message)) {
+        my $recipient_id = $task->settings->{user_id} || $self->user_id;
         my $push_body = $message;
         $push_body =~ s/<[^>]+>//g;
         $push_body =~ s/\s+/ /g;
         $push_body =~ s/^\s+|\s+$//g;
         $push_body = substr($push_body, 0, 180);
         eval {
+            die 'Push recipient is not available' unless $recipient_id;
             my $push = $self->srv('Push') or die 'Push service unavailable';
             $push->send(
+                user_id => $recipient_id,
                 title => $tpl_settings_tg->{push_title} || 'Новое сообщение',
                 body => $push_body,
                 url => $tpl_settings_tg->{push_url} || '/notifications',
@@ -287,6 +292,8 @@ sub task_send {
             1;
         } or logger->error('Telegram template push delivery failed');
     }
+
+    return SUCCESS, { msg => 'Push отправлен' } unless $has_telegram;
 
     if ( my $tg_method = $tpl_settings_tg->{raw} ) {
         my $json = decode_json( $message );
