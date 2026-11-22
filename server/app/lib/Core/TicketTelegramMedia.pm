@@ -56,11 +56,6 @@ sub support_reply {
     die 'Invalid ticket' unless defined($ticket_id) && $ticket_id =~ /\A[1-9][0-9]*\z/;
     my $keyboard={inline_keyboard=>[[{text=>'↩️ Ответить · #'.$ticket_id,callback_data=>'ticket_reply '.$ticket_id}]]};
     my %data=(chat_id=>$private_chat,reply_markup=>$keyboard);
-    my $escape = sub {
-        my ($value)=@_; $value='' unless defined $value;
-        $value =~ s/&/&amp;/g; $value =~ s/</&lt;/g; $value =~ s/>/&gt;/g;
-        return $value;
-    };
     my $file=$class->file_info($msg);
     my $method;
     if ($file) {
@@ -79,14 +74,14 @@ sub support_reply {
             $data{caption}='🛡️ Ответ поддержки по тикету #'.$ticket_id;
         }
     } else {
-        my $header = '🛡️ <b>Новое сообщение от поддержки</b>';
-        $header .= "\n🎫 Тикет <b>#".$ticket_id."</b>";
-        $header .= "\n📌 <b>Тема</b>\n<i>".$escape->($subject)."</i>" if defined($subject) && length($subject);
+        my $header = '🛡️ Новое сообщение от поддержки';
+        $header .= "\n🎫 Тикет #".$ticket_id;
+        $header .= "\n📌 Тема\n".$subject if defined($subject) && length($subject);
         $header .= "\n━━━━━━━━━━━━━━";
         $method='sendMessage';
         my $message = substr(($msg->{text}||''),0,3000);
         $message = 'Ответ содержит только вложение.' unless $message =~ /\S/;
-        $data{text}=$header."\n\n💬 <b>Сообщение</b>\n".$escape->($message).
+        $data{text}=$header."\n\n💬 Сообщение\n".$message.
             "\n\n🔔 Ответьте в тикете, если хотите продолжить диалог.";
     }
     return $class->result($tg->http($method,chat_id=>$private_chat,data=>\%data));
