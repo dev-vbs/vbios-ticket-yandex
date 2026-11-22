@@ -79,11 +79,13 @@ sub support_reply {
             $data{caption}='🛡️ Ответ поддержки по тикету #'.$ticket_id;
         }
     } else {
-        my $header = '🛡️ <b>Ответ поддержки · тикет #'.$ticket_id.'</b>';
-        $header .= "\n📌 <i>".$escape->($subject)."</i>" if defined($subject) && length($subject);
+        my $header = '🛡️ <b>Ответ поддержки</b> · тикет <b>#'.$ticket_id.'</b>';
+        $header .= "\n📌 <b>Тема:</b> <i>".$escape->($subject)."</i>" if defined($subject) && length($subject);
         $header .= "\n━━━━━━━━━━━━━━";
         $method='sendMessage';
-        $data{text}=$header."\n\n💬 ".$escape->(substr(($msg->{text}||''),0,3000)).
+        my $message = substr(($msg->{text}||''),0,3000);
+        $message = 'Ответ содержит только вложение.' unless $message =~ /\S/;
+        $data{text}=$header."\n\n💬 <b>Сообщение:</b>\n".$escape->($message).
             "\n\n<i>Нажмите кнопку ниже, чтобы продолжить переписку.</i>";
     }
     return $class->result($tg->http($method,chat_id=>$private_chat,data=>\%data));
