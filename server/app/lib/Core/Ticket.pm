@@ -350,9 +350,9 @@ sub telegram_sync {
         "💬 " . _telegram_html($m->{message} || '');
     if ($handoff) {
         my $history=$self->dbh->selectall_arrayref('SELECT is_admin,message FROM ticket_messages WHERE ticket_id=? ORDER BY message_id DESC LIMIT 6',{Slice=>{}},$id);
-        $text="🙋 Пользователь выбрал сотрудника поддержки. ИИ отключён для обращения.\n".
-            "Тикет #$id · $subject · Пользователь $display (ID $r->{user_id})\n\n".
-            join("\n\n",map {($_->{is_admin}?'Поддержка / ИИ: ':'Пользователь: ').substr($_->{message},0,500)} reverse @$history);
+        $text="🙋 <b>Пользователь выбрал сотрудника поддержки</b>. ИИ отключён для обращения.\n".
+            "Тикет #$id · " . _telegram_html($subject) . " · Пользователь " . _telegram_html($display) . " (ID $r->{user_id})\n\n".
+            join("\n\n",map {($_->{is_admin}?'🛠 Поддержка / ИИ: ':'👤 Пользователь: ')._telegram_html(substr($_->{message} || '',0,500))} reverse @$history);
     }
     $text = substr($text, 0, 4000);
     # Handoff notifications are also a new visible context in the topic. Send
