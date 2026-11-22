@@ -893,7 +893,7 @@ export default function Services() {
     <Stack gap="lg" className="services-overview">
       <DataLoadStatus showRefresh={false} loading={refreshing} error={loadError && "Не удалось обновить услуги"} updatedAt={updatedAt} onRetry={() => void fetchServices()} />
       <Paper withBorder radius="lg" className="services-header-card">
-        <div className="services-header-card__copy"><Text size="xs" c="dimmed" tt="none" fw={700}>Личный кабинет</Text><Title className="page-header__title" order={2}>{t('services.title')}</Title><Text c="dimmed" size="sm" mt={6}>Подписки, подключение и продление в одном месте.</Text></div>
+        <div className="services-header-card__copy"><div className="services-header-card__mark"><IconWifi size={17} /><span>Центр подключений</span></div><Title className="page-header__title" order={2}>{t('services.title')}</Title><Text c="dimmed" size="sm" mt={6}>Все услуги, статусы и настройки подключения — в одном понятном экране.</Text></div>
         <Group className="services-header-card__actions">
           <Button
             leftSection={<IconPlus size={16} />}
@@ -909,13 +909,13 @@ export default function Services() {
         </Group>
       </Paper>
 
-      <div className="services-summary">
-        <div><Text size="xs" c="dimmed">Активные</Text><Text fw={750} size="xl">{flatServices.filter((item) => item.status === 'ACTIVE').length}</Text></div>
-        <div><Text size="xs" c="dimmed">Ожидают оплаты</Text><Text fw={750} size="xl" c="orange">{flatServices.filter((item) => item.status === 'NOT PAID').length}</Text></div>
-        <div><Text size="xs" c="dimmed">Всего услуг</Text><Text fw={750} size="xl">{flatServices.length}</Text></div>
+      <div className="services-summary" aria-label="Сводка по услугам">
+        <div className="services-summary__item services-summary__item--active"><span className="services-summary__icon"><IconCheck size={17} /></span><div><Text size="xs" c="dimmed">Активные</Text><Text fw={750} size="xl">{flatServices.filter((item) => item.status === 'ACTIVE').length}</Text></div></div>
+        <div className="services-summary__item services-summary__item--warning"><span className="services-summary__icon"><IconWallet size={17} /></span><div><Text size="xs" c="dimmed">Ожидают оплаты</Text><Text fw={750} size="xl" c="orange">{flatServices.filter((item) => item.status === 'NOT PAID').length}</Text></div></div>
+        <div className="services-summary__item"><span className="services-summary__icon"><IconDeviceMobileCog size={17} /></span><div><Text size="xs" c="dimmed">Всего услуг</Text><Text fw={750} size="xl">{flatServices.length}</Text></div></div>
       </div>
 
-      <TextInput size="md" radius="md" className="services-search" aria-label="Поиск услуг" value={search} onChange={(event) => setSearch(event.currentTarget.value)} placeholder="Найти услугу по названию или номеру" leftSection={<IconSearch size={16} />} />
+      <div className="services-toolbar"><TextInput size="md" radius="md" className="services-search" aria-label="Поиск услуг" value={search} onChange={(event) => setSearch(event.currentTarget.value)} placeholder="Найти услугу по названию или номеру" leftSection={<IconSearch size={16} />} />{searchValue && <Button variant="subtle" size="sm" onClick={() => setSearch('')}>Сбросить поиск</Button>}</div>
 
       {Object.keys(groupedServices).length === 0 ? (
         <Paper withBorder p="xl" radius="md">
