@@ -2,6 +2,8 @@
   "id": -1001234567890,
   "telegram_profile": "vBios_BOT",
   "forum_topics": 1,
+  "topic_icon_color": 7322096,
+  "topic_icon_custom_emoji_id": "",
   "admin_user_url_template": "https://admin.example.com/users/{user_id}",
   "storage": {
     "provider": "yandex",

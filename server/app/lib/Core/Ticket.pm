@@ -277,6 +277,34 @@ sub _telegram_owner_avatar {
     logger->error("Ticket $ticket_id avatar upload failed") unless $ok;
     return $ok;
 }
+sub _telegram_create_topic {
+    my ($self, $tg, $cfg, $chat, $ticket, $display) = @_;
+    my $name = sprintf('#%s · %s · ID %s · %s', $ticket->{ticket_id}, $display, $ticket->{user_id}, $ticket->{subject} || 'Без темы');
+    $name =~ s/[\r\n]+/ /g;
+    $name = substr($name, 0, 128);
+    my $data = { chat_id => $chat, name => $name };
+    if (defined $cfg->{topic_icon_color} && "$cfg->{topic_icon_color}" =~ /^\d+$/) {
+        $data->{icon_color} = int($cfg->{topic_icon_color});
+    }
+    if (defined $cfg->{topic_icon_custom_emoji_id} && "$cfg->{topic_icon_custom_emoji_id}" =~ /^\d+$/) {
+        $data->{icon_custom_emoji_id} = "$cfg->{topic_icon_custom_emoji_id}";
+    }
+    my $response = $tg->http('createForumTopic', chat_id => $chat, data => $data);
+    my $body = eval { $response->decoded_content } || '';
+    my $result = eval { decode_json($body) } || {};
+    my $thread = $result->{result}{message_thread_id};
+    die 'Telegram topic creation failed (chat_id=' . $chat . ', profile=' . ($cfg->{telegram_profile} || 'telegram_bot') . '): ' . ($result->{description} || 'no response')
+        unless $result->{ok} && $thread && "$thread" =~ /^\d+$/;
+    return int($thread);
+}
+sub _telegram_html {
+    my ($value) = @_;
+    $value = '' unless defined $value;
+    $value =~ s/&/&amp;/g;
+    $value =~ s/</&lt;/g;
+    $value =~ s/>/&gt;/g;
+    return $value;
+}
 sub telegram_sync {
     my ($self, $id, $handoff) = @_;
     my $cfg = get_service('config')->data_by_name('ticket') || {};
@@ -296,11 +324,7 @@ sub telegram_sync {
     $display =~ s/[\r\n]+/ /g;
     # Forum topics are opt-in. Plain chats and ordinary groups receive messages directly.
     if ($cfg->{forum_topics} && !$thread) {
-        my $response = $tg->http('createForumTopic', chat_id => $chat, data => {chat_id => $chat, name => substr("#$id · $display · ID $r->{user_id} · $r->{subject}", 0, 128)});
-        my $body = eval { $response->decoded_content } || '';
-        my $result = eval { decode_json($body) } || {};
-        $thread = $result->{result}{message_thread_id};
-        die 'Telegram topic creation failed (chat_id=' . $chat . ', profile=' . ($cfg->{telegram_profile} || 'telegram_bot') . '): ' . ($result->{description} || 'no response') unless $result->{ok} && $thread;
+        $thread = $self->_telegram_create_topic($tg, $cfg, $chat, $r, $display);
         $self->dbh->do('UPDATE tickets SET telegram_chat_id=?,telegram_thread_id=? WHERE ticket_id=?', undef, $chat, $thread, $id);
     }
     my $subject = $r->{subject} || 'Без темы';
@@ -318,7 +342,12 @@ sub telegram_sync {
     }
     my $is_first_message = $m->{message_id} == ($self->dbh->selectrow_array('SELECT MIN(message_id) FROM ticket_messages WHERE ticket_id=?', undef, $id) || 0);
     my $heading = $is_first_message ? 'Новое обращение' : 'Новое сообщение';
-    my $text = "📩 $heading #$id\n👤 $display · ID $r->{user_id}\n📌 $subject\n📂 $kind · ⚡ $priority$service_line\n\n💬 " . $m->{message};
+    my $text = "📩 <b>" . _telegram_html($heading) . " #$id</b>\n" .
+        "👤 " . _telegram_html($display) . " · ID $r->{user_id}\n" .
+        "📌 " . _telegram_html($subject) . "\n" .
+        "📂 " . _telegram_html($kind) . " · ⚡ " . _telegram_html($priority) . _telegram_html($service_line) . "\n" .
+        "━━━━━━━━━━━━━━\n" .
+        "💬 " . _telegram_html($m->{message} || '');
     if ($handoff) {
         my $history=$self->dbh->selectall_arrayref('SELECT is_admin,message FROM ticket_messages WHERE ticket_id=? ORDER BY message_id DESC LIMIT 6',{Slice=>{}},$id);
         $text="🙋 Пользователь выбрал сотрудника поддержки. ИИ отключён для обращения.\n".
@@ -339,7 +368,7 @@ sub telegram_sync {
     }
     push @{$keyboard->{inline_keyboard}}, [{ text => '✅ Закрыть тикет', callback_data => 'ticket_close '.$id }] if $thread;
     my $response = $tg->http('sendMessage', chat_id => $chat, data => {
-        chat_id => $chat, ($thread ? (message_thread_id => $thread) : ()), text => $text,
+        chat_id => $chat, ($thread ? (message_thread_id => $thread) : ()), text => $text, parse_mode => 'HTML',
         ($keyboard ? (reply_markup => $keyboard) : ()),
     });
     my $body = eval { $response->decoded_content } || '';
