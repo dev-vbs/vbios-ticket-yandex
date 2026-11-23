@@ -111,6 +111,7 @@ services:
       SHM_HOST: http://api
       SHM_BASE_PATH: /
       APP_NAME: "${APP_NAME:-vBios}"
+      PRIVACY_POLICY_URL: "${PRIVACY_POLICY_URL:-}"
       OTP_ENABLE: "${OTP_ENABLE:-true}"
       TELEGRAM_BOT_NAME: "${TELEGRAM_BOT_NAME:-vbiosbot}"
       TELEGRAM_BOT_AUTH_ENABLE: "${TELEGRAM_BOT_AUTH_ENABLE:-false}"
