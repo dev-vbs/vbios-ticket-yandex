@@ -1,256 +1,207 @@
-# vBios — личный кабинет и панель управления
+# vBios — личный кабинет и сервис управления подписками
 
-Услуги, подписки, оплата и поддержка в одном кабинете. Адаптивный интерфейс для компьютера и телефона, светлая и тёмная темы, AJAX-форма входа и интеграция с Remnawave. Платежи и тарифы управляются через серверную биллинговую платформу vBios.
+vBios объединяет витрину услуг, личный кабинет, оплату, поддержку и интеграцию с Remnawave. Пользователь может выбрать тариф, оплатить услугу, получить параметры подключения и обратиться в поддержку с компьютера или телефона.
 
-**[Полная инструкция установки на чистый сервер](docs/INSTALLATION-RU.md)** · [Обновление работающего сервера](docs/PRODUCTION-UPDATE-RU.md) · [Все скриншоты](docs/screenshots/README.md)
+[Установка на чистый сервер](docs/INSTALLATION-RU.md) · [Обновление проекта](docs/PRODUCTION-UPDATE-RU.md) · [Все скриншоты](docs/screenshots/README.md) · [Состояние функций](docs/IMPLEMENTATION-STATUS.md)
 
-**Новое:** [Страница подписки в стиле кабинета](docs/SUBSCRIPTION-PAGE-RU.md) · [Push для iOS, Android и PC](docs/WEB-PUSH-RU.md)
+## Как выглядит сервис
 
-## С чего начать
+Скриншоты сделаны на демонстрационных данных 20 ноября 2026 года. Доступность разделов зависит от настроек и версии развёрнутых сервисов.
 
-| Ваша задача | Что открыть |
+| Главная страница | Личный кабинет |
 | --- | --- |
-| Установить проект впервые | [Ubuntu → Docker → база → HTTPS → настройка → проверка](docs/INSTALLATION-RU.md) |
-| Обновить существующую установку | [Резервная копия и порядок обновления контейнеров](docs/PRODUCTION-UPDATE-RU.md) |
-| Изменить название, тексты и тарифы на сайте | [Настройка config.main](docs/main-config.md) · [Готовый шаблон local](docs/main-config-template.txt) |
-| Настроить Remnawave и платные расширения | [Полный мануал vBios и расширений](docs/SHM-REMNAWAVE-MANUAL-RU.md) · [Общий конфиг](docs/cabinet-full-config.md) |
-| Включить статус серверов | [Ноды, замеры, история и страница /status](docs/MONITORING.md) |
-| Настроить инструкции подключения | [Страница помощи и config.apps](docs/help-apps.md) |
+| ![Главная страница vBios](docs/screenshots/current-landing-desktop-light.png) | ![Главная личного кабинета](docs/screenshots/current-dashboard-desktop-dark.png) |
 
-## Как выглядит кабинет
-
-Снимки актуальной production-сборки от 20 ноября 2026 года. Компьютер — 1440 × 1000, телефон — 390 × 844; длинные страницы показаны целиком. Все аккаунты, тарифы, платежи, ссылки и замеры демонстрационные. Снимки показывают интерфейс, но не подтверждают реальные оплаты и работу внешних сервисов.
-
-| Стартовая страница | Главная кабинета |
+| Услуги на компьютере | Услуги на телефоне |
 | --- | --- |
-| ![Стартовая страница](docs/screenshots/current-landing-desktop-light.png) | ![Главная кабинета](docs/screenshots/current-dashboard-desktop-dark.png) |
+| ![Список услуг](docs/screenshots/current-services-desktop-light.png) | ![Список услуг на телефоне](docs/screenshots/current-services-mobile-dark.png) |
 
-| Страница подписки на компьютере | Страница подписки на телефоне |
+| Подписка и подключение | Страница подписки на телефоне |
 | --- | --- |
-| ![Страница подписки — компьютер](docs/screenshots/subscription-page-desktop-dark.png) | ![Страница подписки — телефон](docs/screenshots/subscription-page-mobile-dark.png) |
+| ![Карточка услуги](docs/screenshots/current-service-desktop-light.png) | ![Страница подписки](docs/screenshots/subscription-page-mobile-dark.png) |
 
-| Подписка на компьютере | Подписка на телефоне |
-| --- | --- |
-| ![Новый график трафика](docs/screenshots/traffic-detail-desktop-light.png) | ![График трафика на телефоне](docs/screenshots/traffic-detail-mobile-dark.png) |
+[Открыть полную галерею](docs/screenshots/README.md)
 
-График показывает расход по дням, сумму за период, среднее значение и пиковый день. Нажатие на столбец раскрывает точное значение. Таблица доступна отдельно; на телефоне график прокручивается по горизонтали.
+## Содержание
+
+1. [Возможности](#возможности)
+2. [Из чего состоит проект](#из-чего-состоит-проект)
+3. [Подготовка к установке](#подготовка-к-установке)
+4. [Установка на сервер](#установка-на-сервер)
+5. [Настройка сервиса](#настройка-сервиса)
+6. [Telegram и поддержка](#telegram-и-поддержка)
+7. [Push-уведомления](#push-уведомления)
+8. [Отдельная страница подписки](#отдельная-страница-подписки)
+9. [Проверка работы](#проверка-работы)
+10. [Обновление и резервное копирование](#обновление-и-резервное-копирование)
+11. [Диагностика](#диагностика)
+12. [Документация](#документация)
 
 ## Возможности
 
-- Покупка и продление услуг, баланс, история операций и оплата через vBios.
-- Ссылка подписки, QR-код, инструкции и управление устройствами.
-- Диагностика, статистика трафика и разовые расширения после подтверждения оплаты.
-- Публичный мониторинг нод и история фактических проверок на /status.
-- Профиль, пароль, доступные способы входа и поддержка с вложениями.
+- Витрина тарифов, регистрация, вход и личный кабинет с адаптацией под телефон.
+- Услуги, баланс, оплата, история операций и продление через биллинг vBios.
+- Параметры подключения, QR-код, устройства, трафик и диагностика при настроенной интеграции Remnawave.
+- Поддержка с обращениями, вложениями и интеграцией Telegram Forum Topics.
+- Публичная страница состояния нод и история проверок.
+- Уведомления в кабинете и Web Push на поддерживаемых устройствах.
+- Настраиваемые тексты сайта, инструкции приложений и юридические ссылки.
 
-Доступность функций зависит от конфигурации vBios, прав API и подключённых обработчиков. Проверка API Remnawave не заменяет настройку выдачи основной подписки: необходимые условия описаны в мануале установки.
+Для отдельных возможностей нужны настройки, права API и обработчики событий. Состав реализованных функций и ограничения приведены в [описании состояния проекта](docs/IMPLEMENTATION-STATUS.md).
 
-## Установка и настройка
+## Из чего состоит проект
 
-1. Подготовьте чистый Ubuntu Server, два домена и доступ SSH.
-2. Выполните [установку по шагам](docs/INSTALLATION-RU.md): Docker, окружение, база, новый пароль admin, затем HTTPS.
-3. Настройте тарифы и оплату в vBios, интеграцию Remnawave и оформление сайта.
-4. Включите мониторинг и поддержку, проверьте покупку тестовым клиентом.
-5. Сделайте резервную копию и проверьте восстановление до открытия продаж.
+| Компонент | Назначение |
+| --- | --- |
+| `client` | Витрина и личный кабинет, проксирование запросов к API |
+| `admin` | Административная панель |
+| `api`, `core`, `spool` | API, бизнес-логика и фоновые задания биллинга |
+| `mysql`, `redis` | База данных и вспомогательное хранилище |
+| `push` | Подписки браузеров и доставка Web Push |
+| `phpmyadmin` | Дополнительный интерфейс работы с базой |
+| `subscription` | Отдельная страница подписки, запускается дополнительным Compose-файлом |
 
-Шаблоны с конструкциями <code>{{ ... }}</code> выполняются в vBios транспортом **local**, а не в терминале Linux. Полный шаблон заменяет конфигурацию; перед применением сохраните прежние значения. Для обновления только текстов Login есть [частичный шаблон](docs/login-design-local.txt).
+Панель Remnawave и её ноды разворачиваются отдельно. Тарифы и платежи настраиваются в биллинге vBios.
 
-## Обновить только дизайн кабинета
+## Подготовка к установке
 
-После успешной публикации образов в GitHub Actions:
+Понадобятся сервер Ubuntu 24.04 LTS, доступ по SSH, два домена для кабинета и админки, а также Docker Compose v2. В примерах используются `bill.example.com` и `admin.example.com` — замените их своими доменами. Подготовьте доступ к Remnawave и платёжному провайдеру, если планируете их подключать.
 
-~~~bash
+Подробные требования, настройка DNS, HTTPS и создание первого администратора описаны в [полной инструкции установки](docs/INSTALLATION-RU.md). Шаблоны с `{{ ... }}` выполняются в биллинге транспортом `local`.
+
+## Установка на сервер
+
+Следующие команды предназначены для новой установки. Полный порядок, включая инициализацию базы, смену пароля администратора и выпуск сертификата, приведён в [инструкции для чистого сервера](docs/INSTALLATION-RU.md). Не импортируйте начальную базу поверх существующей установки.
+
+### 1. Получите файлы
+
+После установки Docker и Git подключитесь к серверу и выполните:
+
+```bash
+git clone https://github.com/dev-vbs/vbios-ticket-yandex.git /opt/shm
+cd /opt/shm
+cp .env.example .env
+chmod 600 .env
+```
+
+### 2. Настройте окружение
+
+Откройте `nano .env`. Задайте разные значения `MYSQL_PASS` и `MYSQL_ROOT_PASS`, например, с помощью двух отдельных вызовов `openssl rand -hex 32`. Проверьте имена образов, домены, адреса портов и остальные переменные по [разделу настройки окружения](docs/INSTALLATION-RU.md#3-переменные-окружения).
+
+```bash
+docker compose config --quiet
+docker compose pull
+```
+
+Файл `.env` содержит секреты. Храните его в защищённой копии и не публикуйте его содержимое.
+
+### 3. Инициализируйте сервис
+
+Выполните [раздел про базу и администратора](docs/INSTALLATION-RU.md#4-база-и-первый-администратор). В нём описаны запуск MySQL и Redis, штатная инициализация core, необходимые SQL-файлы и смена начального пароля. Затем настройте [домены и HTTPS](docs/INSTALLATION-RU.md#5-домен-и-https).
+
+После запуска проверьте состояние контейнеров:
+
+```bash
+cd /opt/shm
+docker compose ps
+docker compose logs --tail=100 core
+```
+
+## Настройка сервиса
+
+### Витрина и личный кабинет
+
+Оформление главной страницы, тексты и разделы задаются в `config.main`. Подготовлены [описание параметров](docs/main-config.md) и [пример local-шаблона](docs/main-config-template.txt). До изменения сохраните действующие настройки.
+
+Для юридических ссылок предусмотрена переменная `PRIVACY_POLICY_URL`. Проект документа находится в [privacy.html](client/public/privacy.html). Перед использованием заполните данные оператора и проверьте содержание. После публикации документа задайте путь в окружении и пересоздайте `client`.
+
+### Тарифы, оплата и Remnawave
+
+1. Создайте тарифы и настройте оплату в биллинге vBios.
+2. Подключите Remnawave и проверьте права токена API.
+3. Настройте выдачу услуги и её продление, затем проверьте покупку тестовым пользователем.
+4. При необходимости настройте доступные локации и платные расширения.
+
+Пошаговые настройки и шаблоны описаны в [мануале интеграции и расширений](docs/SHM-REMNAWAVE-MANUAL-RU.md), [описании модуля](docs/remnawave-module.md) и [настройках кабинета](docs/remnawave-cabinet.md). Платные действия требуют подтверждения оплаты и корректно настроенных обработчиков.
+
+### Мониторинг и приложения
+
+Список публичных нод, проверку и отображение истории настройте по [инструкции мониторинга](docs/MONITORING.md). На странице `/status` отображаются результаты настроенных проверок. Расположение точки измерения и тип проверки влияют на показанную задержку.
+
+Ссылки на приложения и инструкции для пользователей задаются через `config.apps`. Пример приведён в [руководстве по странице помощи](docs/help-apps.md).
+
+## Telegram и поддержка
+
+Настройте бота и группу с темами, затем подключите обработчики тикетов по [инструкции установки](docs/INSTALLATION-RU.md#9-telegram-поддержка-и-файлы). Для главного меню доступен [local-шаблон](docs/telegram-main-menu-vbios-local.txt), для бота — [полный шаблон](docs/telegram-bot-template-vbios-local.txt). Перед заменой сохраните действующие шаблоны и проверьте свои административные обработчики.
+
+| Обращения | Переписка с поддержкой |
+| --- | --- |
+| ![Список обращений](docs/screenshots/tickets-light.png) | ![Переписка](docs/screenshots/ticket-conversation-light.png) |
+
+Вложения и хранилище настраиваются отдельно. Подробности приведены в [инструкции по Yandex Cloud](docs/new-server/YANDEX-CLOUD-TICKETS.md).
+
+## Push-уведомления
+
+Для Web Push нужен HTTPS-домен кабинета, сервис `push`, постоянные VAPID-ключи и разрешение пользователя на каждом устройстве. Пошаговая генерация ключей, настройки окружения и проверка на iOS, Android и компьютере приведены в [инструкции Web Push](docs/WEB-PUSH-RU.md). Для уведомлений о событиях услуг используйте [шаблоны событий](docs/PUSH-EVENTS-LOCAL-RU.md).
+
+## Отдельная страница подписки
+
+Страница подписки запускается отдельным контейнером и подключается к панели Remnawave. Параметры окружения, пример Compose и публикация через HTTPS описаны в [руководстве страницы подписки](docs/SUBSCRIPTION-PAGE-RU.md).
+
+| Компьютер | Телефон |
+| --- | --- |
+| ![Страница подписки на компьютере](docs/screenshots/subscription-page-desktop-light.png) | ![Страница подписки на телефоне](docs/screenshots/subscription-page-mobile-dark.png) |
+
+## Проверка работы
+
+Перед открытием сервиса проверьте полный путь пользователя:
+
+1. Регистрация, вход, восстановление доступа и выход из кабинета.
+2. Выбор тарифа, тестовая оплата, выдача и продление услуги.
+3. Ссылка подписки, QR-код и подключение в поддерживаемом приложении.
+4. Устройства, трафик, мониторинг и платные расширения, если они включены.
+5. Обращение в поддержку, ответ оператора и получение уведомления.
+6. Работу кабинета на телефоне и компьютере и восстановление из резервной копии.
+
+Более подробный перечень приведён в [разделе проверки установки](docs/INSTALLATION-RU.md#11-проверка-перед-продажами).
+
+## Обновление и резервное копирование
+
+Перед обновлением сохраните согласованную резервную копию базы, томов и конфигурации. Проверьте опубликованные версии образов и совместимость миграций. Полный порядок и восстановление приведены в [руководстве по обновлению](docs/PRODUCTION-UPDATE-RU.md) и [разделе резервного копирования](docs/INSTALLATION-RU.md#13-резервные-копии-и-восстановление).
+
+Для обновления только контейнера кабинета после успешной публикации соответствующего образа:
+
+```bash
 cd /opt/shm
 docker compose pull client
 docker compose up -d --no-deps --force-recreate client
 docker compose ps client
 docker compose logs --tail=50 client
-~~~
+```
 
-Если обновлялись backend, API или конфигурация контейнеров, используйте [полную инструкцию обновления](docs/PRODUCTION-UPDATE-RU.md). Обычный restart не загружает новый образ. Не удаляйте тома базы данных.
+Для обновления серверных компонентов и изменения конфигурации используйте полную инструкцию обновления. Перезапуск контейнера сам по себе не загружает новый образ.
 
-## Галерея экранов
+## Диагностика
 
-Раскройте раздел и нажмите на снимок для просмотра в полном размере. В каждой группе есть обе темы и мобильная версия.
+```bash
+cd /opt/shm
+docker compose ps
+docker compose logs --tail=100 client
+docker compose logs --tail=100 api core spool
+docker compose logs --tail=100 push
+```
 
-<details>
-<summary><strong>Основные разделы</strong></summary>
+При проблемах с подключением проверьте HTTPS, доступность API, состояние базы и журналы нужного компонента. Для Remnawave проверьте адрес панели и права API, для Push — конфигурацию origin и разрешения браузера. Дополнительные проверки приведены в [разделе диагностики](docs/INSTALLATION-RU.md#14-диагностика).
 
-**Компьютер**
+## Документация
 
-| Экран | Светлая тема | Тёмная тема |
-| --- | --- | --- |
-| Главная | ![Главная — светлая тема](docs/screenshots/current-dashboard-desktop-light.png) | ![Главная — тёмная тема](docs/screenshots/current-dashboard-desktop-dark.png) |
-| Мои услуги | ![Мои услуги — светлая тема](docs/screenshots/current-services-desktop-light.png) | ![Мои услуги — тёмная тема](docs/screenshots/current-services-desktop-dark.png) |
-| Карточка услуги | ![Карточка услуги — светлая тема](docs/screenshots/current-service-desktop-light.png) | ![Карточка услуги — тёмная тема](docs/screenshots/current-service-desktop-dark.png) |
-| Профиль | ![Профиль — светлая тема](docs/screenshots/current-profile-desktop-light.png) | ![Профиль — тёмная тема](docs/screenshots/current-profile-desktop-dark.png) |
-| Баланс | ![Баланс — светлая тема](docs/screenshots/current-balance-desktop-light.png) | ![Баланс — тёмная тема](docs/screenshots/current-balance-desktop-dark.png) |
-| История операций | ![История операций — светлая тема](docs/screenshots/current-operations-desktop-light.png) | ![История операций — тёмная тема](docs/screenshots/current-operations-desktop-dark.png) |
-| Уведомления | ![Уведомления — светлая тема](docs/screenshots/current-notifications-desktop-light.png) | ![Уведомления — тёмная тема](docs/screenshots/current-notifications-desktop-dark.png) |
-| Помощь | ![Помощь — светлая тема](docs/screenshots/current-help-desktop-light.png) | ![Помощь — тёмная тема](docs/screenshots/current-help-desktop-dark.png) |
-
-**Телефон**
-
-| Экран | Светлая тема | Тёмная тема |
-| --- | --- | --- |
-| Главная | ![Главная — светлая тема](docs/screenshots/current-dashboard-mobile-light.png) | ![Главная — тёмная тема](docs/screenshots/current-dashboard-mobile-dark.png) |
-| Мои услуги | ![Мои услуги — светлая тема](docs/screenshots/current-services-mobile-light.png) | ![Мои услуги — тёмная тема](docs/screenshots/current-services-mobile-dark.png) |
-| Карточка услуги | ![Карточка услуги — светлая тема](docs/screenshots/current-service-mobile-light.png) | ![Карточка услуги — тёмная тема](docs/screenshots/current-service-mobile-dark.png) |
-| Профиль | ![Профиль — светлая тема](docs/screenshots/current-profile-mobile-light.png) | ![Профиль — тёмная тема](docs/screenshots/current-profile-mobile-dark.png) |
-| Баланс | ![Баланс — светлая тема](docs/screenshots/current-balance-mobile-light.png) | ![Баланс — тёмная тема](docs/screenshots/current-balance-mobile-dark.png) |
-| История операций | ![История операций — светлая тема](docs/screenshots/current-operations-mobile-light.png) | ![История операций — тёмная тема](docs/screenshots/current-operations-mobile-dark.png) |
-| Уведомления | ![Уведомления — светлая тема](docs/screenshots/current-notifications-mobile-light.png) | ![Уведомления — тёмная тема](docs/screenshots/current-notifications-mobile-dark.png) |
-| Помощь | ![Помощь — светлая тема](docs/screenshots/current-help-mobile-light.png) | ![Помощь — тёмная тема](docs/screenshots/current-help-mobile-dark.png) |
-
-</details>
-
-<details>
-<summary><strong>Вход и регистрация</strong></summary>
-
-**Компьютер**
-
-| Экран | Светлая тема | Тёмная тема |
-| --- | --- | --- |
-| Стартовая страница | ![Стартовая страница — светлая тема](docs/screenshots/current-landing-desktop-light.png) | ![Стартовая страница — тёмная тема](docs/screenshots/current-landing-desktop-dark.png) |
-| AJAX-вход | ![AJAX-вход — светлая тема](docs/screenshots/current-login-desktop-light.png) | ![AJAX-вход — тёмная тема](docs/screenshots/current-login-desktop-dark.png) |
-| Регистрация | ![Регистрация — светлая тема](docs/screenshots/current-register-desktop-light.png) | ![Регистрация — тёмная тема](docs/screenshots/current-register-desktop-dark.png) |
-| Восстановление пароля | ![Восстановление пароля — светлая тема](docs/screenshots/current-reset-desktop-light.png) | ![Восстановление пароля — тёмная тема](docs/screenshots/current-reset-desktop-dark.png) |
-
-**Телефон**
-
-| Экран | Светлая тема | Тёмная тема |
-| --- | --- | --- |
-| Стартовая страница | ![Стартовая страница — светлая тема](docs/screenshots/current-landing-mobile-light.png) | ![Стартовая страница — тёмная тема](docs/screenshots/current-landing-mobile-dark.png) |
-| AJAX-вход | ![AJAX-вход — светлая тема](docs/screenshots/current-login-mobile-light.png) | ![AJAX-вход — тёмная тема](docs/screenshots/current-login-mobile-dark.png) |
-| Регистрация | ![Регистрация — светлая тема](docs/screenshots/current-register-mobile-light.png) | ![Регистрация — тёмная тема](docs/screenshots/current-register-mobile-dark.png) |
-| Восстановление пароля | ![Восстановление пароля — светлая тема](docs/screenshots/current-reset-mobile-light.png) | ![Восстановление пароля — тёмная тема](docs/screenshots/current-reset-mobile-dark.png) |
-
-</details>
-
-<details>
-<summary><strong>Подписка и подключение</strong></summary>
-
-**Компьютер**
-
-| Экран | Светлая тема | Тёмная тема |
-| --- | --- | --- |
-| Параметры подключения | ![Параметры подключения — светлая тема](docs/screenshots/current-connection-desktop-light.png) | ![Параметры подключения — тёмная тема](docs/screenshots/current-connection-desktop-dark.png) |
-| QR-код | ![QR-код — светлая тема](docs/screenshots/current-qr-desktop-light.png) | ![QR-код — тёмная тема](docs/screenshots/current-qr-desktop-dark.png) |
-| Центр устройств | ![Центр устройств — светлая тема](docs/screenshots/current-devices-desktop-light.png) | ![Центр устройств — тёмная тема](docs/screenshots/current-devices-desktop-dark.png) |
-| Диагностика | ![Диагностика — светлая тема](docs/screenshots/current-diagnostics-desktop-light.png) | ![Диагностика — тёмная тема](docs/screenshots/current-diagnostics-desktop-dark.png) |
-| График трафика | ![График трафика — светлая тема](docs/screenshots/current-traffic-desktop-light.png) | ![График трафика — тёмная тема](docs/screenshots/current-traffic-desktop-dark.png) |
-| Обновления подписки | ![Обновления подписки — светлая тема](docs/screenshots/current-history-desktop-light.png) | ![Обновления подписки — тёмная тема](docs/screenshots/current-history-desktop-dark.png) |
-| Расширения | ![Расширения — светлая тема](docs/screenshots/current-addons-desktop-light.png) | ![Расширения — тёмная тема](docs/screenshots/current-addons-desktop-dark.png) |
-| Смена тарифа через SHM | ![Смена тарифа через SHM — светлая тема](docs/screenshots/current-tariff-desktop-light.png) | ![Смена тарифа через SHM — тёмная тема](docs/screenshots/current-tariff-desktop-dark.png) |
-
-**Телефон**
-
-| Экран | Светлая тема | Тёмная тема |
-| --- | --- | --- |
-| Параметры подключения | ![Параметры подключения — светлая тема](docs/screenshots/current-connection-mobile-light.png) | ![Параметры подключения — тёмная тема](docs/screenshots/current-connection-mobile-dark.png) |
-| QR-код | ![QR-код — светлая тема](docs/screenshots/current-qr-mobile-light.png) | ![QR-код — тёмная тема](docs/screenshots/current-qr-mobile-dark.png) |
-| Центр устройств | ![Центр устройств — светлая тема](docs/screenshots/current-devices-mobile-light.png) | ![Центр устройств — тёмная тема](docs/screenshots/current-devices-mobile-dark.png) |
-| Диагностика | ![Диагностика — светлая тема](docs/screenshots/current-diagnostics-mobile-light.png) | ![Диагностика — тёмная тема](docs/screenshots/current-diagnostics-mobile-dark.png) |
-| График трафика | ![График трафика — светлая тема](docs/screenshots/current-traffic-mobile-light.png) | ![График трафика — тёмная тема](docs/screenshots/current-traffic-mobile-dark.png) |
-| Обновления подписки | ![Обновления подписки — светлая тема](docs/screenshots/current-history-mobile-light.png) | ![Обновления подписки — тёмная тема](docs/screenshots/current-history-mobile-dark.png) |
-| Расширения | ![Расширения — светлая тема](docs/screenshots/current-addons-mobile-light.png) | ![Расширения — тёмная тема](docs/screenshots/current-addons-mobile-dark.png) |
-| Смена тарифа через SHM | ![Смена тарифа через SHM — светлая тема](docs/screenshots/current-tariff-mobile-light.png) | ![Смена тарифа через SHM — тёмная тема](docs/screenshots/current-tariff-mobile-dark.png) |
-
-</details>
-
-<details>
-<summary><strong>Оплата и безопасность</strong></summary>
-
-**Компьютер**
-
-| Экран | Светлая тема | Тёмная тема |
-| --- | --- | --- |
-| Пополнение через SHM | ![Пополнение через SHM — светлая тема](docs/screenshots/current-payment-desktop-light.png) | ![Пополнение через SHM — тёмная тема](docs/screenshots/current-payment-desktop-dark.png) |
-| Промокод | ![Промокод — светлая тема](docs/screenshots/current-promo-desktop-light.png) | ![Промокод — тёмная тема](docs/screenshots/current-promo-desktop-dark.png) |
-| Смена пароля | ![Смена пароля — светлая тема](docs/screenshots/current-password-desktop-light.png) | ![Смена пароля — тёмная тема](docs/screenshots/current-password-desktop-dark.png) |
-| Двухфакторная защита | ![Двухфакторная защита — светлая тема](docs/screenshots/current-2fa-desktop-light.png) | ![Двухфакторная защита — тёмная тема](docs/screenshots/current-2fa-desktop-dark.png) |
-| Ключи входа | ![Ключи входа — светлая тема](docs/screenshots/current-passkey-desktop-light.png) | ![Ключи входа — тёмная тема](docs/screenshots/current-passkey-desktop-dark.png) |
-
-**Телефон**
-
-| Экран | Светлая тема | Тёмная тема |
-| --- | --- | --- |
-| Пополнение через SHM | ![Пополнение через SHM — светлая тема](docs/screenshots/current-payment-mobile-light.png) | ![Пополнение через SHM — тёмная тема](docs/screenshots/current-payment-mobile-dark.png) |
-| Промокод | ![Промокод — светлая тема](docs/screenshots/current-promo-mobile-light.png) | ![Промокод — тёмная тема](docs/screenshots/current-promo-mobile-dark.png) |
-| Смена пароля | ![Смена пароля — светлая тема](docs/screenshots/current-password-mobile-light.png) | ![Смена пароля — тёмная тема](docs/screenshots/current-password-mobile-dark.png) |
-| Двухфакторная защита | ![Двухфакторная защита — светлая тема](docs/screenshots/current-2fa-mobile-light.png) | ![Двухфакторная защита — тёмная тема](docs/screenshots/current-2fa-mobile-dark.png) |
-| Ключи входа | ![Ключи входа — светлая тема](docs/screenshots/current-passkey-mobile-light.png) | ![Ключи входа — тёмная тема](docs/screenshots/current-passkey-mobile-dark.png) |
-
-</details>
-
-<details>
-<summary><strong>Поддержка</strong></summary>
-
-**Компьютер**
-
-| Экран | Светлая тема | Тёмная тема |
-| --- | --- | --- |
-| Обращения | ![Обращения — светлая тема](docs/screenshots/current-tickets-desktop-light.png) | ![Обращения — тёмная тема](docs/screenshots/current-tickets-desktop-dark.png) |
-| Новый вопрос | ![Новый вопрос — светлая тема](docs/screenshots/current-ticket-create-desktop-light.png) | ![Новый вопрос — тёмная тема](docs/screenshots/current-ticket-create-desktop-dark.png) |
-| Переписка | ![Переписка — светлая тема](docs/screenshots/current-ticket-chat-desktop-light.png) | ![Переписка — тёмная тема](docs/screenshots/current-ticket-chat-desktop-dark.png) |
-
-**Телефон**
-
-| Экран | Светлая тема | Тёмная тема |
-| --- | --- | --- |
-| Обращения | ![Обращения — светлая тема](docs/screenshots/current-tickets-mobile-light.png) | ![Обращения — тёмная тема](docs/screenshots/current-tickets-mobile-dark.png) |
-| Новый вопрос | ![Новый вопрос — светлая тема](docs/screenshots/current-ticket-create-mobile-light.png) | ![Новый вопрос — тёмная тема](docs/screenshots/current-ticket-create-mobile-dark.png) |
-| Переписка | ![Переписка — светлая тема](docs/screenshots/current-ticket-chat-mobile-light.png) | ![Переписка — тёмная тема](docs/screenshots/current-ticket-chat-mobile-dark.png) |
-
-</details>
-
-<details>
-<summary><strong>Мониторинг</strong></summary>
-
-**Компьютер**
-
-| Экран | Светлая тема | Тёмная тема |
-| --- | --- | --- |
-| Публичная страница статуса | ![Публичная страница статуса — светлая тема](docs/screenshots/current-status-desktop-light.png) | ![Публичная страница статуса — тёмная тема](docs/screenshots/current-status-desktop-dark.png) |
-
-**Телефон**
-
-| Экран | Светлая тема | Тёмная тема |
-| --- | --- | --- |
-| Публичная страница статуса | ![Публичная страница статуса — светлая тема](docs/screenshots/current-status-mobile-light.png) | ![Публичная страница статуса — тёмная тема](docs/screenshots/current-status-mobile-dark.png) |
-
-</details>
-
-<details>
-<summary><strong>Мобильное меню</strong></summary>
-
-| Светлая тема | Тёмная тема |
+| Задача | Руководство |
 | --- | --- |
-| ![Мобильное меню](docs/screenshots/current-menu-mobile-light.png) | ![Мобильное меню](docs/screenshots/current-menu-mobile-dark.png) |
-
-</details>
-
-
-## Документация и шаблоны
-
-| Раздел | Материалы |
-| --- | --- |
-| Установка и эксплуатация | [Полный мануал](docs/INSTALLATION-RU.md) · [Обновление](docs/PRODUCTION-UPDATE-RU.md) |
-| Оформление сайта | [config.main](docs/main-config.md) · [Шаблон](docs/main-config-template.txt) · [Частичное обновление Login](docs/login-design-local.txt) |
-| Remnawave | [Модуль API](docs/remnawave-module.md) · [Кабинет и расширения](docs/remnawave-cabinet.md) · [Настройка услуг и событий](docs/SHM-REMNAWAVE-MANUAL-RU.md) |
-| Готовая конфигурация | [Описание](docs/cabinet-full-config.md) · [Полный шаблон local](docs/cabinet-full-config-local.txt) |
-| Мониторинг | [Инструкция](docs/MONITORING.md) · [HTTPS endpoint на ноде](docs/node-ping-nginx.conf) |
-| Поддержка | [Хранилище вложений Yandex Cloud](docs/new-server/YANDEX-CLOUD-TICKETS.md) · [Пример config.ticket](docs/new-server/ticket.example.json) |
-| Помощь пользователю | [Настройка страницы /help](docs/help-apps.md) · [Пример config.apps](docs/apps-config.example.json) |
-| Состояние проекта | [Реализованные функции и ограничения](docs/IMPLEMENTATION-STATUS.md) |
-
-Секреты хранятся в закрытой конфигурации SHM и .env. Публичный config.main предназначен только для содержимого сайта и разрешённых настроек мониторинга.
-
-
-## Отдельная страница подписки
-
-Запускается рядом с Remnawave независимо от SHM: [инструкция и compose](docs/SUBSCRIPTION-PAGE-RU.md). Примеры ниже используют демонстрационную подписку.
-
-| Светлая тема | Тёмная тема на телефоне |
-| --- | --- |
-| ![Страница подписки](docs/screenshots/subscription-page-desktop-light.png) | ![Страница подписки на телефоне](docs/screenshots/subscription-page-mobile-dark.png) |
+| Установка и эксплуатация | [Чистый сервер](docs/INSTALLATION-RU.md) · [Обновление](docs/PRODUCTION-UPDATE-RU.md) |
+| Оформление сайта | [config.main](docs/main-config.md) · [Шаблон local](docs/main-config-template.txt) |
+| Remnawave и расширения | [Мануал](docs/SHM-REMNAWAVE-MANUAL-RU.md) · [Полный конфиг](docs/cabinet-full-config.md) |
+| Статус нод | [Мониторинг](docs/MONITORING.md) |
+| Push и события | [Web Push](docs/WEB-PUSH-RU.md) · [Шаблоны событий](docs/PUSH-EVENTS-LOCAL-RU.md) |
+| Приложения | [Инструкции подключения](docs/help-apps.md) |
+| Отдельная страница подписки | [Настройка](docs/SUBSCRIPTION-PAGE-RU.md) |
+| Скриншоты | [Галерея](docs/screenshots/README.md) |
