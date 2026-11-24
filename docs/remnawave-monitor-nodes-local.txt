@@ -1,0 +1,5 @@
+{{# Запустите от администратора транспортом local после настройки config.remna. #}}
+{{ result = user.srv('Remnawave').operation(operation_id = 'NodesController_getNodes') }}
+{{ FOR node IN result.response }}
+{{ node.name }} | {{ node.address }} | {{ node.uuid }}
+{{ END }}

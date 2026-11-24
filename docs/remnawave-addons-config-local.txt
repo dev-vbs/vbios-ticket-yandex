@@ -2,7 +2,10 @@
 {{ THROW remna_config 'Сначала настройте config.remna: URL, API-токен и name_prefix' }}
 {{ END }}
 {{ remna = config.remna }}
-{{ remna.addon_signing_key = 'REPLACE_WITH_OUTPUT_OF_OPENSSL_RAND_HEX_32' }}
+{{ IF !remna.addon_signing_key || remna.addon_signing_key == 'REPLACE_WITH_OUTPUT_OF_OPENSSL_RAND_HEX_32' }}
+{{ THROW remna_config 'Сначала сохраните действующий ключ addon_signing_key в config.remna.' }}
+{{ END }}
+{{# Замените 201–203 на ID разовых услуг, а 10 и 11 — на ID основных тарифов. Весь список addons будет заменён. #}}
 {{ remna.addons = [
     {
         key = 'devices_2'

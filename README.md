@@ -2,7 +2,9 @@
 
 vBios объединяет витрину услуг, личный кабинет, оплату, поддержку и интеграцию с Remnawave. Пользователь может выбрать тариф, оплатить услугу, получить параметры подключения и обратиться в поддержку с компьютера или телефона.
 
-[Установка на чистый сервер](docs/INSTALLATION-RU.md) · [Обновление проекта](docs/PRODUCTION-UPDATE-RU.md) · [Все скриншоты](docs/screenshots/README.md) · [Состояние функций](docs/IMPLEMENTATION-STATUS.md)
+**[Полный мануал vBios](docs/INSTALLATION-RU.md)** · [Обновление проекта](docs/PRODUCTION-UPDATE-RU.md) · [Все скриншоты](docs/screenshots/README.md) · [Состояние функций](docs/IMPLEMENTATION-STATUS.md)
+
+Уже установили кабинет? Откройте [настройку Remnawave, устройств и расширений](docs/INSTALLATION-RU.md#7-тарифы-remnawave-и-расширения) или [настройку публичного мониторинга](docs/INSTALLATION-RU.md#10-мониторинг).
 
 ## Как выглядит сервис
 

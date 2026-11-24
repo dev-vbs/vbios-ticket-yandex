@@ -1,0 +1,48 @@
+{{# Выполните из панели администратора транспортом local. #}}
+{{ settings = {
+    panel_url = 'https://remna.example.com'
+    api_token = 'REPLACE_WITH_API_TOKEN'
+    name_prefix = 'vBios_us_'
+    storage_prefix = 'vpn_mrzb_'
+    nodes = [
+        { uuid = 'NODE_UUID_RU' title = 'Россия ProCloud' description = '🇷🇺 Россия' ping_ip = 'procloud.vbios.tech' ping_port = 443 }
+        { uuid = 'NODE_UUID_FI' title = 'Финляндия' description = '🇫🇮 Финляндия' ping_ip = 'noderu.vbios.tech' ping_port = 8443 }
+        { uuid = 'NODE_UUID_US' title = 'США' description = '🇺🇸 США' ping_ip = 'usa.vbios.tech' ping_port = 443 }
+        { uuid = 'NODE_UUID_AUTO' title = 'Авто — новые локации' description = '🇪🇺 Европа' ping_ip = 'noderu2cascade.vbios.tech' ping_port = 8443 }
+        { uuid = 'NODE_UUID_LTE' title = 'LTE' description = '🇪🇺 Европа' ping_ip = 'cdn.vbios.tech' ping_port = 443 }
+    ]
+} }}
+
+{{ remna = config.remna || {} }}
+{{ IF !remna.url || !remna.api_token }}
+    {{ IF (!remna.url && settings.panel_url == 'https://remna.example.com') || (!remna.api_token && settings.api_token == 'REPLACE_WITH_API_TOKEN') }}
+        {{ THROW configuration 'Укажите недостающие URL панели и API-токен в settings.' }}
+    {{ END }}
+    {{ IF !config.remna }}
+        {{ r = user.srv('config').add(key = 'remna') }}
+    {{ END }}
+    {{ remna.url = remna.url || settings.panel_url }}
+    {{ remna.api_token = remna.api_token || settings.api_token }}
+{{ END }}
+{{ remna.name_prefix = remna.name_prefix || remna.username_prefix || settings.name_prefix }}
+{{ remna.storage_prefix = remna.storage_prefix || settings.storage_prefix }}
+{{ r = user.srv('config').id('remna').set_json('value', remna) }}
+
+{{ invalid_nodes = 0 }}
+{{ FOR node IN settings.nodes }}
+    {{ IF !node.uuid.match('^[0-9a-fA-F]{8}(-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}$') }}
+        {{ invalid_nodes = 1 }}
+    {{ END }}
+{{ END }}
+{{ IF invalid_nodes }}
+Доступ Remnawave записан. Подставьте UUID нод из remnawave-monitor-nodes-local.txt и запустите шаблон снова.
+{{ ELSE }}
+{{ main = config.main || {} }}
+{{ IF !config.main }}
+    {{ r = user.srv('config').add(key = 'main') }}
+{{ END }}
+{{ main.monitor_enabled = 1 }}
+{{ main.monitor_nodes = settings.nodes }}
+{{ r = user.srv('config').id('main').set_json('value', main) }}
+Настройки мониторинга и интеграции кабинета записаны.
+{{ END }}

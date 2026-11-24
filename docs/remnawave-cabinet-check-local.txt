@@ -1,0 +1,32 @@
+{{# Выполните от администратора транспортом local. Укажите ID услуги из /services/ID. #}}
+{{ service_id = 6 }}
+{{ remna = config.remna || {} }}
+{{ IF !remna.url || !remna.api_token }}
+    {{ THROW configuration 'Заполните config.remna.url и config.remna.api_token.' }}
+{{ END }}
+{{ prefix = remna.name_prefix || remna.username_prefix || 'vBios_us_' }}
+{{ username = prefix _ service_id }}
+{{ api = user.srv('Remnawave') }}
+
+{{ TRY }}
+    {{ lookup = api.operation(operation_id = 'UsersController_getUserByUsername', path_params = { username = username }) }}
+    {{ remna_id = lookup.response.id }}
+{{ CATCH }}
+Не удалось найти пользователя Remnawave {{ username }}. Проверьте адрес панели, права токена и точное имя пользователя.
+{{ END }}
+
+{{ IF remna_id }}
+Пользователь найден. ID Remnawave: {{ remna_id }}.
+    {{ TRY }}
+        {{ result = api.operation(operation_id = 'HwidUserDevicesController_getUserHwidDevices', path_params = { userId = remna_id }) }}
+Устройства: API ответил. Количество: {{ result.response.total }}.
+    {{ CATCH }}
+Устройства: API не вернул список. Проверьте доступ токена к HWID.
+    {{ END }}
+    {{ TRY }}
+        {{ result = api.operation(operation_id = 'UsersController_getUserById', path_params = { userId = remna_id }) }}
+Статистика подписки: API ответил. Лимит устройств: {{ result.response.hwidDeviceLimit }}.
+    {{ CATCH }}
+Статистика подписки: API недоступен для найденного пользователя.
+    {{ END }}
+{{ END }}
