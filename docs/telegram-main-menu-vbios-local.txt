@@ -8,23 +8,21 @@
 
 {{ TEXT = BLOCK }}
 🛡 <b>vBios</b>
-<i>Ваши услуги и подключение — в одном месте</i>
-
-👋 Здравствуйте, <b>{{ displayName FILTER html }}</b>!
+👋 <b>{{ displayName FILTER html }}</b>
 
 💳 Баланс: <b>{{ user.balance || 0 }} ₽</b>{{ IF bonus > 0 }}  ·  🎁 Бонусы: <b>{{ bonus }} ₽</b>{{ END }}
 
-🌐 <b>Состояние услуг</b>
 {{ IF totalCount == 0 }}
-Пока нет подключённых услуг.
 Выберите тариф, чтобы начать пользоваться сервисом.
 {{ ELSE }}
-Всего: <b>{{ totalCount }}</b>  ·  Активны: <b>{{ activeCount }}</b>
-{{ IF unpaidCount > 0 }}🟠 Ожидают оплаты: <b>{{ unpaidCount }}</b>{{ END }}
-{{ IF blockedCount > 0 }}
-🔴 Заблокированы: <b>{{ blockedCount }}</b>
-{{ END }}
-Откройте «Мои услуги», чтобы подключиться или продлить тариф.
+<b>Подписки</b>
+<pre>СТАТУС               КОЛ-ВО
+───────────────────────────
+Активны               {{ activeCount }}
+Ожидают оплаты        {{ unpaidCount }}
+Заблокированы         {{ blockedCount }}
+───────────────────────────
+Всего                 {{ totalCount }}</pre>
 {{ END }}
 {{ END }}
 
