@@ -531,13 +531,12 @@ export default function Profile() {
     <Stack gap="lg" className="profile-page">
 
 
-      <header className="page-header"><div><span className="cabinet-breadcrumb">Личный кабинет</span><Title className="page-header__title" order={2}>{t('profile.title')}</Title><p className="page-header__description">Управляйте данными аккаунта, безопасностью и оплатой.</p></div></header>
+      <header className="page-header"><Title className="page-header__title" order={1}>{t('profile.title')}</Title></header>
 
 
-      <nav className="profile-shortcuts" aria-label="Настройки профиля"><a href="#profile-contacts"><IconUser size={18} /><span>Личные данные<small>Имя, телефон и почта</small></span></a><a href="#profile-security"><IconLock size={18} /><span>Безопасность<small>Пароль и способы входа</small></span></a><Link to="/balance"><IconCreditCard size={18} /><span>Баланс и оплата<small>Пополнение и история</small></span></Link></nav>
-      <Grid>
-        <Grid.Col span={{ base: 12, md: 4 }} style={{ display: 'flex' }}>
-          <Card className="profile-card profile-card--account" withBorder radius="lg" p="lg" style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+
+          <Card className="profile-card profile-card--account" withBorder radius="lg" p="lg">
+            <div className="profile-account-info">
             <Group className="profile-identity">
               <Avatar
                 size={56}
@@ -561,11 +560,10 @@ export default function Profile() {
                 { profile.discount && profile.discount > 0 ? ( <Text size="xm" style={{ color: colorScheme === 'dark' ? '#4ade80' : '#16a34a' }}>{t('profile.discount')}: {profile.discount}%</Text>) : undefined}
               </div>
             </Group>
-            <Text size="xs" c="dimmed" mt="sm">Фото необязательно · JPG, PNG, WebP или GIF · до 5 МБ</Text>
+            <Text size="xs" c="dimmed" mt="xs">JPG, PNG, WebP или GIF · до 5 МБ</Text>
+            </div>
 
-            <Divider my="md" />
-
-            <Group>
+            <Group className="profile-referrals">
               <div style={{ minWidth: 0, width: '100%' }}><Text fw={600} size="sm" mb={8}>Пригласить друзей</Text>
                 <Group wrap="nowrap" gap="xs" align="center">
                   <Text
@@ -582,6 +580,7 @@ export default function Profile() {
                   </Text>
                   <Tooltip label={clipboardLink.copied ? t('common.copied') : t('common.copy')}>
                     <ActionIcon
+                      aria-label="Скопировать ссылку для приглашения"
                       color={clipboardLink.copied ? 'teal' : 'gray'}
                       variant="subtle"
                       onClick={() => clipboardLink.copy(partnerLink)}
@@ -598,20 +597,13 @@ export default function Profile() {
               </div>
             </Group>
 
-            <Divider my="md" />
-
-            <Button component={Link} to="/balance" variant="light" fullWidth>
-              Баланс, бонусы и промокод
-            </Button>
-
           </Card>
 
-        </Grid.Col>
+      <nav className="profile-shortcuts" aria-label="Настройки профиля"><a href="#profile-contacts"><IconUser size={18} /><span>Личные данные<small>Имя, телефон и почта</small></span></a><a href="#profile-security"><IconLock size={18} /><span>Безопасность<small>Пароль и способы входа</small></span></a><Link to="/balance"><IconCreditCard size={18} /><span>Баланс и оплата<small>Пополнение и история</small></span></Link></nav>
 
-        <Grid.Col span={{ base: 12, md: 8 }} style={{ display: 'flex' }}>
-          <Card id="profile-contacts" className="profile-card profile-card--details" withBorder radius="lg" p="lg" style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+          <Card id="profile-contacts" className="profile-card profile-card--details" withBorder radius="lg" p="lg">
             <Group justify="space-between" mb="md">
-              <Text fw={500}>{t('profile.personalData')}</Text>
+              <Title order={2} size="h4">{t('profile.personalData')}</Title>
               {!editing ? (
                 <Button variant="light" size="xs" leftSection={<IconEdit size={14} />} onClick={() => setEditing(true)}>
                   {t('common.edit')}
@@ -688,7 +680,7 @@ export default function Profile() {
             <Group>
               <IconMail size={24} color={emailVerified ? '#22c55e' : '#666'} />
               {profileEmail ? (
-                <div>
+                <div className="profile-contact-value">
                   <Text size="sm">{profileEmail}</Text>
                   <Text size="xs" c={emailVerified ? 'green' : 'orange'}>
                     {emailVerified ? t('profile.emailVerified') : t('profile.emailNotVerified')}
@@ -702,8 +694,6 @@ export default function Profile() {
               {t('profile.emailDescription')}
             </Text>
           </Card>
-        </Grid.Col>
-      </Grid>
 
       {forecast && forecast.items && forecast.items.length > 0 && (
         <Card withBorder radius="md" p="lg">

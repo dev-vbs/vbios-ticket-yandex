@@ -44,3 +44,33 @@
 #profile-contacts,#profile-security { scroll-margin-top:100px; }
 .profile-page .profile-card--account .profile-identity { grid-template-columns:56px minmax(0,1fr); gap:12px; }
 @media(max-width:700px){.profile-shortcuts{grid-template-columns:1fr;gap:8px}.profile-shortcuts a{padding:14px 16px}.profile-shortcuts small{margin-top:2px}.profile-shortcuts a span{display:flex;flex-direction:column}}
+
+
+.profile-page .profile-card--account {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+  align-items: center;
+  gap: 24px;
+  background: linear-gradient(125deg, var(--ui-accent-soft), var(--ui-surface) 68%) !important;
+}
+.profile-account-info, .profile-referrals, .profile-contact-value { min-width: 0; }
+.profile-referrals {
+  padding: 16px;
+  border: 1px solid var(--ui-border);
+  border-radius: 14px;
+  background: var(--ui-surface);
+}
+.profile-contact-value { overflow-wrap: anywhere; }
+.profile-photo-actions .mantine-Button-root { min-height: 40px; }
+.profile-shortcuts a { min-width: 0; min-height: 48px; }
+.profile-shortcuts a span { overflow-wrap: anywhere; }
+.profile-page #profile-security { min-width: 0; }
+
+@media (max-width: 700px) {
+  .profile-page .profile-card--account { grid-template-columns: minmax(0, 1fr); gap: 16px; }
+  .profile-shortcuts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .profile-shortcuts a { padding: 10px; gap: 8px; font-size: 12px; }
+  .profile-shortcuts a:last-child { grid-column: 1 / -1; }
+  .profile-shortcuts small { display: none; }
+  .profile-photo-actions .mantine-Button-root { min-height: 44px; }
+}
