@@ -12,7 +12,13 @@ async function request(path: string, method = 'GET', body?: object) {
   return data;
 }
 async function registration() {
-  return Promise.race([navigator.serviceWorker.ready, new Promise<never>((_, reject) => setTimeout(() => reject(new Error('Приложение ещё обновляется. Перезагрузите страницу и попробуйте снова.')), 10000))]);
+  const deadline = performance.now() + 10000;
+  do {
+    const registration = await navigator.serviceWorker.getRegistration();
+    if (registration?.active?.state === 'activated') return registration;
+    await new Promise(resolve => setTimeout(resolve, 200));
+  } while (performance.now() < deadline);
+  throw Error('Модуль уведомлений не запустился. Обновите страницу и попробуйте снова.');
 }
 function keyBytes(key: string): Uint8Array<ArrayBuffer> {
   const value = atob(key.replace(/-/g, '+').replace(/_/g, '/') + '='.repeat((4 - key.length % 4) % 4));
@@ -49,7 +55,16 @@ export function usePushNotifications() {
     const reg = await registration();
     let sub = await reg.pushManager.getSubscription();
     const created = !sub;
-    sub ||= await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: keyBytes(settings.publicKey) });
+    if (!sub) {
+      const options = { userVisibleOnly: true, applicationServerKey: keyBytes(settings.publicKey) };
+      try {
+        sub = await reg.pushManager.subscribe(options);
+      } catch (error) {
+        if (!(error instanceof DOMException) || error.name !== 'InvalidStateError') throw error;
+        const current = await registration();
+        sub = await current.pushManager.subscribe(options);
+      }
+    }
     try { await request('subscriptions', 'POST', sub.toJSON()); }
     catch (e) { if (created) await sub.unsubscribe(); throw e; }
     setIsSubscribed(true); setMessage('Это устройство подписано на уведомления вашего аккаунта.');
