@@ -684,11 +684,11 @@ function ServiceCard({ service, onClick, isChild = false, isLastChild = false }:
       withBorder
       radius="md"
       p="md"
-      className="service-overview-card" style={{ cursor: 'pointer', borderInlineStart: `3px solid var(--mantine-color-${statusColor}-6)`, borderRadius: 16, padding: 20 }}
+      className="service-overview-card service-overview-card--main"
       onClick={onClick}
     >
       <Stack gap="sm">
-        <Group justify="space-between" align="flex-start" gap="md">
+        <Group className="service-overview-card__heading" justify="space-between" align="flex-start" gap="md">
           <div style={{ minWidth: 0 }}>
             <Text size="xs" c="dimmed" mb={4}>Услуга #{service.user_service_id}</Text>
             <Text size="lg" fw={700} style={{ overflowWrap: 'anywhere' }}>{service.service.name}</Text>
@@ -696,7 +696,7 @@ function ServiceCard({ service, onClick, isChild = false, isLastChild = false }:
           <Badge color={statusColor} variant="light" size="md" radius="sm">{statusLabel}</Badge>
         </Group>
         <Divider className="service-card__divider" />
-        <Group justify="space-between" gap="md" align="center">
+        <Group className="service-overview-card__terms" justify="space-between" gap="md" align="center">
           <Stack gap={2}>
             <Text size="xs" c="dimmed">Стоимость продления</Text>
             <Text fw={700} size="lg" className="service-card__price">{service.service.cost > 0 ? `${service.service.cost} ${t('common.currency')}` : '—'}</Text>
@@ -892,8 +892,12 @@ export default function Services() {
   return (
     <Stack gap="lg" className="services-overview">
       <DataLoadStatus showRefresh={false} loading={refreshing} error={loadError && "Не удалось обновить услуги"} updatedAt={updatedAt} onRetry={() => void fetchServices()} />
-      <Paper withBorder radius="lg" className="services-header-card">
-        <div className="services-header-card__copy"><div className="services-header-card__mark"><IconWifi size={17} /><span>Центр подключений</span></div><Title className="page-header__title" order={2}>{t('services.title')}</Title><Text c="dimmed" size="sm" mt={6}>Все услуги, статусы и настройки подключения — в одном понятном экране.</Text></div>
+      <header className="services-header-card" aria-label="Управление услугами">
+        {flatServices.length > 0 && <div className="services-summary" aria-label="Сводка по услугам">
+          <div className="services-summary__item services-summary__item--active"><span className="services-summary__icon"><IconCheck size={17} /></span><div><Text size="xs" c="dimmed">Активные</Text><Text fw={750} size="lg">{flatServices.filter((item) => item.status === 'ACTIVE').length}</Text></div></div>
+          <div className="services-summary__item services-summary__item--warning"><span className="services-summary__icon"><IconWallet size={17} /></span><div><Text size="xs" c="dimmed">Ожидают оплаты</Text><Text fw={750} size="lg">{flatServices.filter((item) => item.status === 'NOT PAID').length}</Text></div></div>
+          <div className="services-summary__item"><span className="services-summary__icon"><IconDeviceMobileCog size={17} /></span><div><Text size="xs" c="dimmed">Всего услуг</Text><Text fw={750} size="lg">{flatServices.length}</Text></div></div>
+        </div>}
         <Group className="services-header-card__actions">
           <Button
             leftSection={<IconPlus size={16} />}
@@ -903,19 +907,13 @@ export default function Services() {
           >
             {t('services.orderService')}
           </Button>
-          <Button leftSection={<IconRefresh size={16} />} variant="light" color="cyan" onClick={() => fetchServices()}>
+          <Button leftSection={<IconRefresh size={16} />} variant="default" loading={refreshing} onClick={() => void fetchServices()}>
             {t('common.refresh')}
           </Button>
         </Group>
-      </Paper>
+      </header>
 
-      <div className="services-summary" aria-label="Сводка по услугам">
-        <div className="services-summary__item services-summary__item--active"><span className="services-summary__icon"><IconCheck size={17} /></span><div><Text size="xs" c="dimmed">Активные</Text><Text fw={750} size="xl">{flatServices.filter((item) => item.status === 'ACTIVE').length}</Text></div></div>
-        <div className="services-summary__item services-summary__item--warning"><span className="services-summary__icon"><IconWallet size={17} /></span><div><Text size="xs" c="dimmed">Ожидают оплаты</Text><Text fw={750} size="xl" c="orange">{flatServices.filter((item) => item.status === 'NOT PAID').length}</Text></div></div>
-        <div className="services-summary__item"><span className="services-summary__icon"><IconDeviceMobileCog size={17} /></span><div><Text size="xs" c="dimmed">Всего услуг</Text><Text fw={750} size="xl">{flatServices.length}</Text></div></div>
-      </div>
-
-      <div className="services-toolbar"><TextInput size="md" radius="md" className="services-search" aria-label="Поиск услуг" value={search} onChange={(event) => setSearch(event.currentTarget.value)} placeholder="Найти услугу по названию или номеру" leftSection={<IconSearch size={16} />} />{searchValue && <Button variant="subtle" size="sm" onClick={() => setSearch('')}>Сбросить поиск</Button>}</div>
+      {(flatServices.length > 1 || search) && <div className="services-toolbar"><TextInput size="md" radius="md" className="services-search" aria-label="Поиск услуг" value={search} onChange={(event) => { setSearch(event.currentTarget.value); setCategoryPages({}); }} placeholder="Название или номер услуги" leftSection={<IconSearch size={16} />} />{searchValue && <Button variant="subtle" size="sm" onClick={() => setSearch('')}>Сбросить поиск</Button>}</div>}
 
       {Object.keys(groupedServices).length === 0 ? (
         <Paper withBorder p="xl" radius="md">
@@ -932,8 +930,8 @@ export default function Services() {
       ) : (
         <Accordion variant="separated" radius="md" multiple defaultValue={Object.keys(groupedServices)}>
           {Object.entries(groupedServices).map(([category, categoryServices]) => {
-            const page = categoryPages[category] || 1;
             const totalPages = Math.ceil(categoryServices.length / perPage);
+            const page = Math.min(categoryPages[category] || 1, totalPages);
             const paginatedServices = categoryServices.slice((page - 1) * perPage, page * perPage);
             let categoryTitle;
             if ( category === 'vpn' && config.VPN_CATEGORY_TITLE ) {
@@ -952,7 +950,7 @@ export default function Services() {
                 </Group>
               </Accordion.Control>
               <Accordion.Panel>
-                <div className="services-card-grid">
+                <div className={paginatedServices.length === 1 ? 'services-card-grid services-card-grid--single' : 'services-card-grid'}>
                   {paginatedServices.map((service) => (
                     <Box key={service.user_service_id}>
                       <ServiceCard

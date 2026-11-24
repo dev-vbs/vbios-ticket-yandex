@@ -1,25 +1,27 @@
 .services-overview,
 .service-detail-page { width: 100%; min-width: 0; }
 
-.services-header-card { display:flex; justify-content:space-between; align-items:center; gap:20px; padding:22px 24px; background:var(--ui-surface) !important; border-color:var(--ui-border) !important; box-shadow:var(--ui-shadow); }
-.services-header-card__copy { min-width:0; }
-.services-header-card__copy h2 { margin-top:10px; font-size:clamp(1.7rem,3vw,2.35rem); letter-spacing:-.04em; }
-.services-header-card__mark { display:inline-flex; align-items:center; gap:7px; color:var(--ui-accent); font-size:.78rem; font-weight:700; }
-.services-header-card__actions { flex-shrink:0; }
-.vpn-cabinet .services-overview__header .page-header__title {
-  font-size: clamp(1.5rem, 3vw, 1.875rem);
-  font-weight: 700;
-  letter-spacing: -.025em;
-  line-height: 1.2;
+.services-header-card {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 20px;
+  padding: 12px 16px;
+  border: 1px solid var(--ui-border);
+  border-radius: 16px;
+  background: var(--ui-surface);
 }
+.services-header-card__actions { margin-inline-start: auto; }
+.services-header-card__actions .mantine-Button-root { min-height: 44px; }
 .services-overview .mantine-Accordion-item { overflow: hidden; }
 .services-overview .mantine-Accordion-control { padding: 12px 16px; }
 .services-overview .mantine-Accordion-control:hover { background: var(--ui-surface-hover); }
 .services-overview .mantine-Accordion-content { padding: 0 12px 12px; }
 .services-search { width: 100%; max-width: 460px; }
 .services-toolbar { display:flex; align-items:center; gap:8px; }
-.services-summary { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; }
-.services-summary > div { padding:14px 16px; border:1px solid var(--ui-border); border-radius:14px; background:var(--ui-surface); box-shadow:var(--ui-shadow); }
+.services-summary { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); flex:1 1 400px; }
+.services-summary > div { padding: 4px 12px; }
+.services-summary > div + div { border-inline-start: 1px solid var(--ui-border); }
 .services-summary__item { display:flex; align-items:center; gap:12px; }
 .services-summary__icon { display:grid; place-items:center; width:36px; height:36px; border-radius:12px; color:var(--ui-accent); background:var(--ui-accent-soft); }
 .services-summary__item--active .services-summary__icon { color:#15966b; background:rgba(21,150,107,.12); }
@@ -53,11 +55,10 @@
 .expiry-indicator--danger { color: var(--mantine-color-red-text); }
 
 @media (max-width: 640px) {
-  .services-header-card { align-items:stretch; flex-direction:column; padding:18px; }
-  .services-header-card__actions { width:100%; }
-  .services-header-card__actions .mantine-Button-root { flex:1; }
-  .services-summary { gap:8px; }
-  .services-summary > div { padding:12px; }
+  .services-summary { flex-basis:100%; }
+  .services-summary > div { padding:6px 8px; }
+  .services-summary__item { align-items:flex-start; flex-direction:column; gap:5px; }
+  .services-header-card__actions { width:100%; display:grid; grid-template-columns: minmax(0, 1fr) auto; }
   .services-overview .mantine-Accordion-control { padding-inline: 12px; }
   .services-overview .mantine-Accordion-content { padding-inline: 8px; }
   .service-detail-page__summary .mantine-Stack-root { align-items: flex-start; }
@@ -82,25 +83,26 @@
 @media(max-width:600px){.service-primary-card > .mantine-Stack-root > .mantine-Group-root:not(:first-child){flex-direction:column;gap:6px}.service-primary-card .mantine-Text-root{overflow-wrap:anywhere}}
 
 /* Subscription overview: scan status, price and expiry before opening details. */
-.services-overview .services-header-card { background:transparent; border:0; padding:0 0 8px; }
-.services-overview .services-summary { border:1px solid var(--ui-border); background:var(--ui-surface); border-radius:18px; gap:0; overflow:hidden; }
-.services-overview .services-summary>div { border:0; background:transparent; border-radius:0; padding:20px 24px; }
-.services-overview .services-summary>div+div { border-inline-start:1px solid var(--ui-border); }
 .services-overview .services-search { max-width:520px; }
 .services-card-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; }
+.services-card-grid--single { grid-template-columns: minmax(0, 1fr); }
 .services-card-grid>.mantine-Center-root { grid-column:1/-1; }
 .services-card-grid>.mantine-Box-root { min-width:0; }
 .services-overview .service-overview-card { height:100%; border-radius:18px!important; transition:border-color .15s,box-shadow .15s; }
 .services-overview .service-overview-card:hover { border-color:var(--ui-accent); box-shadow:0 8px 24px #10233b08; }
 .services-overview .service-overview-card { position:relative; overflow:hidden; }
-.services-overview .service-overview-card::after { content:""; position:absolute; inset:0 0 auto; height:3px; background:linear-gradient(90deg,var(--ui-accent),transparent); opacity:.65; }
+.services-overview .service-overview-card--main { padding: clamp(16px, 3vw, 26px); cursor: pointer; }
+.services-overview .service-overview-card--main::after { content:""; position:absolute; inset:0 0 auto; height:2px; background:linear-gradient(90deg,var(--ui-accent),transparent 65%); }
+.services-overview .service-overview-card__heading > div { flex:1 1 12rem; }
+.services-overview .service-overview-card__heading .mantine-Text-root { max-width:none; white-space:normal; }
+.service-overview-card__terms { padding: 12px 14px; border-radius: 12px; background: var(--ui-accent-soft); }
 .services-overview .service-overview-card .service-card__price { font-size:1.35rem; letter-spacing:-.04em; }
 .services-overview .service-overview-card .mantine-Button-root { min-height:44px; margin-top:8px; }
 .services-overview .mantine-Accordion-item { background:transparent; border:0; }
-.services-overview .mantine-Accordion-control { padding:14px 0; border-radius:10px; }
-.services-overview .mantine-Accordion-content { padding:4px 0 12px; }
-@media(max-width:700px){.services-card-grid{grid-template-columns:1fr}.services-overview .services-summary>div{padding:14px 12px}.services-overview .services-summary .mantine-Text-root{overflow-wrap:anywhere}.services-overview .services-header-card__actions{flex-wrap:wrap}.services-overview .services-header-card__actions .mantine-Button-root{min-height:44px}.services-overview .services-search{max-width:none}.services-toolbar{align-items:stretch; flex-direction:column}.services-toolbar .mantine-Button-root{align-self:flex-start}}
-@media(max-width:430px){.services-summary{gap:8px}.services-summary__item{gap:8px}.services-summary__icon{width:30px;height:30px;border-radius:10px}.services-summary>div{padding:12px 9px}.services-summary .mantine-Text-root{font-size:.72rem}.services-summary .mantine-Text-root:last-child{font-size:1.25rem}}
+.services-overview .mantine-Accordion-control { padding:14px 18px; border-radius:10px; }
+.services-overview .mantine-Accordion-content { padding:4px 14px 14px; }
+@media(max-width:700px){.services-card-grid{grid-template-columns:1fr}.services-overview .services-search{max-width:none}.services-toolbar{align-items:stretch; flex-direction:column}.services-toolbar .mantine-Button-root{align-self:flex-start}}
+@media(max-width:430px){.services-summary__icon{width:30px;height:30px;border-radius:10px}.services-summary .mantine-Text-root{font-size:.72rem}.services-summary .mantine-Text-root:last-child{font-size:1.125rem}}
 
 .service-detail-page .service-primary-card { padding:28px; border-radius:22px; background:linear-gradient(120deg,var(--ui-accent-soft),var(--ui-surface) 55%); }
 .service-detail-page > .service-detail-page__back { color:var(--ui-accent); }
