@@ -21,7 +21,12 @@ sub send {
     $request->content(encode_json({ user_id => int($uid), title => $args{title} || 'vBios', body => $args{body} || '', url => $args{url} || '/notifications', tag => $args{tag} || 'vbios',
         (defined($args{media_id}) && $args{media_id} =~ /^[1-9]\d*$/ ? (media_id => int($args{media_id})) : ()) }));
     my $response = LWP::UserAgent->new(timeout => 65)->request($request);
-    die 'Push service did not confirm request' unless $response->is_success;
+    unless ($response->is_success) {
+        my $code = $response->code;
+        die "Push request failed before receiving an HTTP response (LWP $code)\n"
+            if ($response->header('Client-Warning') || '') eq 'Internal response';
+        die "Push service rejected request (HTTP $code)\n";
+    }
     return decode_json($response->decoded_content);
 }
 1;
