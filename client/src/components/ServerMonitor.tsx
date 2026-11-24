@@ -11,7 +11,7 @@ function MiniNode({ node, stale, now }: { node: NonNullable<MonitorData['nodes']
   const state = stale ? 'unknown' : monitorState(node.status, node.latency_ms);
   return <Link to="/status" className="network-widget__node" aria-label={`${node.name}: ${labels[state]}. Открыть мониторинг`}>
     <div className="network-widget__node-title"><strong>{node.name}</strong><i data-state={state} title={labels[state]} /></div>
-    <div className="network-widget__reading"><span data-state={state}>{labels[state]}</span>{stale ? <small>Данные устарели</small> : <NodeLatency url={node.ping_url} serverLatency={node.latency_ms} />}</div>
+    <div className="network-widget__reading"><NodeLatency url={node.ping_url} /></div>
     <div className="network-widget__bars" aria-label="Проверки за час, интервалы по 5 минут">{monitorHistory(node.history, now).map(({ at, sample, state: status }) => {
       const title = new Date(at * 1000).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }) + ' · ' + (sample ? labels[status] : 'Нет проверки');
       return <span key={at} data-state={status} title={title} aria-label={title} />;
@@ -28,6 +28,6 @@ export default function ServerMonitor({ monitor }: { monitor: MonitorData }) {
   return <section className="network-widget" aria-label="Краткий мониторинг сети">
     <header><div><h2><i data-state={stale || !nodes.length ? 'unknown' : failures ? 'offline' : verified === nodes.length ? 'online' : 'unknown'} />Состояние сети</h2><p>{stale ? 'Нет свежих данных' : `${verified} из ${nodes.length} доступны по проверке биллинга`}</p></div><Link to="/status">Весь мониторинг <span aria-hidden="true">↗</span></Link></header>
     {nodes.length ? <div className="network-widget__grid">{nodes.map((node, index) => <MiniNode node={node} stale={stale} now={now} key={node.id || `${node.name}-${index}`} />)}</div> : <p className="network-widget__empty">Ожидаем первую проверку серверов.</p>}
-    <footer>Последний час · одна полоска — 5 минут · красный — был сбой · серый — нет проверки</footer>
+    <footer>История проверок биллинга за час · одна полоска — 5 минут</footer>
   </section>;
 }

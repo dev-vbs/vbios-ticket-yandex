@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react';
 
 // Browser-to-node HTTP RTT, never a fabricated ICMP or billing-server ping.
-export default function NodeLatency({ url, serverLatency, onResult }: { url?: string; serverLatency?: number | null; onResult?: (ready: boolean) => void }) {
+export default function NodeLatency({ url, refreshKey }: { url?: string; refreshKey?: number }) {
   const [latency, setLatency] = useState<number | null>(null);
   const [probeState, setProbeState] = useState<'checking' | 'missing' | 'failed' | 'ready'>('checking');
   useEffect(() => {
     setLatency(null);
-    if (!url) { setProbeState(typeof serverLatency === 'number' && Number.isFinite(serverLatency) ? 'ready' : 'missing'); return; }
+    if (!url) { setProbeState('missing'); return; }
     let target: URL;
     try { target = new URL(url); } catch { setProbeState('failed'); return; }
     if (target.protocol !== 'https:' || target.username || target.password) { setProbeState('failed'); return; }
@@ -15,7 +15,7 @@ export default function NodeLatency({ url, serverLatency, onResult }: { url?: st
     let controller: AbortController | undefined;
     let timer: number;
     const measure = async () => {
-      if (document.hidden) { timer = window.setTimeout(measure, 60000); return; }
+      if (document.hidden) { timer = window.setTimeout(measure, 30000); return; }
       const samples: number[] = [];
       for (let i = 0; i < 3 && !stopped; i++) {
         controller = new AbortController();
@@ -24,23 +24,26 @@ export default function NodeLatency({ url, serverLatency, onResult }: { url?: st
           target.searchParams.set('_probe', `${Date.now()}-${i}`);
           const start = performance.now();
           const response = await fetch(target, { signal: controller.signal, mode: 'cors', cache: 'no-store', credentials: 'omit', redirect: 'error', referrerPolicy: 'no-referrer' });
-          await response.arrayBuffer();
           if (response.ok) samples.push(performance.now() - start);
+          void response.body?.cancel().catch(() => {});
         } catch { /* Missing CORS or unavailable endpoint is not a successful probe. */ }
         finally { window.clearTimeout(timeout); }
       }
       if (!stopped) {
         samples.sort((a, b) => a - b);
-        setLatency(samples.length ? Math.max(1, Math.round(samples[Math.floor(samples.length / 2)])) : null);
+        const middle = Math.floor(samples.length / 2);
+        const median = samples.length % 2 ? samples[middle] : (samples[middle - 1] + samples[middle]) / 2;
+        setLatency(samples.length ? Math.max(1, Math.round(median)) : null);
         setProbeState(samples.length ? 'ready' : 'failed');
-        timer = window.setTimeout(measure, 60000);
+        timer = window.setTimeout(measure, 5 * 60000);
       }
     };
     void measure();
     return () => { stopped = true; controller?.abort(); window.clearTimeout(timer); };
-  }, [url, serverLatency]);
-  useEffect(() => { onResult?.(probeState === 'ready'); }, [probeState, onResult]);
-  if ((probeState === 'missing' || probeState === 'failed') && typeof serverLatency === 'number' && Number.isFinite(serverLatency) && serverLatency >= 0) return <span className="monitor-latency" title="Проверка от устройства недоступна, показана резервная TCP-задержка биллинга">{probeState === 'failed' ? 'Нет замера' : `~${Math.max(1, Math.round(serverLatency))} мс`}<small>резерв от биллинга</small></span>;
-  const hint = probeState === 'missing' ? 'TCP-порт узла недоступен для биллинга; адрес браузерной проверки не настроен' : probeState === 'failed' ? 'HTTPS-проверка недоступна: проверьте сертификат, CORS и /ping' : 'HTTP-задержка от вашего браузера до сервера; медиана до трёх измерений';
-  return <span className="monitor-latency" title={hint}>{latency === null ? (probeState === 'checking' ? 'Проверка…' : 'Нет замера') : `~${latency} мс`}{latency !== null && <small>с вашего устройства</small>}</span>;
+  }, [url, refreshKey]);
+  const reading = probeState === 'ready' ? `Доступен · ≈${latency} мс`
+    : probeState === 'checking' ? 'Проверяем…'
+    : probeState === 'missing' ? 'Проверка не настроена' : 'Нет ответа HTTPS';
+  const hint = probeState === 'failed' ? 'Браузер не получил успешный ответ. Причиной также могут быть DNS, сертификат или CORS.' : undefined;
+  return <span className="monitor-latency" data-probe={probeState} title={hint}><strong>{reading}</strong><small>С вашего устройства · HTTPS</small></span>;
 }
