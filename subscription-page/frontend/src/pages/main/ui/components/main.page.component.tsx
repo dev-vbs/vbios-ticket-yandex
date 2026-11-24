@@ -6,7 +6,7 @@ import { useSubscription } from '@entities/subscription-info-store'
 import { useAppConfig, useAppConfigStoreActions, useCurrentLang } from '@entities/app-config-store'
 import { constructSubscriptionUrl } from '@shared/utils/construct-subscription-url'
 import { LanguagePicker } from '@shared/ui/language-picker/language-picker.shared'
-import { Page, RemnawaveLogo } from '@shared/ui'
+import { Page } from '@shared/ui'
 import {
     AccordionBlockRenderer, CardsBlockRenderer, InstallationGuideConnector, MinimalBlockRenderer,
     RawKeysWidget, SubscriptionInfoCardsWidget, SubscriptionInfoCollapsedWidget,
@@ -65,7 +65,7 @@ export const MainPageComponent = ({ isMobile, platform }: IMainPageComponentProp
                 <Container maw={1240} px={{ base: 'md', sm: 'lg' }}>
                     <Group justify="space-between" wrap="nowrap">
                         <Group gap="sm" wrap="nowrap">
-                            {hasCustomLogo ? <Image alt="" fit="contain" src={config.brandingSettings.logoUrl} w={32} h={32} /> : <RemnawaveLogo c="blue" size={32} />}
+                            <Image alt="" fit="contain" src={hasCustomLogo ? config.brandingSettings.logoUrl : '/assets/favicon.svg'} w={32} h={32} />
                             <Title order={4} size="lg">{config.brandingSettings.title}</Title>
                         </Group>
                         <Group gap="xs" wrap="nowrap">

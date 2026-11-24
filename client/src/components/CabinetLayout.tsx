@@ -62,7 +62,7 @@ export function CabinetLayout({ children }: { children: ReactNode }) {
   return <div className="vpn-cabinet cabinet-shell">
     <a className="cabinet-skip-link" href="#cabinet-content">Перейти к содержимому</a>
     <header className="vpn-header"><div className="vpn-header__inner">
-      <Link to="/" className="vpn-brand" aria-label={`${config.APP_NAME} — главная`}><span className="vpn-brand__symbol"><IconShieldLock size={21} /></span>{config.APP_NAME}</Link>
+      <Link to="/" className="vpn-brand" aria-label={`${config.APP_NAME} — главная`}><img className="vpn-brand__symbol" src={config.LOGO_URL} alt="" />{config.APP_NAME}</Link>
       <div className="vpn-header__actions"><span className="vpn-language"><LanguageSwitcher /></span><ThemeToggle />
         <Menu position="bottom-end" shadow="md" width={240}>
           <Menu.Target><button type="button" className="vpn-account-trigger" aria-label="Меню аккаунта"><Avatar className="vpn-avatar" size={34} radius="xl" color="blue" src={avatarUrl || telegramPhoto || DEFAULT_AVATAR_URL}>{(user?.full_name || user?.login || 'U').charAt(0).toUpperCase()}</Avatar><span className="vpn-account-name">{user?.full_name || user?.login || 'Мой аккаунт'}</span><IconChevronDown size={15} /></button></Menu.Target>

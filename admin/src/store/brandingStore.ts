@@ -18,7 +18,7 @@ interface BrandingState {
 
 const DEFAULT_BRANDING: BrandingSettings = {
   name: 'vBios Admin',
-  logoUrl: '',
+  logoUrl: `${import.meta.env.BASE_URL}vbios-icon.svg`,
 };
 
 export const useBrandingStore = create<BrandingState>((set, get) => ({
