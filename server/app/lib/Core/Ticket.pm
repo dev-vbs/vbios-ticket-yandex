@@ -80,20 +80,31 @@ sub _push_reply_safe {
     return unless ($ENV{WEB_PUSH_ENABLE} || '') eq 'true';
     return unless $ticket_id && $ticket_id =~ /^\d+$/ && $message_id && $message_id =~ /^\d+$/;
 
-    my $body = $message // '';
-    $body =~ s/\s+/ /g;
-    $body =~ s/^\s+|\s+$//g;
-    $body = length($body) > 180 ? substr($body, 0, 177) . '...' : $body;
-    $body ||= 'Откройте обращение, чтобы прочитать ответ.';
-
     eval {
+        my $ticket = $self->_row($ticket_id);
+        return unless $ticket && $ticket->{user_id} == $self->user_id;
+        my $has_image = defined($media_id) && $media_id =~ /^[1-9]\d*$/;
+        my $subject = $ticket->{subject} // '';
+        my $excerpt = $message // '';
+        for ($subject, $excerpt) {
+            s/\s+/ /g;
+            s/^\s+|\s+$//g;
+        }
+        $excerpt = '' if $has_image && $excerpt eq 'Изображение от поддержки';
+        $subject = substr($subject, 0, 69) . '…' if length($subject) > 70;
+        $excerpt = substr($excerpt, 0, 179) . '…' if length($excerpt) > 180;
+        my $body = join "\n", grep { length } (
+            $subject,
+            $excerpt || ($has_image ? '' : 'Откройте обращение, чтобы прочитать ответ.'),
+            $has_image ? '📎 Изображение в обращении' : '',
+        );
         my $push = $self->srv('Push') or die 'Push service unavailable';
         my $result = $push->send(
-            title => $source eq 'ai' ? 'Ответ ИИ-помощника' : 'Ответ поддержки',
+            title => ($source eq 'ai' ? 'ИИ-помощник' : 'Поддержка') . " · Тикет #$ticket_id",
             body => $body,
-            url => '/tickets',
-            tag => 'ticket-' . $ticket_id,
-            (defined($media_id) && $media_id =~ /^[1-9]\d*$/ ? (media_id => $media_id) : ()),
+            url => "/tickets?ticket_id=$ticket_id",
+            tag => "ticket-$ticket_id-reply-$message_id",
+            ($has_image ? (media_id => $media_id) : ()),
         );
         die 'Push provider delivery failed' if ref($result) eq 'HASH' && ($result->{failed} || 0) > 0;
         1;

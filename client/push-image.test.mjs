@@ -38,7 +38,11 @@ test('large attachments are reduced before being used as notification images', a
     else globalThis.OffscreenCanvas = originalCanvas
   })
   let closed = false
-  globalThis.createImageBitmap = async () => ({ width: 3000, height: 1500, close: () => { closed = true } })
+  let decoded = 0
+  globalThis.createImageBitmap = async () => {
+    decoded++
+    return { width: 3000, height: 1500, close: () => { closed = true } }
+  }
   globalThis.OffscreenCanvas = class {
     constructor(width, height) { this.width = width; this.height = height }
     getContext() { return { drawImage: () => {} } }
@@ -49,7 +53,10 @@ test('large attachments are reduced before being used as notification images', a
     }
   }
   const original = Buffer.alloc(2 * 1024 * 1024, 1).toString('base64')
-  t.mock.method(globalThis, 'fetch', async () => ({ ok: true, json: async () => ({ data: [{ mime_type: 'image/png', data: original }] }) }))
+  const fetch = t.mock.method(globalThis, 'fetch', async () => ({ ok: true, json: async () => ({ data: [{ mime_type: 'image/png', data: original }] }) }))
   assert.equal(await loadNotificationImage(42), `data:image/jpeg;base64,${Buffer.from('preview').toString('base64')}`)
   assert.equal(closed, true)
+  fetch.mock.mockImplementation(async () => ({ ok: true, json: async () => ({ data: [{ mime_type: 'image/png', data: 'aGVsbG8=' }] }) }))
+  assert.equal(await loadNotificationImage(42), 'data:image/png;base64,aGVsbG8=')
+  assert.equal(decoded, 1)
 })

@@ -32,19 +32,23 @@ self.addEventListener('push', (event) => {
 
   event.waitUntil((async () => {
     const image = await loadNotificationImage(data.media_id)
-    const options: NotificationOptions & { image?: string } = {
+    const options: NotificationOptions & { image?: string; actions?: { action: string; title: string }[] } = {
       body,
       icon: '/icon-192.png',
       badge: '/icon-192.png',
       ...(tag ? { tag } : {}),
       ...(image ? { image } : {}),
+      ...(/^\/tickets\?ticket_id=[1-9]\d*$/.test(url)
+        ? { actions: [{ action: 'open-ticket', title: 'Открыть обращение' }] }
+        : {}),
       data: { url, title, body },
     }
     try {
       await self.registration.showNotification(title, options)
     } catch (error) {
-      if (!image) throw error
+      if (!image && !options.actions) throw error
       delete options.image
+      delete options.actions
       await self.registration.showNotification(title, options)
     }
   })())

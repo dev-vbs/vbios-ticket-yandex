@@ -26,6 +26,7 @@ import {
 import { useMediaQuery } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
 import { useTranslation } from 'react-i18next';
+import { useLocation } from 'react-router-dom';
 import './Tickets.css';
 import {
   IconMessageCircle,
@@ -249,6 +250,7 @@ function statusColor(status?: string): string {
 
 export default function Tickets() {
   const { t } = useTranslation();
+  const location = useLocation();
   const { avatarUrl, telegramPhoto, user } = useStore();
   const isMobile = useMediaQuery('(max-width: 768px)');
   const setHasNewTicketMessages = useStore((s) => s.setHasNewTicketMessages);
@@ -285,6 +287,8 @@ export default function Tickets() {
   const [closedExpanded, setClosedExpanded] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const ticketButtonRefs = useRef<Record<number, HTMLButtonElement | null>>({});
+  const openedNotification = useRef<string | null>(null);
+  const openRequest = useRef(0);
   const messagesViewportRef = useRef<HTMLDivElement>(null);
   const messagesContentRef = useRef<HTMLDivElement>(null);
 
@@ -523,41 +527,50 @@ export default function Tickets() {
     }
   };
 
-  const openTicket = async (ticket: TicketItem) => {
+  const openTicket = useCallback(async (ticketId: number, ticket?: TicketItem) => {
+    const request = ++openRequest.current;
     if (isMobile) {
       setTicketOpen(true);
     }
-    setSelectedTicket(ticket);
+    setSelectedTicket(ticket ?? null);
     setReplyMessage('');
     setReplyFiles([]);
     setTicketLoading(true);
 
-    if (ticketIsClosed(ticket.status)) {
-      setClosedExpanded(true);
-      requestAnimationFrame(() => {
-        ticketButtonRefs.current[ticket.ticket_id]?.scrollIntoView({
-          behavior: 'smooth',
-          block: 'center',
-        });
-      });
-    }
-
     try {
-      const response = await ticketApi.get(ticket.ticket_id);
+      const response = await ticketApi.get(ticketId);
+      if (request !== openRequest.current) return;
       const data = response.data?.data;
-      if (Array.isArray(data) && data.length > 0) {
-        setSelectedTicket(data[0]);
+      const opened = Array.isArray(data) ? data[0] : undefined;
+      if (!opened) throw new Error('Ticket unavailable');
+      setSelectedTicket(opened);
+      if (ticketIsClosed(opened.status)) {
+        setClosedExpanded(true);
+        requestAnimationFrame(() => {
+          ticketButtonRefs.current[ticketId]?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        });
       }
     } catch {
+      if (request !== openRequest.current) return;
+      if (!ticket) setTicketOpen(false);
       notifications.show({
         title: t('common.error'),
-        message: t('tickets.sendError'),
+        message: 'Не удалось открыть обращение. Попробуйте открыть его из списка.',
         color: 'red',
       });
     } finally {
-      setTicketLoading(false);
+      if (request === openRequest.current) setTicketLoading(false);
     }
-  };
+  }, [isMobile, t]);
+
+  useEffect(() => {
+    const value = new URLSearchParams(location.search).get('ticket_id');
+    if (!value || !/^[1-9]\d*$/.test(value) || openedNotification.current === location.key) return;
+    const ticketId = Number(value);
+    if (!Number.isSafeInteger(ticketId)) return;
+    openedNotification.current = location.key;
+    void openTicket(ticketId);
+  }, [location.key, location.search, openTicket]);
 
   const downloadMedia = async (media: TicketMedia) => {
     try {
@@ -796,7 +809,7 @@ export default function Tickets() {
         key={ticket.ticket_id}
         aria-label={`${getTicketSubject(ticket, 100)} · ${getTicketIdText(ticket)}`}
         aria-current={isSelected ? true : undefined}
-        onClick={() => openTicket(ticket)}
+        onClick={() => openTicket(ticket.ticket_id, ticket)}
         ref={(node) => {
           ticketButtonRefs.current[ticket.ticket_id] = node;
         }}

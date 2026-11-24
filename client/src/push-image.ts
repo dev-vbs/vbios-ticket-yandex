@@ -3,6 +3,9 @@ const maxEncodedLength = 7 * 1024 * 1024
 const maxPreviewLength = 1024 * 1024
 
 async function preparePreview(data: string, mimeType: string): Promise<string | undefined> {
+  if (data.length <= maxPreviewLength && mimeType !== 'image/gif') {
+    return `data:${mimeType};base64,${data}`
+  }
   if (typeof createImageBitmap !== 'function' || typeof OffscreenCanvas === 'undefined') {
     return data.length <= maxPreviewLength ? `data:${mimeType};base64,${data}` : undefined
   }
