@@ -95,17 +95,15 @@ sub _push_reply_safe {
         return unless $ticket && $ticket->{user_id} == $self->user_id;
         my $has_image = defined($media_id) && $media_id =~ /^[1-9]\d*$/;
         my $subject = $ticket->{subject} // '';
-        my $excerpt = $message // '';
-        for ($subject, $excerpt) {
-            s/\s+/ /g;
-            s/^\s+|\s+$//g;
-        }
-        $excerpt = '' if $has_image && $excerpt eq 'Изображение от поддержки';
+        my $reply = $message // '';
+        $subject =~ s/\s+/ /g;
+        $subject =~ s/^\s+|\s+$//g;
+        $reply =~ s/^\s+|\s+$//g;
+        $reply = '' if $has_image && $reply eq 'Изображение от поддержки';
         $subject = substr($subject, 0, 69) . '…' if length($subject) > 70;
-        $excerpt = substr($excerpt, 0, 179) . '…' if length($excerpt) > 180;
         my $body = join "\n", grep { length } (
             $subject,
-            $excerpt || ($has_image ? '' : 'Откройте обращение, чтобы прочитать ответ.'),
+            length($reply) ? $reply : ($has_image ? '' : 'Откройте обращение, чтобы прочитать ответ.'),
             $has_image ? '📎 Изображение в обращении' : '',
         );
         my $push = $self->srv('Push') or die 'Push service unavailable';

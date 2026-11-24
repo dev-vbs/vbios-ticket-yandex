@@ -22,9 +22,9 @@ function rateLimit(key, interval) {
   if (now - (limits.get(key) || 0) < interval) throw Object.assign(Error('Подождите перед повторной отправкой'), { status: 429 });
   limits.set(key, now);
 }
-async function readBody(req) {
+async function readBody(req, maxBytes = 8192) {
   let size = 0, chunks = [];
-  for await (const chunk of req) { size += chunk.length; if (size > 8192) throw Object.assign(Error('Слишком большой запрос'), { status: 413 }); chunks.push(chunk); }
+  for await (const chunk of req) { size += chunk.length; if (size > maxBytes) throw Object.assign(Error('Слишком большой запрос'), { status: 413 }); chunks.push(chunk); }
   try { return JSON.parse(Buffer.concat(chunks).toString() || '{}'); } catch { throw Object.assign(Error('Некорректный JSON'), { status: 400 }); }
 }
 async function userId(req) {
@@ -68,7 +68,7 @@ export const server = createServer(async (req, res) => {
     if (!enabled) return reply(503, { error: 'Push-уведомления пока не настроены' });
     if (path === '/internal/send' && req.method === 'POST') {
       if (!equalSecret(req.headers.authorization, `Bearer ${env.PUSH_INTERNAL_TOKEN}`)) return reply(403, { error: 'Доступ запрещён' });
-      const body = await readBody(req), id = Number(body.user_id);
+      const body = await readBody(req, 128 * 1024), id = Number(body.user_id);
       if (!Number.isSafeInteger(id) || id < 1) return reply(400, { error: 'Неверный user_id' });
       rateLimit(`send:${id}`, 1000);
       return reply(200, await send(id, notification(body)));

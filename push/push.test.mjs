@@ -18,7 +18,13 @@ test('Push endpoints and navigation cannot target arbitrary hosts', () => {
   assert.equal(safePath('/services/6'), '/services/6');
   assert(!equalSecret('x', ''));
   assert(equalSecret('a'.repeat(40), 'a'.repeat(40)));
-  assert.equal(notification({ body: 'x'.repeat(1000) }).body.length, 300);
+  const complete = 'Первая строка\n' + 'x'.repeat(1000);
+  assert.equal(notification({ body: complete }).body, complete);
+  const long = notification({ body: '😀я"\n'.repeat(1500), url: '/tickets?ticket_id=42', media_id: 42 });
+  assert.ok(Buffer.byteLength(JSON.stringify(long), 'utf8') <= 3800);
+  assert.match(long.body, /Полное сообщение в кабинете\.$/);
+  assert.equal(long.media_id, 42);
+  assert.equal(long.url, '/tickets?ticket_id=42');
   assert.equal(notification({ media_id: 42 }).media_id, 42);
   for (const id of [0, -1, 1.5, '42', Number.MAX_SAFE_INTEGER + 1, 'https://evil.test']) assert.equal(notification({ media_id: id }).media_id, undefined);
   assert.equal(notification({ image: 'https://evil.test/tracker' }).image, undefined);

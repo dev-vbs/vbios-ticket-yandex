@@ -303,9 +303,7 @@ sub task_send {
         my $recipient_id = $task->settings->{user_id} || $self->user_id;
         my $push_body = $message;
         $push_body =~ s/<[^>]+>//g;
-        $push_body =~ s/\s+/ /g;
         $push_body =~ s/^\s+|\s+$//g;
-        $push_body = substr($push_body, 0, 180);
         eval {
             die 'Push recipient is not available' unless $recipient_id;
             my $push = $self->srv('Push') or die 'Push service unavailable';

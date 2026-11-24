@@ -20,7 +20,23 @@ export function equalSecret(value, expected) {
   return a.length === b.length && timingSafeEqual(a, b);
 }
 export function notification(body) {
-  return { title: String(body.title || 'vBios').slice(0, 80), body: String(body.body || '').slice(0, 300),
+  const payload = { title: String(body.title || 'vBios').slice(0, 80), body: String(body.body || ''),
     url: safePath(body.url), tag: String(body.tag || 'vbios').slice(0, 80),
     ...(Number.isSafeInteger(body.media_id) && body.media_id > 0 ? { media_id: body.media_id } : {}) };
+  // Leave room for Web Push encryption overhead within a 4096-byte record.
+  const fits = () => Buffer.byteLength(JSON.stringify(payload), 'utf8') <= 3800;
+  if (fits()) return payload;
+
+  const characters = Array.from(payload.body);
+  const suffix = '…\nПолное сообщение в кабинете.';
+  let low = 0;
+  let high = characters.length;
+  while (low < high) {
+    const middle = Math.ceil((low + high) / 2);
+    payload.body = characters.slice(0, middle).join('') + suffix;
+    if (fits()) low = middle;
+    else high = middle - 1;
+  }
+  payload.body = characters.slice(0, low).join('') + suffix;
+  return payload;
 }
