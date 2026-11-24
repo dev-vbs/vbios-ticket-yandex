@@ -75,6 +75,16 @@ sub _notify_safe {
     };
 }
 
+sub _sms_reply_safe {
+    my ($self, $ticket_id) = @_;
+    return unless ($ENV{SMSC_ENABLED} || '') eq 'true';
+    eval {
+        my $sms = $self->srv('Sms') or die 'SMS service unavailable';
+        $sms->send(message => "vBios: новый ответ в обращении №$ticket_id. Откройте раздел поддержки в кабинете.");
+        1;
+    } or logger->error("Ticket SMS failed for ticket #$ticket_id");
+}
+
 sub _push_reply_safe {
     my ($self, $ticket_id, $message_id, $message, $source, $media_id) = @_;
     return unless ($ENV{WEB_PUSH_ENABLE} || '') eq 'true';

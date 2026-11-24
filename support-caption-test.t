@@ -75,6 +75,7 @@ like($@,qr/code=403/,'blocked private chat is reported as failed delivery');
     sub error {1}
     package SupportTicket;
     sub _push_reply_safe { push @SupportGroup::pushes, [@_] }
+    sub _sms_reply_safe {}
 }
 open my $source,'<:encoding(UTF-8)','server/app/lib/Core/Transport/Telegram.pm' or die $!;
 my $code=do {local $/;<$source>};close $source;
