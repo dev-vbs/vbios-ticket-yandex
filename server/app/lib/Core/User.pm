@@ -1175,7 +1175,8 @@ sub api_notifications_settings {
     return { broadcasts_enabled => $enabled };
 }
 sub api_news_reaction {
-    my ($self, %args) = @_;
+    my $self = shift;
+    my %args = get_smart_args(@_);
     my $reactions = $self->settings->{news_reactions};
     $reactions = {} unless ref($reactions) eq 'HASH';
     $reactions->{$args{id}} = $args{reaction};

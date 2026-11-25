@@ -273,9 +273,13 @@ sub task_send {
     my $cabinet_allowed = 1;
     if (!ref($message) && ($push_enabled || $settings{broadcast_dispatcher})) {
         my $recipient_id = $task->settings->{user_id} || $self->user_id;
-        my $plain = $message;
+        # A broadcast entered in the Telegram admin flow is kept verbatim.
+        # The rendered template is only a transport wrapper and may contain
+        # a shortened preview, so it must not become the cabinet article.
+        my $article = $settings{broadcast_dispatcher} && defined($settings{broadcast_text})
+            ? $settings{broadcast_text} : $message;
+        my $plain = $article;
         $plain =~ s/<[^>]+>//g;
-        $plain =~ s/\s+/ /g;
         $plain =~ s/^\s+|\s+$//g;
         # Cabinet news keeps the complete text. Web Push applies its own
         # payload limit later, while the cabinet retains the full message.
@@ -292,7 +296,17 @@ sub task_send {
             my $items = $owner->settings->{cabinet_notifications};
                 $items = [] unless ref($items) eq 'ARRAY';
             $items = [ grep { ref($_) eq 'HASH' && (($now - ($_->{created_at} || 0)) < 86400) } @$items ];
-            unshift @$items, { id => $now . '-' . ($recipient_id || 0), title => $tpl_settings_tg->{push_title} || 'Новость vBios', body => $plain, url => $tpl_settings_tg->{push_url} || '/notifications', created => scalar localtime, created_at => $now, kind => 'broadcast' };
+            my $news_id = ($settings{broadcast_batch_id} || $now) . '-' . ($recipient_id || 0);
+            unshift @$items, {
+                id => $news_id,
+                title => $settings{broadcast_title} || $tpl_settings_tg->{push_title} || 'Новость vBios',
+                body => $plain,
+                media_id => $settings{broadcast_photo} || undef,
+                url => '/news/' . $news_id,
+                created => scalar localtime,
+                created_at => $now,
+                kind => 'broadcast',
+            };
             splice @$items, 30 if @$items > 30;
                 $owner->set_settings({ cabinet_notifications => $items });
             }
