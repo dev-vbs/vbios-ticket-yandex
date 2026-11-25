@@ -278,7 +278,7 @@ function AppContent() {
           <Route path="/services" element={<Services />} />
               <Route path="/services/:serviceId" element={<Services />} />
           <Route path="/profile" element={<Profile />} />
-          <Route path="/tickets" element={<Tickets />} /><Route path="/balance" element={<BalancePage />} /><Route path="/operations" element={<OperationsPage />} /><Route path="/notifications" element={<NotificationsPage />} />
+          <Route path="/tickets" element={<Tickets />} /><Route path="/balance" element={<BalancePage />} /><Route path="/operations" element={<OperationsPage />} /><Route path="/notifications" element={<NotificationsPage />} /><Route path="/news" element={<NotificationsPage />} />
           <Route path="/help" element={<HelpPage />} />
           <Route path="*" element={<NotFound />} />
         </Routes></Suspense>

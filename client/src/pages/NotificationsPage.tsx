@@ -1,6 +1,6 @@
 import PushSettings from '../components/PushSettings';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { Alert, Button, Loader, Stack, Text, Title, Switch, Group } from '@mantine/core';
 import { IconBell, IconMessageCircle } from '@tabler/icons-react';
 import { useStore } from '../store/useStore';
@@ -12,6 +12,7 @@ type Service = { user_service_id: number; status: string; expire?: string; name?
 type Preferences = { expiry: boolean; balance: boolean; support: boolean; traffic: boolean; devices: boolean };
 type CabinetNotice = { id: string; title: string; body: string; url?: string; created?: string };
 export default function NotificationsPage() {
+  const location = useLocation();
   const hasReply = useStore(s => s.hasNewTicketMessages);
   const user = useStore(s => s.user);
   const preferenceKey = `shm_notice_preferences_${user?.user_id ?? 'guest'}`;
@@ -82,8 +83,9 @@ export default function NotificationsPage() {
   const lowBalance = preferences.balance && relevant.some(s => Number(s.service?.cost) > Number(user?.balance ?? 0));
   const visibleRemna = remnaNotices.filter(n => n.kind === 'traffic' ? preferences.traffic : preferences.devices);
   const showReply = preferences.support && hasReply;
-  return <Stack gap="xl"><header><Title order={1}>Уведомления</Title><Text c="dimmed" mt="sm">Сроки услуг, новости из Telegram и ответы поддержки.</Text></header>
-    <PushSettings />
+  const newsOnly = location.pathname === '/news';
+  return <Stack gap="xl"><header><Title order={1}>{newsOnly ? 'Новости' : 'Уведомления'}</Title><Text c="dimmed" mt="sm">{newsOnly ? 'Рассылки и важные сообщения за последние 24 часа.' : 'Сроки услуг, новости из Telegram и ответы поддержки.'}</Text></header>
+    {!newsOnly && <PushSettings />}
     {broadcastsError && <Alert color="orange">Не удалось загрузить рассылки или сохранить настройку. Попробуйте ещё раз.<Button display="block" mt="sm" size="xs" onClick={() => void load()}>Повторить</Button></Alert>}
     <section className="vpn-finance-panel"><Group justify="space-between" align="flex-start"><div><Title order={3}>Рассылки в кабинете</Title><Text size="sm" c="dimmed" mt={5}>Новости из Telegram и spool будут видны в разделе уведомлений.</Text></div><Switch checked={broadcastsEnabled} disabled={broadcastsBusy} onChange={event => void changeBroadcasts(event.currentTarget.checked)} aria-label="Получать рассылки в личном кабинете" /></Group></section>
     <section className="vpn-finance-panel"><Stack gap="md"><Title order={3}>Какие события показывать</Title><Text size="sm" c="dimmed">Настройки действуют в этом браузере для вашего аккаунта. Они не изменяют рассылки Telegram и email.</Text>{([['expiry', 'Окончание подписки и необходимость оплаты'], ['balance', 'Недостаточно средств для продления'], ['support', 'Ответы поддержки'], ['traffic', 'Приближение к лимиту трафика'], ['devices', 'Новые устройства подписки']] as const).map(([key, label]) => <Switch key={key} label={label} checked={preferences[key]} onChange={event => change(key, event.currentTarget.checked)} />)}</Stack></section>
