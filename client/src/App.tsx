@@ -32,6 +32,7 @@ const Services = lazy(() => import('./pages/Services'));
 const Profile = lazy(() => import('./pages/Profile'));
 const Tickets = lazy(() => import('./pages/Tickets'));
 const NotificationsPage = lazy(() => import('./pages/NotificationsPage'));
+const NewsDetail = lazy(() => import('./pages/NewsDetail'));
 const HelpPage = lazy(() => import('./pages/HelpPage'));
 const Login = lazy(() => import('./pages/Login'));
 const StatusPage = lazy(() => import('./pages/StatusPage'));
@@ -278,7 +279,7 @@ function AppContent() {
           <Route path="/services" element={<Services />} />
               <Route path="/services/:serviceId" element={<Services />} />
           <Route path="/profile" element={<Profile />} />
-          <Route path="/tickets" element={<Tickets />} /><Route path="/balance" element={<BalancePage />} /><Route path="/operations" element={<OperationsPage />} /><Route path="/notifications" element={<NotificationsPage />} /><Route path="/news/:id" element={<NotificationsPage />} />
+          <Route path="/tickets" element={<Tickets />} /><Route path="/balance" element={<BalancePage />} /><Route path="/operations" element={<OperationsPage />} /><Route path="/notifications" element={<NotificationsPage />} /><Route path="/news/:id" element={<NewsDetail />} />
           <Route path="/help" element={<HelpPage />} />
           <Route path="*" element={<NotFound />} />
         </Routes></Suspense>
