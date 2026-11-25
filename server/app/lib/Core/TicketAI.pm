@@ -159,7 +159,6 @@ sub reply {
             $db->commit or die 'AI commit failed'; 1;
         } or do { my $failure=$@; eval { $db->rollback }; die $failure; };
         $ticket->_push_reply_safe($id,$published_reply_id,$answer,'ai') if $published_reply_id;
-        $ticket->_sms_reply_safe($id) if $published_reply_id;
         1;
     } or do {
         # Redacted error code only; never persist the response body or request key.

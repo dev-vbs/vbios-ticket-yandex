@@ -1591,7 +1591,6 @@ sub ticket_group_update {
     # Commit support reply before the network call. Telegram cannot roll back SHM.
     $self->dbh->commit or die 'Support reply commit failed';
     $ticket->_push_reply_safe($row->{ticket_id},$support_mid,$text,'human', $media ? $media->{id} : undef);
-    $ticket->_sms_reply_safe($row->{ticket_id});
     my $delivery_error;
     if ($user_chat && $user_chat =~ /^[1-9][0-9]*$/) {
         eval {
