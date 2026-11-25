@@ -1162,9 +1162,11 @@ sub api_notifications {
     $items = [ grep { ref($_) eq 'HASH' && (($now - ($_->{created_at} || $now)) < 86400) } @{ref($items) eq 'ARRAY' ? $items : []} ];
     $self->set_settings({ cabinet_notifications => $items });
     my $enabled = $self->settings->{cabinet_broadcasts_enabled};
+    eval { $self->dbh->do(q{CREATE TABLE IF NOT EXISTS cabinet_news (id VARCHAR(64) NOT NULL PRIMARY KEY,title VARCHAR(255) NOT NULL,body MEDIUMTEXT NOT NULL,media_id VARCHAR(255) DEFAULT NULL,media_type VARCHAR(32) DEFAULT NULL,created_at DATETIME NOT NULL,expires_at DATETIME NOT NULL,KEY cabinet_news_expires (expires_at)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4}); };
+    eval { $self->dbh->do(q{CREATE TABLE IF NOT EXISTS cabinet_news_reactions (news_id VARCHAR(64) NOT NULL,user_id BIGINT NOT NULL,reaction ENUM('like','dislike') NOT NULL,created_at DATETIME NOT NULL,PRIMARY KEY (news_id,user_id),KEY cabinet_news_reactions_user (user_id)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4}); };
     my $news = eval {
         my $rows = $self->dbh->selectall_arrayref(
-            'SELECT n.id,n.title,n.body,n.media_id,n.media_type,n.created_at,COALESCE(r.reaction, NULL) AS reaction, SUM(CASE WHEN rr.reaction = "like" THEN 1 ELSE 0 END) AS likes, SUM(CASE WHEN rr.reaction = "dislike" THEN 1 ELSE 0 END) AS dislikes FROM cabinet_news n LEFT JOIN cabinet_news_reactions r ON r.news_id=n.id AND r.user_id=? LEFT JOIN cabinet_news_reactions rr ON rr.news_id=n.id WHERE n.expires_at > NOW() GROUP BY n.id,n.title,n.body,n.media_id,n.media_type,n.created_at,r.reaction ORDER BY n.created_at DESC', undef, $self->id,
+            'SELECT n.id,n.title,n.body,n.media_id,n.media_type,n.created_at,(SELECT r.reaction FROM cabinet_news_reactions r WHERE r.news_id=n.id AND r.user_id=? LIMIT 1) AS reaction,(SELECT COUNT(*) FROM cabinet_news_reactions r WHERE r.news_id=n.id AND r.reaction="like") AS likes,(SELECT COUNT(*) FROM cabinet_news_reactions r WHERE r.news_id=n.id AND r.reaction="dislike") AS dislikes FROM cabinet_news n WHERE n.expires_at > NOW() ORDER BY n.created_at DESC', undef, $self->id,
         );
         [ map { +{ id=>$_->{id}, title=>$_->{title}, body=>$_->{body}, media_id=>$_->{media_id}, media_type=>$_->{media_type}, created=>$_->{created_at}, url=>'/news/'.$_->{id}, reaction=>$_->{reaction}, likes=>0+($_->{likes}||0), dislikes=>0+($_->{dislikes}||0), kind=>'broadcast' } } @$rows ];
     } || [];
