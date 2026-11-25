@@ -12,7 +12,7 @@ type Payment = { amount?: number; sum?: number; cost?: number; money?: number; c
 type Service = { user_service_id: number; status?: string; service?: { name?: string }; name?: string; expire?: string | null };
 type Forecast = { total?: number; dept?: number };
 type MonitorNode = { name: string; country?: string; ping_url?: string; latency_ms?: number | null; status: 'online' | 'offline' | 'maintenance' | 'unknown' };
-type CabinetNotice = { id: string; title?: string; body?: string; created?: string; url?: string };
+type CabinetNotice = { id: string; title?: string; body?: string; created?: string; url?: string; kind?: string };
 const rubles = (value: number) => new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 2 }).format(value);
 const formatDate = (value?: string | null) => {
   const date = value ? new Date(value.replace(' ', 'T')) : null;
