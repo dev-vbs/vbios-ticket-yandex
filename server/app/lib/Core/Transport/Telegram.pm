@@ -271,7 +271,7 @@ sub task_send {
     return SUCCESS, { msg => "Шаблон не содержит данных" } unless $message;
 
     my $cabinet_allowed = 1;
-    if ($push_enabled && !ref($message)) {
+    if (!ref($message)) {
         my $recipient_id = $task->settings->{user_id} || $self->user_id;
         my $plain = $message;
         $plain =~ s/<[^>]+>//g;
@@ -287,9 +287,11 @@ sub task_send {
             if (exists($owner->settings->{cabinet_broadcasts_enabled}) && !$owner->settings->{cabinet_broadcasts_enabled}) {
                 $cabinet_allowed = 0;
             } else {
-                my $items = $owner->settings->{cabinet_notifications};
+            my $now = time;
+            my $items = $owner->settings->{cabinet_notifications};
                 $items = [] unless ref($items) eq 'ARRAY';
-            unshift @$items, { id => time . '-' . ($recipient_id || 0), title => $tpl_settings_tg->{push_title} || 'Новое сообщение', body => $plain, url => $tpl_settings_tg->{push_url} || '/notifications', created => scalar localtime };
+            $items = [ grep { ref($_) eq 'HASH' && (($now - ($_->{created_at} || 0)) < 86400) } @$items ];
+            unshift @$items, { id => $now . '-' . ($recipient_id || 0), title => $tpl_settings_tg->{push_title} || 'Новость vBios', body => $plain, url => $tpl_settings_tg->{push_url} || '/notifications', created => scalar localtime, created_at => $now, kind => 'broadcast' };
             splice @$items, 30 if @$items > 30;
                 $owner->set_settings({ cabinet_notifications => $items });
             }

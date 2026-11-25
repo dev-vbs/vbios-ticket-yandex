@@ -1157,7 +1157,10 @@ sub api_profile_update {
 
 sub api_notifications {
     my ($self) = @_;
+    my $now = time;
     my $items = $self->settings->{cabinet_notifications};
+    $items = [ grep { ref($_) eq 'HASH' && (($now - ($_->{created_at} || $now)) < 86400) } @{ref($items) eq 'ARRAY' ? $items : []} ];
+    $self->set_settings({ cabinet_notifications => $items });
     my $enabled = $self->settings->{cabinet_broadcasts_enabled};
     return { notifications => ref($items) eq 'ARRAY' ? $items : [], broadcasts_enabled => !defined($enabled) || $enabled ? 1 : 0 };
 }
@@ -1173,7 +1176,22 @@ sub api_notifications_settings {
 }
 
 sub _avatar_storage_config { my $self=shift; my $cfg=get_service('config')->data_by_name('ticket')||{}; my $s=$cfg->{storage}||{}; die 'Avatar object storage is not configured' unless ($s->{provider}||'') eq 'yandex' && $s->{bucket}; return $s; }
-sub api_avatar_upload { my $self=shift; my %args=get_smart_args(@_); require Core::TicketStorage; my ($bytes,$mime,$ext)=Core::TicketStorage->decode_image($args{data}); my $cfg=$self->_avatar_storage_config; my $storage=Core::TicketStorage->new($cfg); my $key=$storage->key($self->user_id,$ext,'avatars'); $storage->request('PUT',$cfg->{bucket},$key,$bytes,$mime); $self->dbh->do('INSERT INTO user_avatars(user_id,bucket,object_key,mime_type,size) VALUES(?,?,?,?,?) ON DUPLICATE KEY UPDATE bucket=VALUES(bucket),object_key=VALUES(object_key),mime_type=VALUES(mime_type),size=VALUES(size),updated_at=CURRENT_TIMESTAMP',undef,$self->user_id,$cfg->{bucket},$key,$mime,length($bytes)); return $self->api_avatar; }
+sub api_avatar_upload {
+    my $self = shift;
+    my %args = get_smart_args(@_);
+    require Core::TicketStorage;
+    my ($bytes, $mime, $ext) = Core::TicketStorage->decode_image($args{data});
+    my $cfg = $self->_avatar_storage_config;
+    my $storage = Core::TicketStorage->new($cfg);
+    my $key = $storage->key($self->user_id, $ext, 'avatars');
+    $storage->request('PUT', $cfg->{bucket}, $key, $bytes, $mime);
+    my $saved = $self->dbh->do(
+        'INSERT INTO user_avatars(user_id,bucket,object_key,mime_type,size) VALUES(?,?,?,?,?) ON DUPLICATE KEY UPDATE bucket=VALUES(bucket),object_key=VALUES(object_key),mime_type=VALUES(mime_type),size=VALUES(size),updated_at=CURRENT_TIMESTAMP',
+        undef, $self->user_id, $cfg->{bucket}, $key, $mime, length($bytes),
+    );
+    die 'Profile photo metadata could not be saved' unless defined $saved;
+    return {data => {data => $args{data}, mime_type => $mime, size => length($bytes)}};
+}
 sub api_avatar { my $self=shift; require Core::TicketStorage; require MIME::Base64; my $row=$self->dbh->selectrow_hashref('SELECT bucket,object_key,mime_type,size,updated_at FROM user_avatars WHERE user_id=?',undef,$self->user_id); return {data=>undef} unless $row; my $storage=Core::TicketStorage->new($self->_avatar_storage_config); my $url=$storage->download_url($row->{bucket},$row->{object_key}); my $bytes=eval { $storage->request('GET',$row->{bucket},$row->{object_key}) }; my $encoded=defined($bytes) ? MIME::Base64::encode_base64($bytes,'') : undef; return {data=>{url=>$url,mime_type=>$row->{mime_type},size=>0+$row->{size},updated_at=>$row->{updated_at},data=>$encoded}}; }
 sub api_avatar_delete { my $self=shift; $self->dbh->do('DELETE FROM user_avatars WHERE user_id=?',undef,$self->user_id); return {ok=>1}; }
 
