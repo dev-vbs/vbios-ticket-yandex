@@ -1202,7 +1202,11 @@ sub api_notifications_settings {
 sub api_news_reaction {
     my $self = shift;
     my %args = get_smart_args(@_);
-    $self->dbh->do(q{
+    my $id = $args{id} || '';
+    my $reaction = $args{reaction} || '';
+    die 'Некорректная реакция' unless $reaction eq 'like' || $reaction eq 'dislike';
+    my $db = $self->dbh;
+    $db->do(q{
         CREATE TABLE IF NOT EXISTS cabinet_news_reactions (
             news_id VARCHAR(64) NOT NULL,
             user_id BIGINT NOT NULL,
@@ -1212,9 +1216,11 @@ sub api_news_reaction {
             KEY cabinet_news_reactions_user (user_id)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     });
-    my $saved = $self->dbh->do('INSERT INTO cabinet_news_reactions (news_id,user_id,reaction,created_at) VALUES (?,?,?,NOW()) ON DUPLICATE KEY UPDATE reaction=VALUES(reaction),created_at=NOW()', undef, $args{id}, $self->id, $args{reaction});
-    die 'Новость не найдена' unless $saved;
-    return { id => $args{id}, reaction => $args{reaction} };
+    my ($exists) = $db->selectrow_array('SELECT 1 FROM cabinet_news WHERE id=? LIMIT 1', undef, $id);
+    die 'Новость не найдена' unless $exists;
+    my $saved = $db->do('INSERT INTO cabinet_news_reactions (news_id,user_id,reaction,created_at) VALUES (?,?,?,NOW()) ON DUPLICATE KEY UPDATE reaction=VALUES(reaction),created_at=NOW()', undef, $id, $self->id, $reaction);
+    die 'Не удалось сохранить реакцию в базе данных' unless defined $saved;
+    return { id => $id, reaction => $reaction };
 }
 
 sub _avatar_storage_config { my $self=shift; my $cfg=get_service('config')->data_by_name('ticket')||{}; my $s=$cfg->{storage}||{}; die 'Avatar object storage is not configured' unless ($s->{provider}||'') eq 'yandex' && $s->{bucket}; return $s; }
