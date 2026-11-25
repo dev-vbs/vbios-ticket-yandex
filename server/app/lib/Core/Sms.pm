@@ -3,13 +3,14 @@ package Core::Sms;
 use v5.14;
 use utf8;
 use parent 'Core::Base';
-use Core::Utils qw(decode_json);
+use Core::Utils qw(encode_json decode_json);
 use Digest::SHA qw(sha256_hex);
-use Encode qw(encode_utf8);
+use HTTP::Request;
 use LWP::UserAgent;
 
 sub _configured {
-    return ($ENV{SMSC_ENABLED} || '') eq 'true' && $ENV{SMSC_LOGIN} && $ENV{SMSC_PASSWORD};
+    return ($ENV{EXOLVE_SMS_ENABLED} || '') eq 'true'
+        && $ENV{EXOLVE_API_KEY} && $ENV{EXOLVE_SMS_SENDER};
 }
 
 sub _phone {
@@ -54,17 +55,21 @@ sub send {
     die 'Invalid SMS text' unless length($text) && length($text) <= 140;
     my $attempt = $self->cache->increment('vbios:sms:daily:' . sha256_hex($phone), 86400);
     return { accepted => 0 } unless defined($attempt) && $attempt >= 1 && $attempt <= 5;
-    my %form = (
-        login => $ENV{SMSC_LOGIN}, psw => $ENV{SMSC_PASSWORD},
-        phones => $phone, mes => encode_utf8($text), fmt => 3, charset => 'utf-8',
-    );
-    $form{sender} = $ENV{SMSC_SENDER} if $ENV{SMSC_SENDER};
+    my $request = HTTP::Request->new(POST => 'https://api.exolve.ru/messaging/v1/SendSMS');
+    $request->header(Authorization => 'Bearer ' . $ENV{EXOLVE_API_KEY});
+    $request->header('Content-Type' => 'application/json');
+    $request->content(encode_json({
+        number => $ENV{EXOLVE_SMS_SENDER},
+        destination => $phone,
+        text => $text,
+    }));
     my $client = LWP::UserAgent->new(timeout => 10, max_redirect => 0);
-    my $response = $client->post('https://smsc.ru/sys/send.php', \%form);
-    die "SMSC HTTP error " . $response->code . "\n" unless $response->is_success;
+    my $response = $client->request($request);
+    die "Exolve HTTP error " . $response->code . "\n" unless $response->is_success;
     my $result = eval { decode_json($response->content) };
-    die "SMSC did not accept the message\n" unless ref($result) eq 'HASH' && !$result->{error} && $result->{id};
-    return { accepted => 1 };
+    die "Exolve did not return a message ID\n"
+        unless ref($result) eq 'HASH' && ($result->{message_id} // '') =~ /\A[0-9]+\z/;
+    return { accepted => 1, message_id => "$result->{message_id}" };
 }
 
 1;

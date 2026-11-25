@@ -77,12 +77,15 @@ sub _notify_safe {
 
 sub _sms_reply_safe {
     my ($self, $ticket_id) = @_;
-    return unless ($ENV{SMSC_ENABLED} || '') eq 'true';
+    return unless ($ENV{EXOLVE_SMS_ENABLED} || '') eq 'true';
     eval {
         my $sms = $self->srv('Sms') or die 'SMS service unavailable';
         $sms->send(message => "vBios: новый ответ в обращении №$ticket_id. Откройте раздел поддержки в кабинете.");
         1;
-    } or logger->error("Ticket SMS failed for ticket #$ticket_id");
+    } or do {
+        my ($reason) = $@ =~ /\A(Exolve HTTP error [1-9][0-9]{0,3})\n\z/;
+        logger->error("Ticket SMS failed for ticket #$ticket_id" . ($reason ? " ($reason)" : ''));
+    };
 }
 
 sub _push_reply_safe {
