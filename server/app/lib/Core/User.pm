@@ -1166,10 +1166,14 @@ sub api_notifications {
     eval { $self->dbh->do(q{CREATE TABLE IF NOT EXISTS cabinet_news_reactions (news_id VARCHAR(64) NOT NULL,user_id BIGINT NOT NULL,reaction ENUM('like','dislike') NOT NULL,created_at DATETIME NOT NULL,PRIMARY KEY (news_id,user_id),KEY cabinet_news_reactions_user (user_id)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4}); };
     my $news = eval {
         my $rows = $self->dbh->selectall_arrayref(
-            'SELECT n.id,n.title,n.body,n.media_id,n.media_type,n.created_at,(SELECT r.reaction FROM cabinet_news_reactions r WHERE r.news_id=n.id AND r.user_id=? LIMIT 1) AS reaction,(SELECT COUNT(*) FROM cabinet_news_reactions r WHERE r.news_id=n.id AND r.reaction="like") AS likes,(SELECT COUNT(*) FROM cabinet_news_reactions r WHERE r.news_id=n.id AND r.reaction="dislike") AS dislikes FROM cabinet_news n WHERE n.expires_at > NOW() ORDER BY n.created_at DESC', undef, $self->id,
+            'SELECT n.id,n.title,n.body,n.media_id,n.media_type,n.created_at,(SELECT r.reaction FROM cabinet_news_reactions r WHERE r.news_id=n.id AND r.user_id=? LIMIT 1) AS reaction,(SELECT COUNT(*) FROM cabinet_news_reactions r WHERE r.news_id=n.id AND r.reaction="like") AS likes,(SELECT COUNT(*) FROM cabinet_news_reactions r WHERE r.news_id=n.id AND r.reaction="dislike") AS dislikes FROM cabinet_news n WHERE n.created_at >= DATE_SUB(NOW(), INTERVAL 24 HOUR) ORDER BY n.created_at DESC LIMIT 25', undef, $self->id,
         );
         [ map { +{ id=>$_->{id}, title=>$_->{title}, body=>$_->{body}, media_id=>$_->{media_id}, media_type=>$_->{media_type}, created=>$_->{created_at}, url=>'/news/'.$_->{id}, reaction=>$_->{reaction}, likes=>0+($_->{likes}||0), dislikes=>0+($_->{dislikes}||0), kind=>'broadcast' } } @$rows ];
-    } || [];
+    };
+    if (!$news) {
+        logger->error('Cabinet news query failed: ' . ($@ || $self->dbh->errstr || 'unknown database error'));
+        $news = [];
+    }
     my @legacy = grep { !($_->{kind} && $_->{kind} eq 'broadcast') } @{ref($items) eq 'ARRAY' ? $items : []};
     return { notifications => [ @$news, @legacy ], broadcasts_enabled => !defined($enabled) || $enabled ? 1 : 0 };
 }
