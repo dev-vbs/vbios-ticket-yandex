@@ -461,7 +461,10 @@ sub bot {
     $self->profile( $template_id ) unless $self->profile_name;
 
     unless ( $self->chat_id ) {
-        logger->error('chat_id не найден');
+        # Webhooks and background events may target users without a linked
+        # Telegram chat. This is an expected delivery skip, not a transport
+        # failure and must not make the webhook request fail.
+        logger->debug('Telegram delivery skipped: chat_id is not linked') if $ENV{SHM_LOG_TELEGRAM_SKIPS};
         return undef;
     }
 
