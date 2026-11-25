@@ -1,4 +1,5 @@
 {{# Put this at the beginning of the telegram_broadcast template. #}}
+{{# Важно: в шаблоне telegram_bot значение template_id для фоновой задачи должно быть telegram_broadcast. #}}
 {{ IF task.settings.broadcast_dispatcher && task.settings.broadcast_batch_id }}
   {{ TRY }}
     {{ newsBody = task.settings.broadcast_text || '' }}
