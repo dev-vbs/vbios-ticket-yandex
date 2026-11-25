@@ -1174,6 +1174,14 @@ sub api_notifications_settings {
     $self->set_settings({ cabinet_broadcasts_enabled => $enabled });
     return { broadcasts_enabled => $enabled };
 }
+sub api_news_reaction {
+    my ($self, %args) = @_;
+    my $reactions = $self->settings->{news_reactions};
+    $reactions = {} unless ref($reactions) eq 'HASH';
+    $reactions->{$args{id}} = $args{reaction};
+    $self->set_settings({ news_reactions => $reactions });
+    return { id => $args{id}, reaction => $args{reaction} };
+}
 
 sub _avatar_storage_config { my $self=shift; my $cfg=get_service('config')->data_by_name('ticket')||{}; my $s=$cfg->{storage}||{}; die 'Avatar object storage is not configured' unless ($s->{provider}||'') eq 'yandex' && $s->{bucket}; return $s; }
 sub api_avatar_upload {

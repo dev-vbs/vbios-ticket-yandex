@@ -18,7 +18,6 @@ const desktopItems = [
   { path: '/balance', label: 'Баланс', icon: IconWallet },
   { path: '/operations', label: 'Операции', icon: IconReceipt },
   { path: '/notifications', label: 'Уведомления', icon: IconBell },
-  { path: '/news', label: 'Новости', icon: IconBell },
   { path: '/tickets', label: 'Поддержка', icon: IconHeadset },
   { path: '/help', label: 'Помощь', icon: IconHelpCircle },
   { path: '/status', label: 'Состояние сети', icon: IconShieldLock },
