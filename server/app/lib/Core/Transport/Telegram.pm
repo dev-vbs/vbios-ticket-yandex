@@ -251,6 +251,23 @@ sub task_send {
     $self->{chat_id} = $tpl_settings_tg->{chat_id} if $tpl_settings_tg->{chat_id};
 
     my $push_enabled = $tpl_settings_tg->{push_enable} || $settings{push_enable};
+
+    # Save the shared article before checking the recipient's Telegram profile.
+    # The dispatcher task may belong to an administrator without a Telegram
+    # profile, while its child tasks still deliver the message to users.
+    if ($settings{broadcast_dispatcher} && $settings{broadcast_batch_id}) {
+        eval {
+            my $article = defined($settings{broadcast_text}) ? $settings{broadcast_text} : '';
+            $article =~ s/<[^>]+>//g;
+            $article =~ s/^\s+|\s+$//g;
+            my $db = $self->dbh;
+            $db->do(q{CREATE TABLE IF NOT EXISTS cabinet_news (id VARCHAR(64) NOT NULL PRIMARY KEY,title VARCHAR(255) NOT NULL,body MEDIUMTEXT NOT NULL,media_id VARCHAR(255) DEFAULT NULL,media_type VARCHAR(32) DEFAULT NULL,created_at DATETIME NOT NULL,expires_at DATETIME NOT NULL,KEY cabinet_news_expires (expires_at)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4});
+            $db->do('INSERT INTO cabinet_news (id,title,body,media_id,media_type,created_at,expires_at) VALUES (?,?,?,?,?,NOW(),DATE_ADD(NOW(), INTERVAL 24 HOUR)) ON DUPLICATE KEY UPDATE title=VALUES(title),body=VALUES(body),media_id=VALUES(media_id),media_type=VALUES(media_type),expires_at=VALUES(expires_at)', undef, 'tg-' . $settings{broadcast_batch_id}, $settings{broadcast_title} || 'Новость vBios', $article, $settings{broadcast_photo} || undef, $settings{broadcast_media_type} || ($settings{broadcast_photo} ? 'photo' : 'text'));
+            $db->commit;
+            1;
+        } or logger->error('Не удалось сохранить рассылку в MySQL: ' . ($@ || 'unknown database error'));
+    }
+
     my $has_telegram = scalar $self->user_profiles();
     unless ($has_telegram || $push_enabled) {
         return SUCCESS, {
@@ -275,34 +292,6 @@ sub task_send {
     # The toggle controls delivery to that user, while the article itself is
     # shared and must exist in the database even when the first recipient is
     # not subscribed to cabinet broadcasts.
-    if (!ref($message) && $settings{broadcast_dispatcher} && $settings{broadcast_batch_id}) {
-        eval {
-            my $article = defined($settings{broadcast_text}) ? $settings{broadcast_text} : $message;
-            $article =~ s/<[^>]+>//g;
-            $article =~ s/^\s+|\s+$//g;
-            my $global_id = 'tg-' . $settings{broadcast_batch_id};
-            $self->dbh->do(q{
-                CREATE TABLE IF NOT EXISTS cabinet_news (
-                    id VARCHAR(64) NOT NULL PRIMARY KEY,
-                    title VARCHAR(255) NOT NULL,
-                    body MEDIUMTEXT NOT NULL,
-                    media_id VARCHAR(255) DEFAULT NULL,
-                    media_type VARCHAR(32) DEFAULT NULL,
-                    created_at DATETIME NOT NULL,
-                    expires_at DATETIME NOT NULL,
-                    KEY cabinet_news_expires (expires_at)
-                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
-            });
-            $self->dbh->do(
-                'INSERT IGNORE INTO cabinet_news (id,title,body,media_id,media_type,created_at,expires_at) VALUES (?,?,?,?,?,NOW(),DATE_ADD(NOW(), INTERVAL 24 HOUR))',
-                undef, $global_id, ($settings{broadcast_title} || 'Новость vBios'), $article,
-                ($settings{broadcast_photo} || undef), ($settings{broadcast_media_type} || ($settings{broadcast_photo} ? 'photo' : 'text')),
-            );
-            $self->dbh->commit;
-            1;
-        } or logger->error('Telegram broadcast database save failed: ' . ($@ || 'unknown database error'));
-    }
-
     my $cabinet_allowed = 1;
     if (!ref($message) && ($push_enabled || $settings{broadcast_dispatcher})) {
         my $recipient_id = $task->settings->{user_id} || $self->user_id;
