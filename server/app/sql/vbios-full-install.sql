@@ -830,3 +830,24 @@ CREATE TABLE IF NOT EXISTS remnawave_addon_ledger (
     PRIMARY KEY (order_id),
     KEY pending_target (user_id, target_id, applied, order_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS cabinet_news (
+  id VARCHAR(64) NOT NULL,
+  title VARCHAR(255) NOT NULL,
+  body MEDIUMTEXT NOT NULL,
+  media_id VARCHAR(255) DEFAULT NULL,
+  media_type VARCHAR(32) DEFAULT NULL,
+  created_at DATETIME NOT NULL,
+  expires_at DATETIME NOT NULL,
+  PRIMARY KEY (id),
+  KEY cabinet_news_expires (expires_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS cabinet_news_reactions (
+  news_id VARCHAR(64) NOT NULL,
+  user_id BIGINT NOT NULL,
+  reaction ENUM('like','dislike') NOT NULL,
+  created_at DATETIME NOT NULL,
+  PRIMARY KEY (news_id,user_id),
+  KEY cabinet_news_reactions_user (user_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

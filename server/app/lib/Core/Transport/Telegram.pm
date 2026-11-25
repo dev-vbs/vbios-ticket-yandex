@@ -297,6 +297,17 @@ sub task_send {
                 $items = [] unless ref($items) eq 'ARRAY';
             $items = [ grep { ref($_) eq 'HASH' && (($now - ($_->{created_at} || 0)) < 86400) } @$items ];
             my $news_id = ($settings{broadcast_batch_id} || $now) . '-' . ($recipient_id || 0);
+            if ($settings{broadcast_dispatcher} && $settings{broadcast_batch_id}) {
+                my $db = eval { $owner->dbh };
+                if ($db) {
+                    my $global_id = 'tg-' . $settings{broadcast_batch_id};
+                    $db->do(
+                        'INSERT IGNORE INTO cabinet_news (id,title,body,media_id,media_type,created_at,expires_at) VALUES (?,?,?,?,?,NOW(),DATE_ADD(NOW(), INTERVAL 24 HOUR))',
+                        undef, $global_id, ($settings{broadcast_title} || 'Новость vBios'), $plain,
+                        ($settings{broadcast_photo} || undef), ($settings{broadcast_media_type} || ($settings{broadcast_photo} ? 'photo' : 'text')),
+                    );
+                }
+            }
             unshift @$items, {
                 id => $news_id,
                 title => $settings{broadcast_title} || $tpl_settings_tg->{push_title} || 'Новость vBios',

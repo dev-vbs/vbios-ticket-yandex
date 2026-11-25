@@ -1162,7 +1162,14 @@ sub api_notifications {
     $items = [ grep { ref($_) eq 'HASH' && (($now - ($_->{created_at} || $now)) < 86400) } @{ref($items) eq 'ARRAY' ? $items : []} ];
     $self->set_settings({ cabinet_notifications => $items });
     my $enabled = $self->settings->{cabinet_broadcasts_enabled};
-    return { notifications => ref($items) eq 'ARRAY' ? $items : [], broadcasts_enabled => !defined($enabled) || $enabled ? 1 : 0 };
+    my $news = eval {
+        my $rows = $self->dbh->selectall_arrayref(
+            'SELECT n.id,n.title,n.body,n.media_id,n.media_type,n.created_at,COALESCE(r.reaction, NULL) AS reaction, SUM(CASE WHEN rr.reaction = "like" THEN 1 ELSE 0 END) AS likes, SUM(CASE WHEN rr.reaction = "dislike" THEN 1 ELSE 0 END) AS dislikes FROM cabinet_news n LEFT JOIN cabinet_news_reactions r ON r.news_id=n.id AND r.user_id=? LEFT JOIN cabinet_news_reactions rr ON rr.news_id=n.id WHERE n.expires_at > NOW() GROUP BY n.id,n.title,n.body,n.media_id,n.media_type,n.created_at,r.reaction ORDER BY n.created_at DESC', undef, $self->id,
+        );
+        [ map { +{ id=>$_->{id}, title=>$_->{title}, body=>$_->{body}, media_id=>$_->{media_id}, media_type=>$_->{media_type}, created=>$_->{created_at}, url=>'/news/'.$_->{id}, reaction=>$_->{reaction}, likes=>0+($_->{likes}||0), dislikes=>0+($_->{dislikes}||0), kind=>'broadcast' } } @$rows ];
+    } || [];
+    my @legacy = grep { !($_->{kind} && $_->{kind} eq 'broadcast') } @{ref($items) eq 'ARRAY' ? $items : []};
+    return { notifications => [ @$news, @legacy ], broadcasts_enabled => !defined($enabled) || $enabled ? 1 : 0 };
 }
 
 sub api_notifications_settings {
@@ -1177,10 +1184,8 @@ sub api_notifications_settings {
 sub api_news_reaction {
     my $self = shift;
     my %args = get_smart_args(@_);
-    my $reactions = $self->settings->{news_reactions};
-    $reactions = {} unless ref($reactions) eq 'HASH';
-    $reactions->{$args{id}} = $args{reaction};
-    $self->set_settings({ news_reactions => $reactions });
+    my $saved = $self->dbh->do('INSERT INTO cabinet_news_reactions (news_id,user_id,reaction,created_at) VALUES (?,?,?,NOW()) ON DUPLICATE KEY UPDATE reaction=VALUES(reaction),created_at=NOW()', undef, $args{id}, $self->id, $args{reaction});
+    die 'Новость не найдена' unless $saved;
     return { id => $args{id}, reaction => $args{reaction} };
 }
 
