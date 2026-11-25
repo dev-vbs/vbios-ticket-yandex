@@ -270,6 +270,27 @@ sub task_send {
     );
     return SUCCESS, { msg => "Шаблон не содержит данных" } unless $message;
 
+    # Create one cabinet article for a Telegram broadcast before fan-out.
+    # This is deliberately independent of the recipient's broadcast toggle.
+    # The toggle controls delivery to that user, while the article itself is
+    # shared and must exist in the database even when the first recipient is
+    # not subscribed to cabinet broadcasts.
+    if (!ref($message) && $settings{broadcast_dispatcher} && $settings{broadcast_batch_id}) {
+        eval {
+            my $article = defined($settings{broadcast_text}) ? $settings{broadcast_text} : $message;
+            $article =~ s/<[^>]+>//g;
+            $article =~ s/^\s+|\s+$//g;
+            my $global_id = 'tg-' . $settings{broadcast_batch_id};
+            $self->dbh->do(
+                'INSERT IGNORE INTO cabinet_news (id,title,body,media_id,media_type,created_at,expires_at) VALUES (?,?,?,?,?,NOW(),DATE_ADD(NOW(), INTERVAL 24 HOUR))',
+                undef, $global_id, ($settings{broadcast_title} || 'Новость vBios'), $article,
+                ($settings{broadcast_photo} || undef), ($settings{broadcast_media_type} || ($settings{broadcast_photo} ? 'photo' : 'text')),
+            );
+            $self->dbh->commit;
+            1;
+        } or logger->error('Telegram broadcast database save failed');
+    }
+
     my $cabinet_allowed = 1;
     if (!ref($message) && ($push_enabled || $settings{broadcast_dispatcher})) {
         my $recipient_id = $task->settings->{user_id} || $self->user_id;
@@ -297,17 +318,6 @@ sub task_send {
                 $items = [] unless ref($items) eq 'ARRAY';
             $items = [ grep { ref($_) eq 'HASH' && (($now - ($_->{created_at} || 0)) < 86400) } @$items ];
             my $news_id = ($settings{broadcast_batch_id} || $now) . '-' . ($recipient_id || 0);
-            if ($settings{broadcast_dispatcher} && $settings{broadcast_batch_id}) {
-                my $db = eval { $owner->dbh };
-                if ($db) {
-                    my $global_id = 'tg-' . $settings{broadcast_batch_id};
-                    $db->do(
-                        'INSERT IGNORE INTO cabinet_news (id,title,body,media_id,media_type,created_at,expires_at) VALUES (?,?,?,?,?,NOW(),DATE_ADD(NOW(), INTERVAL 24 HOUR))',
-                        undef, $global_id, ($settings{broadcast_title} || 'Новость vBios'), $plain,
-                        ($settings{broadcast_photo} || undef), ($settings{broadcast_media_type} || ($settings{broadcast_photo} ? 'photo' : 'text')),
-                    );
-                }
-            }
             unshift @$items, {
                 id => $news_id,
                 title => $settings{broadcast_title} || $tpl_settings_tg->{push_title} || 'Новость vBios',
