@@ -2,7 +2,7 @@ import ServerMonitor from '../components/ServerMonitor';
 import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { notifications } from '@mantine/notifications';
-import { monitorApi, userApi } from '../api/client';
+import { api, monitorApi, userApi } from '../api/client';
 import { useStore } from '../store/useStore';
 import { IconAlertCircle, IconArrowRight, IconCalendarEvent, IconCircleCheck, IconCreditCard, IconRefresh, IconServer, IconWallet, IconPlus, IconHeadset, IconShieldLock, IconHelpCircle } from '@tabler/icons-react';
 const PayModal = lazy(() => import('../components/PayModal'));
@@ -12,6 +12,7 @@ type Payment = { amount?: number; sum?: number; cost?: number; money?: number; c
 type Service = { user_service_id: number; status?: string; service?: { name?: string }; name?: string; expire?: string | null };
 type Forecast = { total?: number; dept?: number };
 type MonitorNode = { name: string; country?: string; ping_url?: string; latency_ms?: number | null; status: 'online' | 'offline' | 'maintenance' | 'unknown' };
+type CabinetNotice = { id: string; title?: string; body?: string; created?: string; url?: string };
 const rubles = (value: number) => new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 2 }).format(value);
 const formatDate = (value?: string | null) => {
   const date = value ? new Date(value.replace(' ', 'T')) : null;
@@ -37,6 +38,7 @@ export default function Dashboard() {
   const [paymentsUpdated, setPaymentsUpdated] = useState<Date | null>(null);
   const [payModalOpen, setPayModalOpen] = useState(false);
   const [monitor, setMonitor] = useState<{ enabled?: boolean; state?: string; checked_at?: number; nodes?: MonitorNode[] }>({});
+  const [latestNews, setLatestNews] = useState<CabinetNotice | null>(null);
   const load = useCallback(async () => {
     setLoading(true);
     // Render each section independently of slower billing requests.
@@ -56,6 +58,13 @@ export default function Dashboard() {
         const data = response.data?.data;
         setForecast(Array.isArray(data) ? data[0] : data); setForecastError(false);
       }).catch(() => setForecastError(true)),
+      api.get('/user/notifications').then(response => {
+        const envelope = response.data;
+        const data = envelope?.data ?? envelope;
+        const payload = Array.isArray(data) ? (data[0]?.notifications ? data[0] : { notifications: data }) : data;
+        const items = Array.isArray(payload?.notifications) ? payload.notifications : [];
+        setLatestNews(items.find((item: CabinetNotice) => item?.kind === 'broadcast') || items.find((item: CabinetNotice) => item?.id) || null);
+      }).catch(() => setLatestNews(null)),
     ]);
     setLoading(false);
   }, []);
@@ -97,6 +106,12 @@ export default function Dashboard() {
       {expiringServices.slice(0, 2).map(service => <Link key={service.user_service_id} to={`/services/${service.user_service_id}`}><IconCalendarEvent size={19} /><span>{service.service?.name || service.name || `Услуга #${service.user_service_id}`} · {expiry(service.expire)}</span><IconArrowRight size={16} /></Link>)}
       {hasNewTicketMessages && <Link to="/tickets"><IconHeadset size={19} /><span>Новый ответ поддержки</span><IconArrowRight size={16} /></Link>}
     </section>}
+    {latestNews && <Link className="dashboard-news-banner" to={`/news/${latestNews.id}`} aria-label="Открыть новость">
+      <span className="dashboard-news-banner__eyebrow">📣 Внимание · объявление</span>
+      <strong>{latestNews.title || 'Новое объявление'}</strong>
+      <span>{(latestNews.body || '').replace(/\s+/g, ' ').slice(0, 180)}{(latestNews.body || '').length > 180 ? '…' : ''}</span>
+      <IconArrowRight size={18} />
+    </Link>}
 
     <div className="dashboard-primary">
       <section className="dashboard-funds" aria-label="Баланс аккаунта">
