@@ -1,4 +1,5 @@
 import { createServer } from 'node:http';
+import { createHash } from 'node:crypto';
 import { DatabaseSync } from 'node:sqlite';
 import { mkdirSync } from 'node:fs';
 import webpush from 'web-push';
@@ -16,11 +17,20 @@ mkdirSync(dataDir, { recursive: true });
 const db = new DatabaseSync(`${dataDir}/push.sqlite`);
 db.exec('PRAGMA journal_mode=WAL; CREATE TABLE IF NOT EXISTS subscriptions (endpoint TEXT PRIMARY KEY,user_id INTEGER NOT NULL,subscription TEXT NOT NULL,updated_at INTEGER NOT NULL); CREATE INDEX IF NOT EXISTS subscriptions_user ON subscriptions(user_id);');
 const limits = new Map();
+const deliveredEvents = new Map();
 function rateLimit(key, interval) {
   const now = Date.now();
   if (limits.size > 10000) for (const [k, at] of limits) if (now - at > 60000) limits.delete(k);
   if (now - (limits.get(key) || 0) < interval) throw Object.assign(Error('Подождите перед повторной отправкой'), { status: 429 });
   limits.set(key, now);
+}
+function duplicateEvent(user, payload) {
+  const key = `${user}:${createHash('sha256').update(JSON.stringify(payload)).digest('hex')}`;
+  const now = Date.now();
+  for (const [stored, at] of deliveredEvents) if (now - at > 5 * 60 * 1000) deliveredEvents.delete(stored);
+  if (deliveredEvents.has(key)) return true;
+  deliveredEvents.set(key, now);
+  return false;
 }
 async function readBody(req, maxBytes = 8192) {
   let size = 0, chunks = [];
@@ -70,8 +80,10 @@ export const server = createServer(async (req, res) => {
       if (!equalSecret(req.headers.authorization, `Bearer ${env.PUSH_INTERNAL_TOKEN}`)) return reply(403, { error: 'Доступ запрещён' });
       const body = await readBody(req, 128 * 1024), id = Number(body.user_id);
       if (!Number.isSafeInteger(id) || id < 1) return reply(400, { error: 'Неверный user_id' });
+      const payload = notification(body);
+      if (duplicateEvent(id, payload)) return reply(200, { sent: 0, deduplicated: true, expired: 0, failed: 0, errors: [] });
       rateLimit(`send:${id}`, 1000);
-      return reply(200, await send(id, notification(body)));
+      return reply(200, await send(id, payload));
     }
     if (!['/push/subscriptions', '/push/test'].includes(path)) return reply(404, { error: 'Не найдено' });
     if (req.method !== 'GET' && req.headers.origin !== origin) return reply(403, { error: 'Недопустимый источник запроса' });
