@@ -10,7 +10,7 @@ const proxyCategories = new Set((config.PROXY_CATEGORY || 'proxy').toLowerCase()
 
 type Service = { user_service_id: number; status: string; expire?: string; name?: string; service?: { name?: string; cost?: number; category?: string } };
 type Preferences = { expiry: boolean; balance: boolean; support: boolean; traffic: boolean; devices: boolean };
-type CabinetNotice = { id: string; title: string; body: string; url?: string; created?: string };
+type CabinetNotice = { id: string; title: string; body: string; url?: string; created?: string; kind?: string; media_id?: string; media_url?: string };
 export default function NotificationsPage() {
   const hasReply = useStore(s => s.hasNewTicketMessages);
   const user = useStore(s => s.user);
@@ -47,10 +47,11 @@ export default function NotificationsPage() {
       const [servicesResult, noticeResult] = await Promise.allSettled([userApi.getServices(), api.get('/user/notifications')]);
       if (id !== loadId.current) return;
       if (noticeResult.status === 'fulfilled') {
-        const data = noticeResult.value.data?.data;
-        const noticeData = Array.isArray(data) ? data[0] : data;
+        const envelope = noticeResult.value.data;
+        const data = envelope?.data ?? envelope;
+        const noticeData = Array.isArray(data) ? (data[0]?.notifications ? data[0] : { notifications: data }) : data;
         if (noticeData && Array.isArray(noticeData.notifications)) {
-          setCabinetNotices(noticeData.notifications);
+          setCabinetNotices(noticeData.notifications.filter((item: CabinetNotice) => item && item.id));
           setBroadcastsEnabled(noticeData.broadcasts_enabled !== 0 && noticeData.broadcasts_enabled !== false);
           setBroadcastsError(false);
         } else setBroadcastsError(true);
