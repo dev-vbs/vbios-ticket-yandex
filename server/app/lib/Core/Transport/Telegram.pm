@@ -271,13 +271,14 @@ sub task_send {
     return SUCCESS, { msg => "Шаблон не содержит данных" } unless $message;
 
     my $cabinet_allowed = 1;
-    if (!ref($message)) {
+    if (!ref($message) && ($push_enabled || $settings{broadcast_dispatcher})) {
         my $recipient_id = $task->settings->{user_id} || $self->user_id;
         my $plain = $message;
         $plain =~ s/<[^>]+>//g;
         $plain =~ s/\s+/ /g;
         $plain =~ s/^\s+|\s+$//g;
-        $plain = substr($plain, 0, 180);
+        # Cabinet news keeps the complete text. Web Push applies its own
+        # payload limit later, while the cabinet retains the full message.
         eval {
             my $owner = eval { $self->user };
             if (!$owner || !$recipient_id || !$owner->can('id') || $owner->id != $recipient_id) {
