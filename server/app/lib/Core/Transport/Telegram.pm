@@ -281,6 +281,18 @@ sub task_send {
             $article =~ s/<[^>]+>//g;
             $article =~ s/^\s+|\s+$//g;
             my $global_id = 'tg-' . $settings{broadcast_batch_id};
+            $self->dbh->do(q{
+                CREATE TABLE IF NOT EXISTS cabinet_news (
+                    id VARCHAR(64) NOT NULL PRIMARY KEY,
+                    title VARCHAR(255) NOT NULL,
+                    body MEDIUMTEXT NOT NULL,
+                    media_id VARCHAR(255) DEFAULT NULL,
+                    media_type VARCHAR(32) DEFAULT NULL,
+                    created_at DATETIME NOT NULL,
+                    expires_at DATETIME NOT NULL,
+                    KEY cabinet_news_expires (expires_at)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+            });
             $self->dbh->do(
                 'INSERT IGNORE INTO cabinet_news (id,title,body,media_id,media_type,created_at,expires_at) VALUES (?,?,?,?,?,NOW(),DATE_ADD(NOW(), INTERVAL 24 HOUR))',
                 undef, $global_id, ($settings{broadcast_title} || 'Новость vBios'), $article,
@@ -288,7 +300,7 @@ sub task_send {
             );
             $self->dbh->commit;
             1;
-        } or logger->error('Telegram broadcast database save failed');
+        } or logger->error('Telegram broadcast database save failed: ' . ($@ || 'unknown database error'));
     }
 
     my $cabinet_allowed = 1;

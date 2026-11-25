@@ -1184,6 +1184,16 @@ sub api_notifications_settings {
 sub api_news_reaction {
     my $self = shift;
     my %args = get_smart_args(@_);
+    $self->dbh->do(q{
+        CREATE TABLE IF NOT EXISTS cabinet_news_reactions (
+            news_id VARCHAR(64) NOT NULL,
+            user_id BIGINT NOT NULL,
+            reaction ENUM('like','dislike') NOT NULL,
+            created_at DATETIME NOT NULL,
+            PRIMARY KEY (news_id,user_id),
+            KEY cabinet_news_reactions_user (user_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    });
     my $saved = $self->dbh->do('INSERT INTO cabinet_news_reactions (news_id,user_id,reaction,created_at) VALUES (?,?,?,NOW()) ON DUPLICATE KEY UPDATE reaction=VALUES(reaction),created_at=NOW()', undef, $args{id}, $self->id, $args{reaction});
     die 'Новость не найдена' unless $saved;
     return { id => $args{id}, reaction => $args{reaction} };
