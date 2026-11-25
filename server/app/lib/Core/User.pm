@@ -1172,6 +1172,17 @@ sub api_notifications {
     return { notifications => [ @$news, @legacy ], broadcasts_enabled => !defined($enabled) || $enabled ? 1 : 0 };
 }
 
+sub save_cabinet_news {
+    my ($self, %args) = @_;
+    my $id = $args{id} || die 'News id is required';
+    my $title = defined($args{title}) ? $args{title} : 'Новость vBios';
+    my $body = defined($args{body}) ? $args{body} : '';
+    my $db = $self->dbh;
+    $db->do(q{CREATE TABLE IF NOT EXISTS cabinet_news (id VARCHAR(64) NOT NULL PRIMARY KEY,title VARCHAR(255) NOT NULL,body MEDIUMTEXT NOT NULL,media_id VARCHAR(255) DEFAULT NULL,media_type VARCHAR(32) DEFAULT NULL,created_at DATETIME NOT NULL,expires_at DATETIME NOT NULL,KEY cabinet_news_expires (expires_at)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4});
+    $db->do('INSERT INTO cabinet_news (id,title,body,media_id,media_type,created_at,expires_at) VALUES (?,?,?,?,?,NOW(),DATE_ADD(NOW(), INTERVAL 24 HOUR)) ON DUPLICATE KEY UPDATE title=VALUES(title),body=VALUES(body),media_id=VALUES(media_id),media_type=VALUES(media_type),expires_at=VALUES(expires_at)', undef, $id, $title, $body, $args{media_id}, $args{media_type});
+    return $id;
+}
+
 sub api_notifications_settings {
     my $self = shift;
     my %args = get_smart_args(@_);

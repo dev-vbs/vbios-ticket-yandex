@@ -1,0 +1,12 @@
+{{# Put this at the beginning of the telegram_broadcast template. #}}
+{{ IF task.settings.broadcast_dispatcher && task.settings.broadcast_batch_id }}
+  {{ newsBody = task.settings.broadcast_text || '' }}
+  {{ newsId = 'tg-' _ task.settings.broadcast_batch_id }}
+  {{ savedNews = user.save_cabinet_news(
+      id = newsId,
+      title = task.settings.broadcast_title || '📢 Внимание: рассылка новостей',
+      body = newsBody,
+      media_id = task.settings.broadcast_photo || '',
+      media_type = task.settings.broadcast_media_type || 'text'
+  ) }}
+{{ END }}
