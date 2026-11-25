@@ -1173,7 +1173,8 @@ sub api_notifications {
 }
 
 sub save_cabinet_news {
-    my ($self, %args) = @_;
+    my $self = shift;
+    my %args = get_smart_args(@_);
     my $id = $args{id} || die 'News id is required';
     my $title = defined($args{title}) ? $args{title} : 'Новость vBios';
     my $body = defined($args{body}) ? $args{body} : '';
