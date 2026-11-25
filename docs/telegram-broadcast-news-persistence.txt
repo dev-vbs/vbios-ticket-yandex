@@ -1,5 +1,7 @@
 {{# Put this at the beginning of the telegram_broadcast template. #}}
 {{# Важно: в шаблоне telegram_bot значение template_id для фоновой задачи должно быть telegram_broadcast. #}}
+{{# Важно: этот блок должен находиться в сохранённом шаблоне telegram_broadcast в MySQL. #}}
+{{# template_id только выбирает шаблон, запись выполняет save_cabinet_news. #}}
 {{ IF task.settings.broadcast_dispatcher && task.settings.broadcast_batch_id }}
   {{ TRY }}
     {{ newsBody = task.settings.broadcast_text || '' }}
