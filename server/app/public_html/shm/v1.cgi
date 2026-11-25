@@ -188,6 +188,9 @@ state $routes //= {
         swagger => { summary => 'Включение или отключение рассылок в личном кабинете' },
     },
 },
+'/user/news/media' => {
+    GET => { controller => 'User', method => 'api_news_media', params => { id => { type => 'string', required => 1, max_length => 100 } } },
+},
 '/user/news/reaction' => {
     POST => { controller => 'User', method => 'api_news_reaction', params => { id => { type => 'string', required => 1, max_length => 100 }, reaction => { type => 'enum', required => 1, enum => ['like','dislike'] } } },
 },

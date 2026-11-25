@@ -1178,6 +1178,41 @@ sub api_notifications {
     return { notifications => [ @$news, @legacy ], broadcasts_enabled => !defined($enabled) || $enabled ? 1 : 0 };
 }
 
+sub api_news_media {
+    my $self = shift;
+    my %args = get_smart_args(@_);
+    my ($file_id) = $self->dbh->selectrow_array(q{
+        SELECT media_id FROM cabinet_news
+        WHERE id=? AND media_type='photo' AND created_at >= DATE_SUB(NOW(), INTERVAL 24 HOUR)
+    }, undef, $args{id});
+    return { error => 'Фото новости недоступно' } unless $file_id;
+
+    require LWP::UserAgent;
+    require MIME::Base64;
+    my $config = get_service('config');
+    my $broadcast = $config->data_by_name('broadcast') || {};
+    my $telegram = $config->data_by_name('telegram') || {};
+    my $profile = $broadcast->{telegram_profile};
+    my @profiles = grep { ref($_) eq 'HASH' && $_->{token} } values %$telegram;
+    my $token = $profile ? ($telegram->{$profile} || {})->{token}
+        : ($telegram->{token} || (@profiles == 1 ? $profiles[0]{token} : undef));
+    return { error => 'Профиль Telegram для фото не настроен' }
+        unless $token && $token =~ /\A\d+:[A-Za-z0-9_-]+\z/;
+
+    my $ua = LWP::UserAgent->new(timeout => 8, max_size => 5 * 1024 * 1024, max_redirect => 0);
+    my $meta = $ua->post("https://api.telegram.org/bot$token/getFile", { file_id => $file_id });
+    my $result = $meta->is_success ? eval { decode_json($meta->content) } : undef;
+    my $path = $result && $result->{ok} ? $result->{result}{file_path} : '';
+    return { error => 'Фото новости недоступно' }
+        unless $path && $path =~ m{\Aphotos/[A-Za-z0-9_-]+\.(?:jpg|jpeg|png|webp)\z}i;
+    my $photo = $ua->get("https://api.telegram.org/file/bot$token/$path");
+    my $mime = lc($photo->header('Content-Type') || '');
+    return { error => 'Фото новости недоступно' }
+        unless $photo->is_success && !$photo->header('Client-Aborted')
+            && $mime =~ m{\Aimage/(?:jpeg|png|webp)\z};
+    return { mime_type => $mime, content => MIME::Base64::encode_base64($photo->content, '') };
+}
+
 sub save_cabinet_news {
     my $self = shift;
     my %args = get_smart_args(@_);

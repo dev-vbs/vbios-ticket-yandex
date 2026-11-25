@@ -11,6 +11,8 @@ type NewsItem = {
   created?: string;
   image_url?: string;
   media_url?: string;
+  media_id?: string;
+  media_type?: string;
 };
 
 export default function NewsDetail() {
@@ -21,6 +23,20 @@ export default function NewsDetail() {
   const [reaction, setReaction] = useState<'like' | 'dislike' | null>(null);
   const [reacting, setReacting] = useState(false);
   const [reactionError, setReactionError] = useState<string | null>(null);
+  const [photo, setPhoto] = useState<{ id: string; src: string } | null>(null);
+
+  useEffect(() => {
+    if (!news?.media_id || news.media_type !== 'photo' || news.image_url || news.media_url) return;
+    const request = new AbortController();
+    api.get('/user/news/media', { params: { id: news.id }, signal: request.signal }).then(response => {
+      const data = response.data?.data ?? response.data;
+      const item = Array.isArray(data) ? data[0] : data;
+      if (!request.signal.aborted && item?.content && /^image\/(jpeg|png|webp)$/.test(item.mime_type)) {
+        setPhoto({ id: news.id, src: `data:${item.mime_type};base64,${item.content}` });
+      }
+    }).catch(() => {});
+    return () => request.abort();
+  }, [news]);
 
   useEffect(() => {
     let cancelled = false;
@@ -45,7 +61,7 @@ export default function NewsDetail() {
 
   if (loading) return <Stack align="center" py="xl"><Loader /></Stack>;
   if (error || !news) return <Stack gap="md"><Button component={Link} to="/notifications" variant="subtle" leftSection={<IconArrowLeft size={16} />}>К уведомлениям</Button><Alert color="orange">Новость больше недоступна или срок её хранения истёк.</Alert></Stack>;
-  const image = news.image_url || news.media_url;
+  const image = news.image_url || news.media_url || (photo?.id === news.id ? photo.src : undefined);
   return <Stack gap="lg" maw={760} mx="auto" w="100%">
     <Button component={Link} to="/notifications" variant="subtle" leftSection={<IconArrowLeft size={16} />} w="fit-content">Все уведомления</Button>
     <article className="vpn-finance-panel" style={{ padding: 'clamp(20px, 4vw, 36px)' }}>
