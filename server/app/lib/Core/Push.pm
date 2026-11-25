@@ -23,6 +23,8 @@ sub send {
     my $response = LWP::UserAgent->new(timeout => 65)->request($request);
     unless ($response->is_success) {
         my $code = $response->code;
+        return { enabled => 1, sent => 0, throttled => 1 }
+            if $code == 429;
         die "Push request failed before receiving an HTTP response (LWP $code)\n"
             if ($response->header('Client-Warning') || '') eq 'Internal response';
         die "Push service rejected request (HTTP $code)\n";

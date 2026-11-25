@@ -52,7 +52,8 @@ sub send {
     my $phone = $self->_phone;
     return { accepted => 0 } unless $phone && $phone eq ($self->user->settings->{sms_notification_phone} || '');
     my $text = $args{message} // '';
-    die 'Invalid SMS text' unless length($text) && length($text) <= 140;
+    return { accepted => 0, skipped => 'invalid_text' }
+        unless length($text) && length($text) <= 140;
     my $attempt = $self->cache->increment('vbios:sms:daily:' . sha256_hex($phone), 86400);
     return { accepted => 0 } unless defined($attempt) && $attempt >= 1 && $attempt <= 5;
     my $request = HTTP::Request->new(POST => 'https://api.exolve.ru/messaging/v1/SendSMS');
