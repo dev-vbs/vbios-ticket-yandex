@@ -32,6 +32,12 @@ docker compose up -d --no-deps --force-recreate core spool client
 {{ r = user.srv('Sms').send(message = 'vBios: оплата получена. Подробности доступны в кабинете.') }}
 ```
 
+**Активация услуги**
+
+```text
+{{ r = user.srv('Sms').send(message = 'vBios: услуга активирована. Проверьте состояние и подключение в кабинете.') }}
+```
+
 **Скоро истекает срок**
 
 ```text
@@ -42,4 +48,10 @@ docker compose up -d --no-deps --force-recreate core spool client
 
 При отклонении запроса проверьте HTTP-код в логах core и spool. Для нового ключа создайте приложение в Exolve и привяжите к нему номер отправителя или согласованное альфа-имя.
 
-[Документация МТС Exolve](https://МТС Exolve/api/)
+[Документация МТС Exolve](https://exolve.ru/docs/ru/api-reference/sms-api/sending-sms/)
+
+В тексте шаблона не ставьте одинарную кавычку после `vBios:`. Корректный вариант выглядит так:
+
+```text
+{{ r = user.srv('Sms').send(message = 'vBios: Проверьте состояние услуги и настройки подключения в личном кабинете.') }}
+```
