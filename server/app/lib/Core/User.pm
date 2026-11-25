@@ -1218,9 +1218,13 @@ sub api_news_reaction {
     });
     my ($exists) = $db->selectrow_array('SELECT 1 FROM cabinet_news WHERE id=? LIMIT 1', undef, $id);
     die 'Новость не найдена' unless $exists;
-    my $saved = $db->do('INSERT INTO cabinet_news_reactions (news_id,user_id,reaction,created_at) VALUES (?,?,?,NOW()) ON DUPLICATE KEY UPDATE reaction=VALUES(reaction),created_at=NOW()', undef, $id, $self->id, $reaction);
+    my $user_id = $self->user_id;
+    die 'Пользователь не определён' unless defined($user_id) && $user_id =~ /^\d+$/;
+    my $saved = $db->do('INSERT INTO cabinet_news_reactions (news_id,user_id,reaction,created_at) VALUES (?,?,?,NOW()) ON DUPLICATE KEY UPDATE reaction=VALUES(reaction),created_at=NOW()', undef, $id, $user_id, $reaction);
     die 'Не удалось сохранить реакцию в базе данных' unless defined $saved;
-    return { id => $id, reaction => $reaction };
+    my ($likes) = $db->selectrow_array('SELECT COUNT(*) FROM cabinet_news_reactions WHERE news_id=? AND reaction="like"', undef, $id);
+    my ($dislikes) = $db->selectrow_array('SELECT COUNT(*) FROM cabinet_news_reactions WHERE news_id=? AND reaction="dislike"', undef, $id);
+    return { id => $id, reaction => $reaction, likes => 0 + ($likes || 0), dislikes => 0 + ($dislikes || 0) };
 }
 
 sub _avatar_storage_config { my $self=shift; my $cfg=get_service('config')->data_by_name('ticket')||{}; my $s=$cfg->{storage}||{}; die 'Avatar object storage is not configured' unless ($s->{provider}||'') eq 'yandex' && $s->{bucket}; return $s; }

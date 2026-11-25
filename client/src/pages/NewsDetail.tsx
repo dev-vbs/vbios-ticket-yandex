@@ -20,7 +20,7 @@ export default function NewsDetail() {
   const [error, setError] = useState(false);
   const [reaction, setReaction] = useState<'like' | 'dislike' | null>(null);
   const [reacting, setReacting] = useState(false);
-  const [reactionError, setReactionError] = useState(false);
+  const [reactionError, setReactionError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -37,9 +37,9 @@ export default function NewsDetail() {
   const react = async (value: 'like' | 'dislike') => {
     if (!id || reacting) return;
     setReacting(true);
-    setReactionError(false);
+    setReactionError(null);
     try { await api.post('/user/news/reaction', { id, reaction: value }); setReaction(value); }
-    catch { setReactionError(true); }
+    catch (error: any) { setReactionError(error?.response?.data?.error || error?.response?.data?.data?.[0]?.error || 'Не удалось сохранить реакцию. Попробуйте ещё раз.'); }
     finally { setReacting(false); }
   };
 
@@ -57,7 +57,7 @@ export default function NewsDetail() {
           <Button variant={reaction === 'like' ? 'filled' : 'light'} color="green" leftSection={<IconThumbUp size={17} />} onClick={() => void react('like')} loading={reacting && reaction !== 'like'}>Нравится</Button>
           <Button variant={reaction === 'dislike' ? 'filled' : 'light'} color="red" leftSection={<IconThumbDown size={17} />} onClick={() => void react('dislike')} loading={reacting && reaction !== 'dislike'}>Не нравится</Button>
         </Group>
-        {reactionError && <Text c="red" size="sm">Не удалось сохранить реакцию. Попробуйте ещё раз.</Text>}
+        {reactionError && <Text c="red" size="sm">{reactionError}</Text>}
       </Stack>
     </article>
   </Stack>;
