@@ -1141,6 +1141,24 @@ sub list_for_api {
         $_->{phone} = $self->id( $_->{user_id} )->get_phone if $_->{user_id};
     }
 
+    if ($args{cabinet_access} && !$args{admin}) {
+        my %pages = (
+            '/services' => '/user/service',
+            '/balance' => '/user/pay/paysystems',
+            '/operations' => '/user/pay',
+            '/notifications' => '/user/notifications',
+            '/tickets' => '/user/ticket',
+            '/profile' => '/user/profile',
+        );
+        my %access = map {
+            my $method = $_ eq '/profile' ? 'POST' : 'GET';
+            $_ => ($self->can_access(uri => $pages{$_}, method => $method) ? 1 : 0)
+        } keys %pages;
+        for (@list) {
+            $_->{cabinet_access} = \%access;
+        }
+    }
+
     return @list;
 }
 

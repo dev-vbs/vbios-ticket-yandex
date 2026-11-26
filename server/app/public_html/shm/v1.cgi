@@ -131,6 +131,7 @@ state $routes //= {
     GET => {
         controller => 'User',
         method => 'list_for_api', # hide COMMON_LIST_PARAMS
+        args => { cabinet_access => 1 },
         swagger => { summary => 'Получение пользователя' },
         params => {},
     },

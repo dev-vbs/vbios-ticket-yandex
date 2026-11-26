@@ -16,7 +16,13 @@ interface User {
   discount: number;
   bonus: number;
   gid: number;
+  cabinet_access?: Partial<Record<string, 0 | 1>>;
   telegram_user_id?: number;
+}
+
+export function canOpenCabinetPage(user: User | null, path: string): boolean {
+  const section = path.startsWith('/news/') ? '/notifications' : '/' + path.split('/')[1];
+  return user?.cabinet_access?.[section] !== 0;
 }
 
 interface AppState {

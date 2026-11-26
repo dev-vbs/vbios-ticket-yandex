@@ -8,7 +8,7 @@ import { useHotkeys } from '@mantine/hooks';
 import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 
 import { useTranslation } from 'react-i18next';
-import { useStore } from './store/useStore';
+import { canOpenCabinetPage, useStore } from './store/useStore';
 import { auth } from './api/client';
 import { removeCookie, parseAndSavePartnerId, parseAndSaveSessionId } from './api/cookie';
 import { config } from './config';
@@ -74,7 +74,7 @@ function AppContent() {
   } = useEmailRequired();
 
   useNotificationFromUrl();
-  useTicketPoller(isAuthenticated);
+  useTicketPoller(isAuthenticated && canOpenCabinetPage(user, '/tickets'));
 
   const [payHistoryOpen, setPayHistoryOpen] = useState(false);
   const [withdrawHistoryOpen, setWithdrawHistoryOpen] = useState(false);
@@ -274,7 +274,13 @@ function AppContent() {
       {verifyRequiredModal}
       {versionModal}
       <CabinetLayout>
-        <Suspense fallback={<Center mih={240} role="status"><Stack align="center" gap="sm"><Loader size="sm" /><Text size="sm" c="dimmed">Загружаем страницу…</Text></Stack></Center>}><Routes>
+        {!canOpenCabinetPage(user, location.pathname) ? (
+          <Center mih={240}><Stack align="center" gap="sm">
+            <Text fw={700} size="lg" role="status">Раздел недоступен</Text>
+            <Text c="dimmed" ta="center">У вашей группы нет доступа к этому разделу.</Text>
+            <Button variant="light" onClick={() => navigate('/')}>На главную</Button>
+          </Stack></Center>
+        ) : <Suspense fallback={<Center mih={240} role="status"><Stack align="center" gap="sm"><Loader size="sm" /><Text size="sm" c="dimmed">Загружаем страницу…</Text></Stack></Center>}><Routes>
           <Route path="/" element={<Dashboard />} />
           <Route path="/services" element={<Services />} />
               <Route path="/services/:serviceId" element={<Services />} />
@@ -282,7 +288,7 @@ function AppContent() {
           <Route path="/tickets" element={<Tickets />} /><Route path="/balance" element={<BalancePage />} /><Route path="/operations" element={<OperationsPage />} /><Route path="/notifications" element={<NotificationsPage />} /><Route path="/news/:id" element={<NewsDetail />} />
           <Route path="/help" element={<HelpPage />} />
           <Route path="*" element={<NotFound />} />
-        </Routes></Suspense>
+        </Routes></Suspense>}
       </CabinetLayout>
       {payHistoryOpen && <Suspense fallback={null}><PayHistoryModal opened={payHistoryOpen} onClose={() => setPayHistoryOpen(false)} /></Suspense>}
       {withdrawHistoryOpen && <Suspense fallback={null}><WithdrawHistoryModal opened={withdrawHistoryOpen} onClose={() => setWithdrawHistoryOpen(false)} /></Suspense>}

@@ -3,7 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { Avatar, Drawer, Menu } from '@mantine/core';
 import { IconHeadset, IconLogout, IconShieldLock, IconSettings, IconLayoutDashboard, IconWallet, IconReceipt, IconBell, IconChevronDown, IconUser, IconHelpCircle, IconMenu2 } from '@tabler/icons-react';
 import { config } from '../config';
-import { DEFAULT_AVATAR_URL, useStore } from '../store/useStore';
+import { canOpenCabinetPage, DEFAULT_AVATAR_URL, useStore } from '../store/useStore';
 import { userApi } from '../api/client';
 import { ThemeToggle } from './ThemeToggle';
 import LanguageSwitcher from './LanguageSwitcher';
@@ -60,7 +60,9 @@ export function CabinetLayout({ children }: { children: ReactNode }) {
     }
   }, [location.pathname]);
   const active = (path: string) => location.pathname === path || (path !== '/' && location.pathname.startsWith(path + '/'));
-  const nav = (items: typeof desktopItems) => items.map(({ path, label, icon: Icon }) => (
+  const allowed = (path: string) => canOpenCabinetPage(user, path);
+  const visibleMobileItems = mobileItems.filter(item => allowed(item.path));
+  const nav = (items: typeof desktopItems) => items.filter(item => allowed(item.path)).map(({ path, label, icon: Icon }) => (
     <Link key={path} to={path} onClick={() => setMenuOpened(false)} aria-current={active(path) ? 'page' : undefined} className={active(path) ? 'is-active' : ''}>
       <span className="vpn-nav-icon"><Icon size={19} />{path === '/tickets' && hasNewTicketMessages && <i className="vpn-unread" aria-label="Есть новые ответы" />}</span><span>{label}</span>
     </Link>
@@ -74,9 +76,9 @@ export function CabinetLayout({ children }: { children: ReactNode }) {
           <Menu.Target><button type="button" className="vpn-account-trigger" aria-label="Меню аккаунта"><Avatar className="vpn-avatar" size={34} radius="xl" color="blue" src={avatarUrl || telegramPhoto || DEFAULT_AVATAR_URL}>{(user?.full_name || user?.login || 'U').charAt(0).toUpperCase()}</Avatar><span className="vpn-account-name">{user?.full_name || user?.login || 'Мой аккаунт'}</span><IconChevronDown size={15} /></button></Menu.Target>
           <Menu.Dropdown>
             <Menu.Label>Аккаунт #{user?.user_id}</Menu.Label>
-            <Menu.Item component={Link} to="/profile" leftSection={<IconSettings size={17} />}>Профиль и безопасность</Menu.Item>
-            <Menu.Item component={Link} to="/operations" leftSection={<IconReceipt size={17} />}>История операций</Menu.Item>
-            <Menu.Item component={Link} to="/notifications" leftSection={<IconBell size={17} />}>Уведомления</Menu.Item>
+            {allowed('/profile') && <Menu.Item component={Link} to="/profile" leftSection={<IconSettings size={17} />}>Профиль и безопасность</Menu.Item>}
+            {allowed('/operations') && <Menu.Item component={Link} to="/operations" leftSection={<IconReceipt size={17} />}>История операций</Menu.Item>}
+            {allowed('/notifications') && <Menu.Item component={Link} to="/notifications" leftSection={<IconBell size={17} />}>Уведомления</Menu.Item>}
             <Menu.Divider />
             <Menu.Item color="red" onClick={logout} leftSection={<IconLogout size={17} />}>Выйти из аккаунта</Menu.Item>
           </Menu.Dropdown>
@@ -87,7 +89,7 @@ export function CabinetLayout({ children }: { children: ReactNode }) {
       <aside className="vpn-sidebar" aria-label="Навигация кабинета">
         <Link to="/" className="vpn-sidebar__brand"><img src={config.LOGO_URL} alt="" />{config.APP_NAME}</Link>
         <nav className="vpn-sidebar__nav" aria-label="Разделы кабинета">
-          {sidebarGroups.map(group => (
+          {sidebarGroups.filter(group => group.items.some(item => allowed(item.path))).map(group => (
             <div className="vpn-sidebar__group" key={group.label} role="group" aria-label={group.label}>
               <div className="vpn-sidebar__caption" aria-hidden="true">{group.label}</div>
               {nav(group.items)}
@@ -99,7 +101,7 @@ export function CabinetLayout({ children }: { children: ReactNode }) {
         <main ref={main} id="cabinet-content" tabIndex={-1} className="cabinet-main cabinet-page-main">{children}<footer className="cabinet-legal"><LegalLinks /></footer></main>
       </div>
     </div>
-    <nav className="vpn-bottom-nav" aria-label="Навигация кабинета">{nav(mobileItems)}<button type="button" aria-label="Все разделы кабинета" aria-expanded={menuOpened} onClick={() => setMenuOpened(true)} className={!mobileItems.some(item => active(item.path)) ? 'is-active' : ''}><IconMenu2 size={19} /><span>Ещё</span></button></nav>
+    <nav className="vpn-bottom-nav" aria-label="Навигация кабинета" style={{ gridTemplateColumns: `repeat(${visibleMobileItems.length + 1}, minmax(0, 1fr))` }}>{nav(visibleMobileItems)}<button type="button" aria-label="Все разделы кабинета" aria-expanded={menuOpened} onClick={() => setMenuOpened(true)} className={!visibleMobileItems.some(item => active(item.path)) ? 'is-active' : ''}><IconMenu2 size={19} /><span>Ещё</span></button></nav>
     <Drawer opened={menuOpened} onClose={() => setMenuOpened(false)} position="bottom" size="min(460px, 85dvh)" title="Разделы кабинета" className="cabinet-mobile-menu"><nav className="cabinet-mobile-menu__links" aria-label="Все разделы">{nav(allItems)}</nav></Drawer>
   </div>;
 }
