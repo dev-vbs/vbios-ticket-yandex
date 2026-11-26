@@ -192,7 +192,15 @@ state $routes //= {
     GET => { controller => 'User', method => 'api_news_media', params => { id => { type => 'string', required => 1, max_length => 100 } } },
 },
 '/user/news/reaction' => {
-    POST => { controller => 'User', method => 'api_news_reaction', params => { id => { type => 'string', required => 1, max_length => 100 }, reaction => { type => 'enum', required => 1, enum => ['like','dislike'] } } },
+    POST => {
+        controller => 'User',
+        method => 'api_news_reaction',
+        use_authenticated_user => 1,
+        params => {
+            id => { type => 'string', required => 1, max_length => 64 },
+            reaction => { type => 'string', required => 1, enum => ['like', 'dislike'] },
+        },
+    },
 },
 '/user/avatar' => {
     PUT => { controller => 'User', method => 'api_avatar_upload', params => { data => { type => 'string', required => 1, max_length => 6990508 }, mime_type => { type => 'string', max_length => 100 }, name => { type => 'string', max_length => 255 } }, swagger => { summary => 'Загрузка фотографии профиля' } },
@@ -2816,7 +2824,10 @@ if ( my $p = $router->match( sprintf("%s:%s", $ENV{REQUEST_METHOD}, $uri )) ) {
             $info{error} = "Can't add a new object. Perhaps it already exists?";
         }
     } elsif ( $ENV{REQUEST_METHOD} eq 'POST' || $ENV{REQUEST_METHOD} eq 'DELETE' ) {
-        if ( $user->id && $service->can('structure') ) {
+        if ( $p->{use_authenticated_user} ) {
+            # The request ID belongs to the news article, not to the user.
+            push @data, $user->$method( %safe_args );
+        } elsif ( $user->id && $service->can('structure') ) {
             if ( $service = $service->id( get_service_id( $service, %safe_args ) ) ) {
                 if ( !$admin_mode && $user->id != $service->user_id ) {
                     $headers{status} = 404;
