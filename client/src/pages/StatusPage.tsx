@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { IconActivity, IconArrowLeft, IconChartBar, IconCircleCheck, IconHelpCircle, IconRefresh, IconServer, IconServerOff, IconTool } from '@tabler/icons-react';
 import { monitorApi } from '../api/client';
 import { ThemeToggle } from '../components/ThemeToggle';
 import NodeLatency from '../components/NodeLatency';
@@ -46,23 +47,51 @@ export default function StatusPage() {
   const stale = error || data.state === 'unknown' || !data.checked_at || now / 1000 - data.checked_at > 360;
   const states = nodes.map(node => nodeState(node, stale));
   const online = states.filter(state => state === 'online').length;
+  const metrics = [
+    { label: 'Всего нод', value: nodes.length, icon: IconServer, state: 'total' },
+    { label: 'Доступны', value: online, icon: IconCircleCheck, state: 'online' },
+    { label: 'Недоступны', value: states.filter(state => state === 'offline').length, icon: IconServerOff, state: 'offline' },
+    { label: 'Техработы', value: states.filter(state => state === 'maintenance').length, icon: IconTool, state: 'maintenance' },
+    { label: 'Нет данных', value: states.filter(state => state === 'unknown').length, icon: IconHelpCircle, state: 'unknown' },
+  ];
   const summary = loading ? 'Получаем состояние серверов' : error ? 'Не удалось обновить данные' : !data.enabled ? 'Мониторинг не включён' : !nodes.length ? 'Нет данных о серверах' : states.includes('offline') ? 'Есть недоступные серверы' : states.includes('maintenance') ? 'На части серверов идут техработы' : online === nodes.length ? 'Все проверенные серверы доступны' : 'Ожидаем подтверждения доступности';
   return <div className="status-page"><div className="status-container">
-    <header className="status-header"><Link to="/">{config.APP_NAME}</Link><div><Link to="/">В кабинет</Link><ThemeToggle /></div></header>
-    <main><div className="status-title"><h1>Состояние сети</h1><p>Задержка и доступность с вашего устройства. Проверка каждые 5 минут.</p></div>
-      <section className="status-overview" aria-live="polite" data-state={stale ? 'unknown' : states.includes('offline') ? 'offline' : states.includes('maintenance') ? 'maintenance' : online === nodes.length && nodes.length ? 'online' : 'unknown'}><span className="status-dot" /><div><h2>{summary}</h2><p>{data.checked_at ? 'Проверка биллинга: ' + new Date(data.checked_at * 1000).toLocaleTimeString('ru-RU') : 'Ожидаем данные биллинга'}</p></div><button type="button" onClick={() => { setProbeRefresh(value => value + 1); refresh.current(); }}>Обновить</button></section>
-      <div className="status-counts" aria-label="Сводка биллинга"><span><b>{online}</b> доступны по данным биллинга</span><span><b>{states.filter(state => state === 'offline').length}</b> недоступны</span><span><b>{nodes.length}</b> всего нод</span></div>
-      <section className="status-nodes" aria-label="Состояние нод">{nodes.map((node, index) => {
+    <aside className="status-sidebar">
+      <header><Link to="/"><img src={config.LOGO_URL} alt="" />{config.APP_NAME}</Link><ThemeToggle /></header>
+      <nav aria-label="Разделы мониторинга">
+        <a href="#status-overview"><IconChartBar size={18} />Обзор</a>
+        <a href="#status-nodes"><IconServer size={18} />Ноды</a>
+        <a href="#status-help"><IconHelpCircle size={18} />О проверках</a>
+        <Link to="/"><IconArrowLeft size={18} />В кабинет</Link>
+      </nav>
+    </aside>
+    <main className="status-main"><div className="status-title" id="status-overview"><h1>Состояние сети</h1><p>Биллинг и HTTPS-проверка с вашего устройства. Обновление каждые 5 минут.</p></div>
+      <section className="status-overview" aria-live="polite" data-state={stale ? 'unknown' : states.includes('offline') ? 'offline' : states.includes('maintenance') ? 'maintenance' : online === nodes.length && nodes.length ? 'online' : 'unknown'}><span className="status-dot" /><div><h2>{summary}</h2><p>{data.checked_at ? 'Проверка биллинга: ' + new Date(data.checked_at * 1000).toLocaleTimeString('ru-RU') : 'Ожидаем данные биллинга'}</p></div><button type="button" onClick={() => { setProbeRefresh(value => value + 1); refresh.current(); }}><IconRefresh size={16} />Обновить</button></section>
+      <section className="status-section" aria-labelledby="status-summary-heading">
+        <h2 id="status-summary-heading">Сводка биллинга</h2>
+        <div className="status-counts">{metrics.map(({ label, value, icon: Icon, state }) => (
+          <div className="status-metric" key={state} data-state={state}>
+            <span className="status-icon"><Icon size={19} aria-hidden="true" /></span>
+            <div><span>{label}</span><strong>{loading || !data.enabled ? '—' : value}</strong></div>
+          </div>
+        ))}</div>
+      </section>
+      <section id="status-nodes" className="status-section" aria-labelledby="status-nodes-heading">
+        <h2 id="status-nodes-heading">Состояние нод</h2>
+        <div className="status-nodes">{nodes.map((node, index) => {
         const state = nodeState(node, stale);
-        return <article className="status-node" key={node.id || index}><div className="status-node__heading"><div><h2>{node.name}</h2><p>{node.country || 'Локация не указана'}</p></div><NodeLatency url={node.ping_url} refreshKey={probeRefresh} /></div>
+        return <article className="status-node" key={node.id || index} data-state={state}><div className="status-node__heading"><span className="status-icon"><IconActivity size={19} aria-hidden="true" /></span><div><h3>{node.name}</h3>{node.country && <p>{node.country}</p>}</div><span className="status-badge"><i className="status-dot" />{labels[state]}</span></div>
+          <div className="status-node__metrics"><div className="status-node__history"><p>История биллинга</p>
           <div className="status-bars" aria-label="История проверок за последний час, интервалы по 5 минут">{monitorHistory(node.history, now).map(({ at, sample, state: status }) => {
             const title = new Date(at * 1000).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }) + ' · ' + (sample ? labels[status] : 'Нет проверки') + (sample && hasMonitorLatency(sample.latency_ms) ? ' · ' + sample.latency_ms + ' мс' : '');
             return <span key={at} data-state={status} title={title} aria-label={title} />;
-          })}</div><div className="status-node__footer"><span>60 минут назад</span><span className="status-badge" data-state={state}><i className="status-dot" />Биллинг · {labels[state]}</span><span>Сейчас</span></div>
+          })}</div><div className="status-node__footer"><span>Час назад</span><span>Сейчас</span></div></div>
+          <div className="status-node__probe"><p>С вашего устройства</p><NodeLatency url={node.ping_url} refreshKey={probeRefresh} /></div></div>
           {node.panel_reason === 'node_not_found' && <p className="status-node__notice">Нода не найдена в панели по UUID. {state === 'online' ? 'TCP-проверка настроенного адреса успешна.' : 'Проверьте UUID Node и настройки проверки.'}</p>}
         </article>;
-      })}</section>
+      })}</div>
       {!loading && !nodes.length && <p className="status-empty">{error ? 'Повторите проверку позже.' : 'Администратору нужно настроить monitor_nodes в config.main и доступ к Remnawave.'}</p>}
-      <footer className="status-help"><div><span data-state="online" className="status-dot" />Доступен <span data-state="offline" className="status-dot" />Недоступен <span data-state="maintenance" className="status-dot" />Техработы <span className="status-dot" />Нет проверки</div><p>Полоски показывают историю биллинга за час с интервалом в пять минут.</p><p>Проверка с вашего устройства измеряет время ответа HTTPS. Браузеру требуется доступный адрес /ping с действующим сертификатом и разрешённым CORS.</p></footer>
+      </section>
+      <footer id="status-help" className="status-help"><h2>О проверках</h2><div><span data-state="online" className="status-dot" />Доступен <span data-state="offline" className="status-dot" />Недоступен <span data-state="maintenance" className="status-dot" />Техработы <span className="status-dot" />Нет проверки</div><p>Полоски показывают историю биллинга за час с интервалом в пять минут.</p><p>Проверка с вашего устройства измеряет время ответа HTTPS. Браузеру требуется доступный адрес /ping с действующим сертификатом и разрешённым CORS.</p></footer>
     </main></div></div>;
 }
