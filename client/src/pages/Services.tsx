@@ -2,13 +2,13 @@ import DataLoadStatus from '../components/DataLoadStatus';
 import { lazy, Suspense, useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import { Card, Timeline, Text, Stack, Group, Badge, Button, Divider, ActionIcon, Loader, Center, Paper, Title, Menu, Code, Tooltip, Accordion, Box, Pagination, Alert, TextInput, Skeleton } from '@mantine/core';
-import { IconQrcode, IconCopy, IconCheck, IconDownload, IconRefresh, IconTrash, IconPlus, IconPlayerStop, IconExchange, IconWallet, IconDeviceMobileCog, IconArrowLeft, IconArrowRight, IconSearch, IconCalendarTime, IconWifi, IconWifiOff } from '@tabler/icons-react';
+import { IconCopy, IconCheck, IconDownload, IconRefresh, IconTrash, IconPlus, IconPlayerStop, IconExchange, IconWallet, IconDeviceMobileCog, IconArrowLeft, IconArrowRight, IconSearch, IconCalendarTime, IconWifi, IconWifiOff } from '@tabler/icons-react';
+import { QRCodeSVG } from 'qrcode.react';
 import { useDisclosure, useClipboard } from '@mantine/hooks';
 import { useTranslation } from 'react-i18next';
 import { api, servicesApi, storageApi, userApi } from '../api/client';
 import { notifications } from '@mantine/notifications';
 const PayModal = lazy(() => import('../components/PayModal'));
-const QrModal = lazy(() => import('../components/QrModal'));
 import AppDownloadBlock from '../components/AppDownloadBlock';
 const OrderServiceModal = lazy(() => import('../components/OrderServiceModal'));
 const RemnawaveFeatures = lazy(() => import('../components/RemnawaveFeatures'));
@@ -172,8 +172,6 @@ function ServiceDetail({ service, onDelete, onChangeTariff }: ServiceDetailProps
   const [isOnline, setIsOnline] = useState(() => navigator.onLine);
   const [lastConnectionUpdate, setLastConnectionUpdate] = useState<number | null>(null);
   const [paymentOpen, setPaymentOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<string | null>('info');
-  const [qrModalOpen, setQrModalOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [stopping, setStopping] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -415,6 +413,7 @@ function ServiceDetail({ service, onDelete, onChangeTariff }: ServiceDetailProps
   const urlSchema = isProxy && config[`${detectPlatform()}_PROXY_URL_SCHEMA` as keyof typeof config];
   const showProxySubscription = config.SHOW_PROXY_SUB_LINK === 'true';
   const showProxyQr = config.SHOW_PROXY_QR === 'true';
+  const qrData = isProxy ? (showProxyQr ? subscriptionUrl : null) : storageData;
 
   return (
     <Stack gap="md">
@@ -442,7 +441,7 @@ function ServiceDetail({ service, onDelete, onChangeTariff }: ServiceDetailProps
                     </Group>
                   </>
                 )}
-                {needsRenewal ? <Button fullWidth onClick={() => setPaymentOpen(true)}>Продлить</Button> : service.status === 'ACTIVE' && isVpnOrProxy ? <Button fullWidth aria-expanded={activeTab === 'config'} aria-controls={`service-connection-${service.user_service_id}`} onClick={() => setActiveTab(current => current === 'config' ? 'info' : 'config')}>{activeTab === 'config' ? 'Свернуть' : 'Показать'}</Button> : isNotPaid ? <Button fullWidth onClick={() => setPaymentOpen(true)}>Оплатить</Button> : null}
+                {needsRenewal ? <Button fullWidth onClick={() => setPaymentOpen(true)}>Продлить</Button> : isNotPaid ? <Button fullWidth onClick={() => setPaymentOpen(true)}>Оплатить</Button> : null}
               </Stack>
             </Paper>
             {service.next && (
@@ -475,12 +474,11 @@ function ServiceDetail({ service, onDelete, onChangeTariff }: ServiceDetailProps
           </Stack>
         </section>
         { service.status === 'ACTIVE' && isVpnOrProxy && (
-          <details id={`service-connection-${service.user_service_id}`} className="service-technical-details" open={activeTab === 'config'} onToggle={event => setActiveTab(event.currentTarget.open ? 'config' : 'info')}><summary>Ссылка подписки, QR-код и параметры подключения</summary>
-            <Paper withBorder p="lg" radius="md" className="service-connection-card">
+            <Paper component="section" aria-labelledby={`service-connection-${service.user_service_id}`} withBorder p="lg" radius="md" className="service-connection-card">
               <Stack gap="md">
                 <Group justify="space-between" align="flex-start">
                   <div className="service-connection-card__title">
-                    <Text fw={700} size="lg">{t('services.connectionTo', { service: service.service.name, defaultValue: `Подключение к ${service.service.name}` })}</Text>
+                    <Title order={3} id={`service-connection-${service.user_service_id}`}>{isProxy ? 'Ссылка подписки, QR-код и параметры подключения' : 'QR-код и параметры подключения'}</Title>
                     <Text size="sm" c="dimmed">{isProxy ? t('services.subscriptionHint', { defaultValue: 'Ссылка подписки обновляет конфигурацию автоматически.' }) : t('services.vpnConfigHint', { defaultValue: 'Скачайте конфигурацию или отсканируйте QR-код.' })}</Text>
                   </div>
                   <Badge color="green" variant="light">{statusLabel}</Badge>
@@ -530,10 +528,20 @@ function ServiceDetail({ service, onDelete, onChangeTariff }: ServiceDetailProps
                   </Alert>
                 )}
 
-                <Group grow align="stretch" className="service-connection-actions">
-                  {(!isProxy || showProxyQr) && <Button leftSection={<IconQrcode size={17} />} variant="light" disabled={isProxy ? !subscriptionUrl : !storageData} onClick={() => setQrModalOpen(true)}>{t('services.qrCode')}</Button>}
-                  {isProxy ? <Button leftSection={<IconDeviceMobileCog size={17} />} disabled={!subscriptionUrl} onClick={() => urlSchema ? handleOpenUrlSchema() : handleConfigure()}>{t('services.openInApp', { defaultValue: 'Установить' })}</Button> : <Button leftSection={<IconDownload size={17} />} disabled={!storageData} onClick={downloadConfig} loading={downloading}>{t('services.downloadConfig')}</Button>}
-                </Group>
+                <div className="service-connection-options">
+                  <Stack gap="xs">
+                    <Text fw={600}>{isProxy ? 'Подключение на этом устройстве' : 'Подключение по файлу'}</Text>
+                    <Text size="sm" c="dimmed">{isProxy ? 'Установите VPN-приложение и добавьте в него подписку.' : 'Скачайте файл и импортируйте его в VPN-приложение.'}</Text>
+                    {isProxy ? <Button leftSection={<IconDeviceMobileCog size={17} />} disabled={!subscriptionUrl} onClick={() => urlSchema ? handleOpenUrlSchema() : handleConfigure()}>{t('services.openInApp', { defaultValue: 'Открыть в приложении' })}</Button> : <Button leftSection={<IconDownload size={17} />} disabled={!storageData} onClick={downloadConfig} loading={downloading}>{t('services.downloadConfig')}</Button>}
+                  </Stack>
+                  {qrData && (new TextEncoder().encode(qrData).length <= 2900 ? (
+                    <Stack gap="xs" align="center" className="service-connection-qr">
+                      <Text fw={600}>{t('services.qrCode')}</Text>
+                      <QRCodeSVG title={t('services.qrCode')} value={qrData} size={196} level="L" marginSize={4} />
+                      <Text size="sm" c="dimmed" ta="center">Отсканируйте код в VPN-приложении на другом устройстве.</Text>
+                    </Stack>
+                  ) : <Alert color="orange" title={t('services.qrTooLong')}>{t('services.qrTooLongDesc')}</Alert>)}
+                </div>
 
                 {isProxy && subscriptionUrl && (
                   <AppDownloadBlock type="proxy" />
@@ -561,8 +569,6 @@ function ServiceDetail({ service, onDelete, onChangeTariff }: ServiceDetailProps
                 )}
               </Stack>
             </Paper>
-            {qrModalOpen && <Suspense fallback={<Text role="status">Открываем QR-код…</Text>}><QrModal opened={qrModalOpen} onClose={() => setQrModalOpen(false)} data={isVpn ? (storageData || '') : (subscriptionUrl || '')} title={isVpn ? t('services.vpnQrTitle') : t('services.subscriptionQrTitle')} onDownload={isVpn ? downloadConfig : undefined} /></Suspense>}
-          </details>
         )}
       {isProxy && <HwidDevices key={service.user_service_id} serviceId={service.user_service_id} subscriptionUrl={subscriptionUrl} onAddSubscription={() => urlSchema ? void handleOpenUrlSchema() : handleConfigure()} />}
       {isProxy && <Suspense fallback={null}><RemnawaveFeatures onChangeTariff={canChange && onChangeTariff ? () => onChangeTariff(service) : undefined} serviceId={service.user_service_id} onRotated={url => { setSubscriptionUrl(url); setConnectionReload(v => v + 1); }} /></Suspense>}
