@@ -159,6 +159,8 @@ function ServiceDetail({ service, onDelete, onChangeTariff }: ServiceDetailProps
   const [nextServiceLoading, setNextServiceLoading] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('loading');
   const [connectionReload, setConnectionReload] = useState(0);
+  const [diagnosticsOpen, setDiagnosticsOpen] = useState(false);
+  const [lastNode, setLastNode] = useState<string | null>(null);
   const [isOnline, setIsOnline] = useState(() => navigator.onLine);
   const [lastConnectionUpdate, setLastConnectionUpdate] = useState<number | null>(null);
   const [paymentOpen, setPaymentOpen] = useState(false);
@@ -397,6 +399,27 @@ function ServiceDetail({ service, onDelete, onChangeTariff }: ServiceDetailProps
 
   const isVpn = category === 'vpn';
   const isProxy = category === 'proxy';
+  useEffect(() => {
+    if (!isProxy || !diagnosticsOpen || service.status !== 'ACTIVE') return;
+    const request = new AbortController();
+    setLastNode(null);
+    api.get('/user/service/connection-stats', {
+      params: { user_service_id: service.user_service_id, include_node: 1 },
+      signal: request.signal,
+    }).then(response => {
+      const data = response.data?.data;
+      const stats = Array.isArray(data) ? data[0] : data;
+      if (request.signal.aborted) return;
+      if (!stats || !('last_node_name' in stats) || stats.last_node_unavailable) {
+        setLastNode('Не удалось получить название сервера');
+      } else {
+        setLastNode(stats.last_node_name || 'Нет данных о подключении');
+      }
+    }).catch(() => {
+      if (!request.signal.aborted) setLastNode('Не удалось загрузить данные Remnawave');
+    });
+    return () => request.abort();
+  }, [isProxy, diagnosticsOpen, service.status, service.user_service_id, connectionReload]);
   const isVpnOrProxy = isVpn || isProxy;
   const statusColor = statusColors[service.status] || 'gray';
   const statusLabel = t(`status.${service.status}`, service.status);
@@ -474,12 +497,13 @@ function ServiceDetail({ service, onDelete, onChangeTariff }: ServiceDetailProps
                   <Badge color="green" variant="light">{statusLabel}</Badge>
                 </Group>
 
-                <details className="connection-check-details"><summary>Проверить данные подключения</summary><Paper withBorder p="sm" radius="sm" className="connection-diagnostics">
+                <details className="connection-check-details" onToggle={event => setDiagnosticsOpen(event.currentTarget.open)}><summary>Проверить данные подключения</summary><Paper withBorder p="sm" radius="sm" className="connection-diagnostics">
                   <Group justify="space-between" align="center" wrap="nowrap">
                     <Stack gap={3}>
                       <Group gap="xs"><Text size="sm" fw={600}>Диагностика подключения</Text><Badge color={isOnline ? 'green' : 'orange'} variant="light" leftSection={isOnline ? <IconWifi size={12} /> : <IconWifiOff size={12} />}>{isOnline ? 'Сеть доступна' : 'Нет сети'}</Badge></Group>
                       <Text size="xs" c="dimmed">{connectionStatus === 'ready' ? 'Данные подключения доступны.' : connectionStatus === 'loading' ? 'Проверяем хранилище…' : connectionStatus === 'missing' ? 'Данные подключения пока не найдены.' : 'Не удалось проверить хранилище.'}</Text>
                       {lastConnectionUpdate && <Text size="xs" c="dimmed">Последнее успешное обновление: {new Date(lastConnectionUpdate).toLocaleString(i18n.language === 'ru' ? 'ru-RU' : 'en-US')}</Text>}
+                      {isProxy && <div aria-live="polite"><Text size="xs" c="dimmed">Последняя нода подключения</Text><Text size="sm" fw={600} style={{ overflowWrap: 'anywhere' }}>{lastNode ?? 'Проверяем Remnawave…'}</Text></div>}
                     </Stack>
                     <Button variant="light" size="xs" leftSection={<IconRefresh size={14} />} loading={connectionStatus === 'loading'} disabled={!isOnline} onClick={() => setConnectionReload((value) => value + 1)}>Проверить</Button>
                   </Group>
@@ -528,9 +552,12 @@ function ServiceDetail({ service, onDelete, onChangeTariff }: ServiceDetailProps
                 )}
 
                 {isProxy && showProxySubscription && subscriptionUrl && (
-                  <>
-                    <Divider />
-                    <Text fw={600}>{t('services.howToConnect', { defaultValue: 'Как подключиться' })}</Text>
+                  <details className="connection-check-details service-connect-guide">
+                    <summary>
+                      <strong>{t('services.howToConnect', { defaultValue: 'Как подключиться' })}</strong>
+                      <span className="service-connect-guide__open">Раскрыть</span>
+                      <span className="service-connect-guide__close">Свернуть</span>
+                    </summary>
                     <Timeline active={3} bulletSize={25} lineWidth={2}>
                       <Timeline.Item bullet={<IconDownload size={13} />} title="1. Установите приложение">
                         <Text size="sm" c="dimmed">HAPP, INCY или v2rayNG / v2rayN — выберите приложение для своего устройства.</Text>
@@ -545,7 +572,7 @@ function ServiceDetail({ service, onDelete, onChangeTariff }: ServiceDetailProps
                         <Text size="sm" c="dimmed">Выберите сервер после обновления списка и включите подключение. QR-код можно использовать вместо копирования.</Text>
                       </Timeline.Item>
                     </Timeline>
-                  </>
+                  </details>
                 )}
               </Stack>
             </Paper>

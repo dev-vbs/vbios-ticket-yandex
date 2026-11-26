@@ -266,6 +266,19 @@ sub api_connection_stats {
             reset_strategy=>$user->{trafficLimitStrategy},
             online_at=>$traffic->{onlineAt}, first_connected_at=>$traffic->{firstConnectedAt},
             last_subscription_at=>$user->{subLastOpenedAt}};
+        if ($a{include_node}) {
+            my $uuid = _monitor_uuid($traffic->{lastConnectedNodeUuid});
+            $result->{last_node_name} = undef;
+            if ($uuid =~ /\A[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}\z/
+                && $uuid ne '00000000-0000-0000-0000-000000000000') {
+                my $node = eval { $self->_request(path => "/api/nodes/$uuid")->{response} };
+                if (ref($node) eq 'HASH' && defined($node->{name}) && !ref($node->{name})) {
+                    $result->{last_node_name} = $node->{name};
+                } else {
+                    $result->{last_node_unavailable} = 1;
+                }
+            }
+        }
         1;
     };
     return $ok ? $result : $self->_api_error($@);

@@ -567,7 +567,7 @@ state $routes //= {
     POST => { controller => 'Remnawave', method => 'api_hwid_reset', params => { user_service_id => { type => 'integer', required => 1, min => 1 } } },
 },
 '/user/service/connection-stats' => {
-    GET => { controller => 'Remnawave', method => 'api_connection_stats', params => { user_service_id => { type => 'integer', required => 1, min => 1 } } },
+    GET => { controller => 'Remnawave', method => 'api_connection_stats', params => { user_service_id => { type => 'integer', required => 1, min => 1 }, include_node => { type => 'integer', min => 0, max => 1 } } },
 },
 '/user/service/remnawave' => {
     GET => { controller => 'Remnawave', method => 'api_cabinet', params => { user_service_id => { type => 'integer', required => 1, min => 1 }, section => { type => 'string', max_length => 20 } } },
