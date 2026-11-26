@@ -6,8 +6,13 @@ export function hasMonitorLatency(value?: number | null): value is number {
 }
 
 export function monitorState(status?: string, latency?: number | null): MonitorState {
-  if (status === 'offline' || status === 'maintenance') return status
+  if (status === 'online' || status === 'offline' || status === 'maintenance') return status
   return hasMonitorLatency(latency) ? 'online' : 'unknown'
+}
+
+export function icmpReading(source: string | undefined, stale: boolean, latency?: number | null) {
+  if (stale || source !== 'icmp') return 'Нет свежего замера'
+  return hasMonitorLatency(latency) ? `${latency.toLocaleString('ru-RU')} мс` : 'Нет ответа ICMP'
 }
 
 export function monitorHistory(history: MonitorSample[] | undefined, now: number) {

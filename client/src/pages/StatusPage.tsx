@@ -3,14 +3,14 @@ import { Link } from 'react-router-dom';
 import { IconActivity, IconArrowLeft, IconChartBar, IconCircleCheck, IconHelpCircle, IconRefresh, IconServer, IconServerOff, IconTool } from '@tabler/icons-react';
 import { monitorApi } from '../api/client';
 import { ThemeToggle } from '../components/ThemeToggle';
-import NodeLatency from '../components/NodeLatency';
+
 import { config } from '../config';
-import { hasMonitorLatency, monitorHistory, monitorState } from '../monitor-state';
+import { hasMonitorLatency, icmpReading, monitorHistory, monitorState } from '../monitor-state';
 import type { MonitorSample } from '../monitor-state';
 import './StatusPage.css';
 
-type Node = { id?: string; name: string; country?: string; status?: string; panel_reason?: string; ping_url?: string; latency_ms?: number | null; history?: MonitorSample[] };
-type Monitor = { enabled?: boolean; state?: string; checked_at?: number; nodes?: Node[] };
+type Node = { id?: string; name: string; country?: string; status?: string; panel_reason?: string; latency_ms?: number | null; history?: MonitorSample[] };
+type Monitor = { enabled?: boolean; state?: string; checked_at?: number; latency_source?: string; nodes?: Node[] };
 const labels: Record<string, string> = { online: 'Доступен', offline: 'Недоступен', maintenance: 'Техработы', unknown: 'Нет данных' };
 function nodeState(node: Node, stale: boolean) {
   return stale ? 'unknown' : monitorState(node.status, node.latency_ms);
@@ -20,7 +20,7 @@ export default function StatusPage() {
   const [error, setError] = useState(false);
   const [loading, setLoading] = useState(true);
   const [now, setNow] = useState(Date.now());
-  const [probeRefresh, setProbeRefresh] = useState(0);
+
   const refresh = useRef<() => void>(() => {});
   useEffect(() => {
     let disposed = false, pending = false;
@@ -65,8 +65,8 @@ export default function StatusPage() {
         <Link to="/"><IconArrowLeft size={18} />В кабинет</Link>
       </nav>
     </aside>
-    <main className="status-main"><div className="status-title" id="status-overview"><h1>Состояние сети</h1><p>Биллинг и HTTPS-проверка с вашего устройства. Обновление каждые 5 минут.</p></div>
-      <section className="status-overview" aria-live="polite" data-state={stale ? 'unknown' : states.includes('offline') ? 'offline' : states.includes('maintenance') ? 'maintenance' : online === nodes.length && nodes.length ? 'online' : 'unknown'}><span className="status-dot" /><div><h2>{summary}</h2><p>{data.checked_at ? 'Проверка биллинга: ' + new Date(data.checked_at * 1000).toLocaleTimeString('ru-RU') : 'Ожидаем данные биллинга'}</p></div><button type="button" onClick={() => { setProbeRefresh(value => value + 1); refresh.current(); }}><IconRefresh size={16} />Обновить</button></section>
+    <main className="status-main"><div className="status-title" id="status-overview"><h1>Состояние сети</h1><p>Статус нод и задержка ICMP от сервера биллинга. Обновление каждые 5 минут.</p></div>
+      <section className="status-overview" aria-live="polite" data-state={stale ? 'unknown' : states.includes('offline') ? 'offline' : states.includes('maintenance') ? 'maintenance' : online === nodes.length && nodes.length ? 'online' : 'unknown'}><span className="status-dot" /><div><h2>{summary}</h2><p>{data.checked_at ? 'Проверка биллинга: ' + new Date(data.checked_at * 1000).toLocaleTimeString('ru-RU') : 'Ожидаем данные биллинга'}</p></div><button type="button" onClick={() => refresh.current()}><IconRefresh size={16} />Обновить</button></section>
       <section className="status-section" aria-labelledby="status-summary-heading">
         <h2 id="status-summary-heading">Сводка биллинга</h2>
         <div className="status-counts">{metrics.map(({ label, value, icon: Icon, state }) => (
@@ -86,12 +86,12 @@ export default function StatusPage() {
             const title = new Date(at * 1000).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }) + ' · ' + (sample ? labels[status] : 'Нет проверки') + (sample && hasMonitorLatency(sample.latency_ms) ? ' · ' + sample.latency_ms + ' мс' : '');
             return <span key={at} data-state={status} title={title} aria-label={title} />;
           })}</div><div className="status-node__footer"><span>Час назад</span><span>Сейчас</span></div></div>
-          <div className="status-node__probe"><p>С вашего устройства</p><NodeLatency url={node.ping_url} refreshKey={probeRefresh} /></div></div>
-          {node.panel_reason === 'node_not_found' && <p className="status-node__notice">Нода не найдена в панели по UUID. {state === 'online' ? 'TCP-проверка настроенного адреса успешна.' : 'Проверьте UUID Node и настройки проверки.'}</p>}
+          <div className="status-node__probe"><p>ICMP · от биллинга</p><strong className="monitor-latency">{icmpReading(data.latency_source, stale, node.latency_ms)}</strong></div></div>
+          {node.panel_reason === 'node_not_found' && <p className="status-node__notice">Нода не найдена в панели по UUID. Проверьте UUID в Remnawave.</p>}
         </article>;
       })}</div>
       {!loading && !nodes.length && <p className="status-empty">{error ? 'Повторите проверку позже.' : 'Администратору нужно настроить monitor_nodes в config.main и доступ к Remnawave.'}</p>}
       </section>
-      <footer id="status-help" className="status-help"><h2>О проверках</h2><div><span data-state="online" className="status-dot" />Доступен <span data-state="offline" className="status-dot" />Недоступен <span data-state="maintenance" className="status-dot" />Техработы <span className="status-dot" />Нет проверки</div><p>Полоски показывают историю биллинга за час с интервалом в пять минут.</p><p>Проверка с вашего устройства измеряет время ответа HTTPS. Браузеру требуется доступный адрес /ping с действующим сертификатом и разрешённым CORS.</p></footer>
+      <footer id="status-help" className="status-help"><h2>О проверках</h2><div><span data-state="online" className="status-dot" />Доступен <span data-state="offline" className="status-dot" />Недоступен <span data-state="maintenance" className="status-dot" />Техработы <span className="status-dot" />Нет проверки</div><p>Полоски показывают историю биллинга за час с интервалом в пять минут.</p><p>Задержка измеряется ICMP от сервера биллинга. Если нода блокирует ICMP, статус Remnawave всё равно доступен.</p></footer>
     </main></div></div>;
 }

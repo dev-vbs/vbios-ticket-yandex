@@ -6,8 +6,7 @@ use Core::Base;
 use Core::System::ServiceManager qw(get_service);
 use Core::Utils qw(decode_json encode_json now);
 use Digest::SHA qw(sha256_hex);
-use Data::Validate::IP qw(is_ipv4 is_ipv6);
-use IO::Socket::IP;
+use Data::Validate::IP qw(is_ipv6);
 use Time::HiRes qw(time);
 use Core::Remnawave::Operations;
 use Core::Remnawave::Cabinet;
@@ -62,20 +61,22 @@ sub _configure_service {
 sub _transport { get_service('Transport::Http') }
 sub found_rows { 1 }
 my %latency_cache;
-sub _tcp_latency_ms {
-    my ($address, $port) = @_;
-    return undef unless defined $address && defined $port && $port =~ /^\d+$/ && $port > 0 && $port < 65536;
+sub _icmp_latency_ms {
+    my ($address) = @_;
+    return undef unless defined($address) && !ref($address);
     my $host = $address;
     $host =~ s/^\[//; $host =~ s/\]$//;
-    return undef if $host =~ /[^a-zA-Z0-9.:-]/;
-    my $key = "$host:$port";
-    return $latency_cache{$key}{value} if $latency_cache{$key} && time - $latency_cache{$key}{time} < 60;
-    my $started = time;
-    my $socket = eval { IO::Socket::IP->new(PeerHost => $host, PeerPort => $port, Proto => 'tcp', Timeout => 0.5) };
-    my $latency = $socket ? int((time - $started) * 1000 + 0.5) : undef;
-    close $socket if $socket;
+    return undef unless $host =~ /\A[a-zA-Z0-9][a-zA-Z0-9.:-]{0,252}\z/ || is_ipv6($host);
+    return $latency_cache{$host}{value} if $latency_cache{$host} && time - $latency_cache{$host}{time} < 60;
+    my $latency;
+    if (open my $ping, '-|', '/usr/bin/timeout', '2', '/usr/bin/ping', '-n', '-c', '1', '-w', '1', '--', $host) {
+        local $/;
+        my $output = <$ping> // '';
+        my $success = close $ping;
+        $latency = 0 + $1 if $success && $output =~ /time[=<]([0-9]+(?:\.[0-9]+)?)\s*ms/;
+    }
     %latency_cache = () if keys(%latency_cache) > 100;
-    $latency_cache{$key} = { time => time, value => $latency };
+    $latency_cache{$host} = { time => time, value => $latency };
     return $latency;
 }
 sub _monitor_uuid {
@@ -93,43 +94,38 @@ sub api_monitor {
     my $visible = $main->{monitor_nodes};
     return { enabled => 1, state => 'empty', nodes => [] } unless ref($visible) eq 'ARRAY' && @$visible;
     my $monitor_cfg = get_service('config')->data_by_name('remna') || {};
-    my $cache_key = 'SHM:Remnawave:Monitor:v5:'.sha256_hex(encode_json($visible).($monitor_cfg->{url} || '').($monitor_cfg->{api_token} || ''));
+    my $cache_key = 'SHM:Remnawave:Monitor:v6:'.sha256_hex(encode_json($visible).($monitor_cfg->{url} || '').($monitor_cfg->{api_token} || ''));
     my $cached = eval { $self->cache->get_json($cache_key) };
     return $cached if ref($cached) eq 'HASH' && ref($cached->{nodes}) eq 'ARRAY';
     my $response = eval { $self->_request(path => '/api/nodes') };
-    return { enabled => 1, state => 'unknown', nodes => [] } if $@ || ref($response) ne 'HASH' || ref($response->{response}) ne 'ARRAY';
-    my %nodes = map { ref($_) eq 'HASH' && $_->{uuid} ? (_monitor_uuid($_->{uuid}) => $_) : () } @{$response->{response}};
+    my $panel_nodes = ref($response) eq 'HASH' && ref($response->{response}) eq 'ARRAY' ? $response->{response} : undef;
+    my %nodes = map { ref($_) eq 'HASH' && $_->{uuid} ? (_monitor_uuid($_->{uuid}) => $_) : () } @{$panel_nodes || []};
     my @public;
     for my $item (@$visible) {
         next unless ref($item) eq 'HASH' && $item->{uuid};
         my $node = $nodes{_monitor_uuid($item->{uuid})};
         my $ip = $item->{ping_ip} || ($node && $node->{address});
-        my $port = $item->{ping_port} || ($node && $node->{port});
-        my $ip_url = defined($ip) && !ref($ip) && is_ipv4($ip) ? 'https://'.$ip.'/ping'
-            : defined($ip) && !ref($ip) && is_ipv6($ip) ? 'https://['.$ip.']/ping' : undef;
         push @public, {
             id => sha256_hex(_monitor_uuid($item->{uuid})),
-            _history_scope => sha256_hex(join('|', $monitor_cfg->{url} || '', _monitor_uuid($item->{uuid}), $ip || '', $port || '')),
+            _history_scope => sha256_hex(join('|', $monitor_cfg->{url} || '', _monitor_uuid($item->{uuid}), $ip || '')),
             name => substr($item->{title} || 'Сервер', 0, 100),
             country => substr($item->{description} || '', 0, 100),
-            ping_url => ($item->{ping_url} && !ref($item->{ping_url}) && $item->{ping_url} =~ m{^https://[^\s\@]+$}) ? $item->{ping_url} : $ip_url,
             status => !$node ? 'unknown' : $node->{isDisabled} ? 'maintenance'
                 : !defined($node->{isConnected}) ? 'unknown' : $node->{isConnected} ? 'online' : 'offline',
-            panel_reason => !$node ? 'node_not_found' : undef,
-            latency_ms => _tcp_latency_ms($ip, $port),
+            panel_reason => !$panel_nodes ? 'panel_unavailable' : !$node ? 'node_not_found' : undef,
+            latency_ms => _icmp_latency_ms($ip),
         };
         last if @public >= 30;
     }
     for my $node (@public) {
-        my $state = $node->{status} eq 'offline' ? 'offline'
-            : $node->{status} eq 'maintenance' ? 'maintenance'
+        my $state = $node->{status} ne 'unknown' ? $node->{status}
             : defined($node->{latency_ms}) ? 'online' : 'unknown';
         my $minute = int(time() / 60) * 60;
         my $sample = { at => $minute, status => $state, latency_ms => $node->{latency_ms} };
         $node->{history} = [$sample];
         eval {
             my $redis = $self->cache->redis;
-            my $key = 'SHM:MonitorHistory:v1:'.$node->{_history_scope};
+            my $key = 'SHM:MonitorHistory:icmp:v1:'.$node->{_history_scope};
             $redis->hset($key, $minute, encode_json($sample));
             $redis->expire($key, 7200);
             my %rows = $redis->hgetall($key);
@@ -138,14 +134,8 @@ sub api_monitor {
             $node->{history} = [map { decode_json($rows{$_}) } sort { $a <=> $b } grep { $_ >= $minute - 3540 } keys %rows] if %rows;
         };
         delete $node->{_history_scope};
-        # Older snapshots required a matched panel node even after a successful
-        # TCP probe. Recover those measured samples without filling any gaps.
-        for my $sample (@{$node->{history}}) {
-            $sample->{status} = 'online' if $sample->{status} eq 'unknown'
-                && defined($sample->{latency_ms}) && $sample->{latency_ms} >= 0;
-        }
     }
-    my $result = { enabled => 1, state => 'ready', checked_at => time(), nodes => \@public };
+    my $result = { enabled => 1, state => 'ready', latency_source => 'icmp', checked_at => time(), nodes => \@public };
     eval { $self->cache->set_json($cache_key, $result, 15) };
     return $result;
 }

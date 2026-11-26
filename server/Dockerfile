@@ -8,6 +8,8 @@ COPY entry-api.sh /entry.sh
 RUN sed -i 's/\r$//' /entry.sh && chmod 755 /entry.sh
 
 FROM danuk/shm-core-base:latest AS core
+RUN apt-get update && apt-get install -y --no-install-recommends iputils-ping \
+    && rm -rf /var/lib/apt/lists/*
 COPY entry-core.sh /entry.sh
 COPY app /app
 RUN sed -i 's/\r$//' /entry.sh && chmod 755 /entry.sh \
