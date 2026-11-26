@@ -3,12 +3,13 @@ import { lazy, Suspense, useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import { Card, Timeline, Text, Stack, Group, Badge, Button, Divider, ActionIcon, Loader, Center, Paper, Title, Menu, Code, Tooltip, Accordion, Box, Pagination, Alert, TextInput, Skeleton } from '@mantine/core';
 import { IconCopy, IconCheck, IconDownload, IconRefresh, IconTrash, IconPlus, IconPlayerStop, IconExchange, IconWallet, IconDeviceMobileCog, IconArrowLeft, IconArrowRight, IconSearch, IconCalendarTime, IconWifi, IconWifiOff } from '@tabler/icons-react';
-import { QRCodeSVG } from 'qrcode.react';
+import { IconQrcode } from '@tabler/icons-react';
 import { useDisclosure, useClipboard } from '@mantine/hooks';
 import { useTranslation } from 'react-i18next';
 import { api, servicesApi, storageApi, userApi } from '../api/client';
 import { notifications } from '@mantine/notifications';
 const PayModal = lazy(() => import('../components/PayModal'));
+const QrModal = lazy(() => import('../components/QrModal'));
 import AppDownloadBlock from '../components/AppDownloadBlock';
 const OrderServiceModal = lazy(() => import('../components/OrderServiceModal'));
 const RemnawaveFeatures = lazy(() => import('../components/RemnawaveFeatures'));
@@ -133,18 +134,6 @@ function extractSubscriptionUrl(payload: unknown): string | null {
   return findStorageString(value, [], (candidate) => /^[a-z][a-z\d+.-]*:\/\//i.test(candidate));
 }
 
-function subscriptionPageUrl(link: string | null, serviceId: number): string | null {
-  if (!link) return null;
-  try {
-    const url = new URL(link);
-    if (url.protocol !== 'https:') return null;
-    url.searchParams.set('shm_service', String(serviceId));
-    return url.toString();
-  } catch {
-    return null;
-  }
-}
-
 function extractConfiguration(payload: unknown): string | null {
   return findStorageString(parseStorageValue(payload), configFields, (candidate) => candidate.length > 0);
 }
@@ -163,6 +152,7 @@ function wasNotFound(error: unknown): boolean {
 }
 
 function ServiceDetail({ service, onDelete, onChangeTariff }: ServiceDetailProps) {
+  const [qrOpen, setQrOpen] = useState(false);
   const [storageData, setStorageData] = useState<string | null>(null);
   const [subscriptionUrl, setSubscriptionUrl] = useState<string | null>(null);
   const [nextServiceInfo, setNextServiceInfo] = useState<{ name: string; cost: number } | null>(null);
@@ -506,11 +496,6 @@ function ServiceDetail({ service, onDelete, onChangeTariff }: ServiceDetailProps
                         </ActionIcon>
                       </Tooltip>
                     </Group>
-                    {subscriptionPageUrl(subscriptionUrl, service.user_service_id) && (
-                      <Button component="a" href={subscriptionPageUrl(subscriptionUrl, service.user_service_id)!} target="_blank" rel="noopener noreferrer" variant="light" size="xs" mt="sm" rightSection={<IconArrowRight size={15} />}>
-                        Открыть страницу подписки
-                      </Button>
-                    )}
                   </Paper>
                 )}
 
@@ -528,20 +513,15 @@ function ServiceDetail({ service, onDelete, onChangeTariff }: ServiceDetailProps
                   </Alert>
                 )}
 
-                <div className="service-connection-options">
                   <Stack gap="xs">
                     <Text fw={600}>{isProxy ? 'Подключение на этом устройстве' : 'Подключение по файлу'}</Text>
                     <Text size="sm" c="dimmed">{isProxy ? 'Установите VPN-приложение и добавьте в него подписку.' : 'Скачайте файл и импортируйте его в VPN-приложение.'}</Text>
-                    {isProxy ? <Button leftSection={<IconDeviceMobileCog size={17} />} disabled={!subscriptionUrl} onClick={() => urlSchema ? handleOpenUrlSchema() : handleConfigure()}>{t('services.openInApp', { defaultValue: 'Открыть в приложении' })}</Button> : <Button leftSection={<IconDownload size={17} />} disabled={!storageData} onClick={downloadConfig} loading={downloading}>{t('services.downloadConfig')}</Button>}
+                    <Group grow className="service-connection-actions">
+                      {isProxy ? <Button leftSection={<IconDeviceMobileCog size={17} />} disabled={!subscriptionUrl} onClick={() => urlSchema ? handleOpenUrlSchema() : handleConfigure()}>{t('services.openInApp', { defaultValue: 'Открыть в приложении' })}</Button> : <Button leftSection={<IconDownload size={17} />} disabled={!storageData} onClick={downloadConfig} loading={downloading}>{t('services.downloadConfig')}</Button>}
+                      {(!isProxy || showProxyQr) && <Button variant="light" leftSection={<IconQrcode size={17} />} disabled={!qrData} onClick={() => setQrOpen(true)}>Показать QR-код</Button>}
+                    </Group>
                   </Stack>
-                  {qrData && (new TextEncoder().encode(qrData).length <= 2900 ? (
-                    <Stack gap="xs" align="center" className="service-connection-qr">
-                      <Text fw={600}>{t('services.qrCode')}</Text>
-                      <QRCodeSVG title={t('services.qrCode')} value={qrData} size={196} level="L" marginSize={4} />
-                      <Text size="sm" c="dimmed" ta="center">Отсканируйте код в VPN-приложении на другом устройстве.</Text>
-                    </Stack>
-                  ) : <Alert color="orange" title={t('services.qrTooLong')}>{t('services.qrTooLongDesc')}</Alert>)}
-                </div>
+                  {qrOpen && qrData && <Suspense fallback={<Text role="status">Открываем QR-код…</Text>}><QrModal opened={qrOpen} onClose={() => setQrOpen(false)} data={qrData} title={isProxy ? t('services.subscriptionQrTitle') : t('services.vpnQrTitle')} onDownload={isProxy ? undefined : downloadConfig} /></Suspense>}
 
                 {isProxy && subscriptionUrl && (
                   <AppDownloadBlock type="proxy" />

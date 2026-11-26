@@ -20,7 +20,7 @@ export default function QrModal({ opened, onClose, data, title, onDownload }: Qr
   const { t } = useTranslation();
 
   const isDataTooLong = useMemo(() => {
-    return data ? data.length > MAX_QR_DATA_LENGTH : false;
+    return new TextEncoder().encode(data).length > MAX_QR_DATA_LENGTH;
   }, [data]);
 
   if (!data) return null;
