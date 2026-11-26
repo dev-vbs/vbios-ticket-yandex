@@ -212,16 +212,82 @@ docker compose logs --tail=100 push
 
 ## Документация
 
-| Задача | Руководство |
-| --- | --- |
-| Установка и эксплуатация | [Чистый сервер](docs/INSTALLATION-RU.md) · [Обновление](docs/PRODUCTION-UPDATE-RU.md) |
-| Оформление сайта | [config.main](docs/main-config.md) · [Шаблон local](docs/main-config-template.txt) |
-| Remnawave и расширения | [Мануал](docs/SHM-REMNAWAVE-MANUAL-RU.md) · [Полный конфиг](docs/cabinet-full-config.md) |
-| Статус нод | [Мониторинг](docs/MONITORING.md) |
-| Push и события | [Web Push](docs/WEB-PUSH-RU.md) · [Шаблоны событий](docs/PUSH-EVENTS-LOCAL-RU.md) |
-| Приложения | [Инструкции подключения](docs/help-apps.md) |
-| Отдельная страница подписки | [Настройка](docs/SUBSCRIPTION-PAGE-RU.md) |
-| Скриншоты | [Галерея](docs/screenshots/README.md) |
+Руководства и готовые шаблоны сгруппированы по задачам. Начните с установки для нового сервера или с инструкции обновления для действующего.
+
+### Установка, обновление и выпуск
+
+- [Установка из исходников](INSTALL-SOURCE.md)
+- [Полная установка на сервер](docs/INSTALLATION-RU.md)
+- [Чистый сервер и файлы развёртывания](docs/new-server/README.md)
+- [Инициализация базы данных](docs/database-install.md)
+- [Обновление рабочего сервера](docs/PRODUCTION-UPDATE-RU.md)
+- [Обновление клиента через GitHub](client/UPDATE_GITHUB.md)
+- [Уведомления о коммитах GitHub](docs/github-commit-notifications.md)
+
+### Кабинет и приложения
+
+- [Клиент и локальная разработка](client/README.md)
+- [История изменений клиента](client/CHANGELOG.md)
+- [Дизайн кабинета](docs/CABINET-DESIGN.md)
+- [Настройки config.main](docs/main-config.md)
+- [Полный конфиг кабинета](docs/cabinet-full-config.md)
+- [Приложения и инструкции для пользователей](docs/help-apps.md)
+- [Приложение для Windows](desktop-windows/README.md)
+- [Настройка страницы подписки](docs/SUBSCRIPTION-PAGE-RU.md)
+- [Проект страницы подписки](subscription-page/README.md)
+- [Происхождение кода страницы подписки](subscription-page/PROVENANCE.md)
+- [Галерея скриншотов](docs/screenshots/README.md)
+
+### Remnawave и состояние сети
+
+- [Полный мануал Remnawave](docs/SHM-REMNAWAVE-MANUAL-RU.md)
+- [Серверный модуль](docs/remnawave-module.md)
+- [Интеграция с личным кабинетом](docs/remnawave-cabinet.md)
+- [Настройка мониторинга](docs/MONITORING.md)
+- [Пример Nginx для HTTPS-проверки](docs/node-ping-nginx.conf)
+- [Спецификация API Remnawave](docs/remnawave-openapi.yaml)
+
+### Telegram, уведомления и поддержка
+
+- [Вход через Telegram OIDC](docs/TELEGRAM-OIDC.md)
+- [Настройка Web Push](docs/WEB-PUSH-RU.md)
+- [Шаблоны Push для событий](docs/PUSH-EVENTS-LOCAL-RU.md)
+- [Ответы поддержки](docs/REPLY.md)
+- [Ответы с фото](docs/SUPPORT-PHOTO-REPLY.md)
+- [Обновление системы тикетов](docs/UPGRADE-TICKETS.md)
+- [Настройка S3](docs/S3.md)
+- [Хранилище вложений в Yandex Cloud](docs/new-server/YANDEX-CLOUD-TICKETS.md)
+
+### Готовые local-шаблоны и настройки
+
+- [Основные настройки config.main](docs/main-config-template.txt)
+- [Полная настройка кабинета](docs/cabinet-full-config-local.txt)
+- [Оформление входа](docs/login-design-local.txt)
+- [Мониторинг](docs/monitoring-config-local.txt)
+- [Конфигурация Remnawave](docs/remnawave-config-local.txt)
+- [Выдача услуги Remnawave](docs/Remnawave_LOCAL.txt)
+- [Проверка интеграции кабинета](docs/remnawave-cabinet-check-local.txt)
+- [Список нод для мониторинга](docs/remnawave-monitor-nodes-local.txt)
+- [Настройка выбора серверов](docs/remnawave-servers-config-local.txt)
+- [Конфигурация расширений](docs/remnawave-addons-config-local.txt)
+- [Применение расширений](docs/Remnawave_Addon_LOCAL.txt)
+- [Полный шаблон бота](docs/telegram-bot-template-vbios-local.txt)
+- [Главное меню бота](docs/telegram-main-menu-vbios-local.txt)
+- [Сохранение Telegram-рассылок для кабинета](docs/telegram-broadcast-news-persistence.txt)
+- [Промпт ИИ-поддержки](docs/vbios-ai-support-prompt-ru.txt)
+
+### Сервер, архитектура и безопасность
+
+- [Серверная часть](server/README.md)
+- [Развёртывание через Helm](server/helm/README.md)
+- [Helm-чарт биллинга](server/helm/k8s-shm/README.md)
+- [Архитектура](docs/ARCHITECTURE.md)
+- [Многопользовательские установки](docs/MULTI-TENANT.md)
+- [Безопасность](docs/SECURITY.md)
+- [Обновления безопасности](docs/SECURITY-UPGRADE.md)
+- [Аудит проекта](docs/VBIOS-AUDIT.md)
+- [Состояние функций](docs/IMPLEMENTATION-STATUS.md)
+- [План развития](docs/ROADMAP.md)
 
 ## Маршрут пользователя
 
