@@ -242,3 +242,5 @@
   .vpn-cabinet .cabinet-security-tabs .mantine-Tabs-tab { min-height:44px; padding:10px 8px; border:1px solid var(--ui-border); border-radius:10px; font-size:12px; }
   .vpn-cabinet .cabinet-security-tabs .mantine-Tabs-tab[data-active] { background:var(--ui-accent-soft); border-color:var(--ui-accent); color:var(--ui-accent-strong); }
 }
+.cabinet-breadcrumb { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 16px; font-size: .8125rem; color: var(--ui-muted); }
+.cabinet-breadcrumb a { color: var(--ui-accent-strong); text-underline-offset: 3px; }

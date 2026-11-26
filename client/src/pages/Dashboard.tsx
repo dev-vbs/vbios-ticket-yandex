@@ -99,6 +99,7 @@ export default function Dashboard() {
   const { hasNewTicketMessages } = useStore();
   const expiringServices = activeServices.filter((service) => expiry(service.expire));
   const blockedServices = services.filter((service) => ['BLOCK', 'block'].includes(service.status || ''));
+  const awaitingPayment = services.find(service => service.status === 'NOT PAID');
   return <div className="dashboard-overview">
     <header className="cabinet-header">
       <div><h1>Здравствуйте, {user?.full_name || user?.login || 'пользователь'}!</h1><p>Ваши подключения, оплата и помощь — всегда под рукой.</p></div>
@@ -111,6 +112,11 @@ export default function Dashboard() {
       {servicesAllowed && expiringServices.slice(0, 2).map(service => <Link key={service.user_service_id} to={`/services/${service.user_service_id}`}><IconCalendarEvent size={19} /><span>{service.service?.name || service.name || `Услуга #${service.user_service_id}`} · {expiry(service.expire)}</span><IconArrowRight size={16} /></Link>)}
       {ticketsAllowed && hasNewTicketMessages && <Link to="/tickets"><IconHeadset size={19} /><span>Новый ответ поддержки</span><IconArrowRight size={16} /></Link>}
     </section>}
+    {servicesAllowed && awaitingPayment && <Link className="dashboard-news-banner" to={`/services/${awaitingPayment.user_service_id}`}>
+      <strong>Завершите оплату услуги</strong>
+      <span>{awaitingPayment.service?.name || awaitingPayment.name || 'Откройте услугу, чтобы проверить сумму и оплатить подключение.'}</span>
+      <IconArrowRight size={18} aria-hidden="true" />
+    </Link>}
     {newsAllowed && latestNews && <Link className="dashboard-news-banner" to={`/news/${latestNews.id}`} aria-label="Открыть новость">
       <span className="dashboard-news-banner__eyebrow">📣 Внимание · объявление</span>
       <strong>{latestNews.title || 'Новое объявление'}</strong>

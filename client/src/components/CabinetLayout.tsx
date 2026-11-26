@@ -61,6 +61,7 @@ export function CabinetLayout({ children }: { children: ReactNode }) {
   }, [location.pathname]);
   const active = (path: string) => location.pathname === path || (path !== '/' && location.pathname.startsWith(path + '/'));
   const allowed = (path: string) => canOpenCabinetPage(user, path);
+  const currentSection = allItems.find(item => item.path !== '/' && active(item.path));
   const visibleMobileItems = mobileItems.filter(item => allowed(item.path));
   const nav = (items: typeof desktopItems) => items.filter(item => allowed(item.path)).map(({ path, label, icon: Icon }) => (
     <Link key={path} to={path} onClick={() => setMenuOpened(false)} aria-current={active(path) ? 'page' : undefined} className={active(path) ? 'is-active' : ''}>
@@ -98,7 +99,13 @@ export function CabinetLayout({ children }: { children: ReactNode }) {
         </nav>
       </aside>
       <div className="vpn-content">
-        <main ref={main} id="cabinet-content" tabIndex={-1} className="cabinet-main cabinet-page-main">{children}<footer className="cabinet-legal"><LegalLinks /></footer></main>
+        <main ref={main} id="cabinet-content" tabIndex={-1} className="cabinet-main cabinet-page-main">
+          {currentSection && allowed(currentSection.path) && <nav className="cabinet-breadcrumb" aria-label="Путь к разделу">
+            <Link to="/">Главная</Link><span aria-hidden="true">/</span><span>{currentSection.label}</span>
+          </nav>}
+          {children}
+          <footer className="cabinet-legal"><LegalLinks /></footer>
+        </main>
       </div>
     </div>
     <nav className="vpn-bottom-nav" aria-label="Навигация кабинета" style={{ gridTemplateColumns: `repeat(${visibleMobileItems.length + 1}, minmax(0, 1fr))` }}>{nav(visibleMobileItems)}<button type="button" aria-label="Все разделы кабинета" aria-expanded={menuOpened} onClick={() => setMenuOpened(true)} className={!visibleMobileItems.some(item => active(item.path)) ? 'is-active' : ''}><IconMenu2 size={19} /><span>Ещё</span></button></nav>
