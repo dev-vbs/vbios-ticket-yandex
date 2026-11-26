@@ -1,7 +1,7 @@
 import { type ReactNode, useRef, useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Avatar, Drawer, Menu } from '@mantine/core';
-import { IconHeadset, IconLogout, IconShieldLock, IconSettings, IconLayoutDashboard, IconWallet, IconReceipt, IconBell, IconChevronDown, IconUser, IconHelpCircle, IconMenu2, IconArrowUpRight } from '@tabler/icons-react';
+import { IconHeadset, IconLogout, IconShieldLock, IconSettings, IconLayoutDashboard, IconWallet, IconReceipt, IconBell, IconChevronDown, IconUser, IconHelpCircle, IconMenu2 } from '@tabler/icons-react';
 import { config } from '../config';
 import { DEFAULT_AVATAR_URL, useStore } from '../store/useStore';
 import { userApi } from '../api/client';
@@ -24,6 +24,12 @@ const desktopItems = [
 ];
 const mobileItems = [desktopItems[0], desktopItems[1], desktopItems[2], desktopItems[5]];
 const allItems = [...desktopItems, { path: '/profile', label: 'Профиль', icon: IconUser }];
+const sidebarGroups = [
+  { label: 'Обзор', items: [desktopItems[0], desktopItems[4]] },
+  { label: 'Подписка', items: [desktopItems[1], desktopItems[7]] },
+  { label: 'Аккаунт', items: [desktopItems[2], desktopItems[3], allItems[8]] },
+  { label: 'Помощь', items: [desktopItems[5], desktopItems[6]] },
+];
 
 export function CabinetLayout({ children }: { children: ReactNode }) {
   const location = useLocation();
@@ -53,7 +59,7 @@ export function CabinetLayout({ children }: { children: ReactNode }) {
       window.scrollTo({ top: 0 });
     }
   }, [location.pathname]);
-  const active = (path: string) => path === '/' ? location.pathname === '/' : location.pathname.startsWith(path);
+  const active = (path: string) => location.pathname === path || (path !== '/' && location.pathname.startsWith(path + '/'));
   const nav = (items: typeof desktopItems) => items.map(({ path, label, icon: Icon }) => (
     <Link key={path} to={path} onClick={() => setMenuOpened(false)} aria-current={active(path) ? 'page' : undefined} className={active(path) ? 'is-active' : ''}>
       <span className="vpn-nav-icon"><Icon size={19} />{path === '/tickets' && hasNewTicketMessages && <i className="vpn-unread" aria-label="Есть новые ответы" />}</span><span>{label}</span>
@@ -79,9 +85,15 @@ export function CabinetLayout({ children }: { children: ReactNode }) {
     </div></header>
     <div className="vpn-workspace">
       <aside className="vpn-sidebar" aria-label="Навигация кабинета">
-        <div className="vpn-sidebar__caption">Личный кабинет</div>
-        <nav className="vpn-sidebar__nav">{nav(allItems)}</nav>
-        <Link to="/help" className="cabinet-sidebar-help"><IconHelpCircle size={24} /><strong>Поможем подключиться</strong><span>Инструкции для ваших устройств</span><IconArrowUpRight size={18} /></Link>
+        <Link to="/" className="vpn-sidebar__brand"><img src={config.LOGO_URL} alt="" />{config.APP_NAME}</Link>
+        <nav className="vpn-sidebar__nav" aria-label="Разделы кабинета">
+          {sidebarGroups.map(group => (
+            <div className="vpn-sidebar__group" key={group.label} role="group" aria-label={group.label}>
+              <div className="vpn-sidebar__caption" aria-hidden="true">{group.label}</div>
+              {nav(group.items)}
+            </div>
+          ))}
+        </nav>
       </aside>
       <div className="vpn-content">
         <main ref={main} id="cabinet-content" tabIndex={-1} className="cabinet-main cabinet-page-main">{children}<footer className="cabinet-legal"><LegalLinks /></footer></main>
