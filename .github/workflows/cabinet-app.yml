@@ -1,0 +1,51 @@
+name: Сборка приложения vBios
+
+on:
+  push:
+    branches: [main]
+    paths: ['cabinet-app/**', '.github/workflows/cabinet-app.yml']
+  pull_request:
+    paths: ['cabinet-app/**', '.github/workflows/cabinet-app.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            target: windows
+            options: --release
+            output: cabinet-app/build/windows/x64/runner/Release/
+          - os: ubuntu-latest
+            target: apk
+            options: --debug
+            output: cabinet-app/build/app/outputs/flutter-apk/app-debug.apk
+          - os: macos-latest
+            target: ios
+            options: --release --no-codesign
+            output: cabinet-app/build/ios/iphoneos/Runner.app/
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.32.8'
+      - name: Подготовить платформенные проекты
+        shell: pwsh
+        run: ./cabinet-app/bootstrap.ps1
+      - name: Проверить код
+        working-directory: cabinet-app
+        run: flutter analyze
+      - name: Собрать приложение
+        working-directory: cabinet-app
+        run: flutter build ${{ matrix.target }} ${{ matrix.options }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cabinet-${{ matrix.target }}
+          path: ${{ matrix.output }}
+          if-no-files-found: error
