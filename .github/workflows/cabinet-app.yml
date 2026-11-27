@@ -3,6 +3,7 @@ name: Сборка приложения vBios
 on:
   push:
     branches: [main]
+    tags: ['cabinet-v*']
     paths: ['cabinet-app/**', '.github/workflows/cabinet-app.yml']
   pull_request:
     paths: ['cabinet-app/**', '.github/workflows/cabinet-app.yml']
@@ -58,3 +59,53 @@ jobs:
           name: cabinet-${{ matrix.target }}
           path: ${{ matrix.output }}
           if-no-files-found: error
+
+      - name: Упаковать сборку для Releases
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/cabinet-v')
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Path release-files | Out-Null
+          switch ('${{ matrix.target }}') {
+            'windows' {
+              Compress-Archive -Path 'cabinet-app/build/windows/x64/runner/Release/*' -DestinationPath 'release-files/vBios-windows-x64.zip'
+            }
+            'apk' {
+              Copy-Item 'cabinet-app/build/app/outputs/flutter-apk/app-debug.apk' 'release-files/vBios-android-debug.apk'
+            }
+            'ios' {
+              ditto -c -k --sequesterRsrc --keepParent 'cabinet-app/build/ios/iphoneos/Runner.app' 'release-files/vBios-ios-unsigned.zip'
+              if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            }
+          }
+      - uses: actions/upload-artifact@v4
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/cabinet-v')
+        with:
+          name: release-${{ matrix.target }}
+          path: release-files/
+          if-no-files-found: error
+
+  release:
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/cabinet-v')
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: release-*
+          path: release-files
+          merge-multiple: true
+      - name: Опубликовать сборки
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            gh release upload "$RELEASE_TAG" release-files/* --clobber
+          else
+            gh release create "$RELEASE_TAG" release-files/* --verify-tag --prerelease --latest=false \
+              --title "vBios Cabinet ${RELEASE_TAG#cabinet-v}" \
+              --notes "Windows: распакуйте ZIP и запустите EXE из извлечённой папки. Android: APK для тестирования. iOS: неподписанная сборка, для установки нужна подпись Apple."
+          fi
