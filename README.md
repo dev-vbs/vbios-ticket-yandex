@@ -232,8 +232,6 @@ docker compose logs --tail=100 push
 - [Настройки config.main](docs/main-config.md)
 - [Полный конфиг кабинета](docs/cabinet-full-config.md)
 - [Приложения и инструкции для пользователей](docs/help-apps.md)
-- [Приложение для Windows](desktop-windows/README.md)
-- [Личный кабинет для Windows, Android и iOS](cabinet-app/README.md)
 - [Настройка страницы подписки](docs/SUBSCRIPTION-PAGE-RU.md)
 - [Проект страницы подписки](subscription-page/README.md)
 - [Происхождение кода страницы подписки](subscription-page/PROVENANCE.md)
